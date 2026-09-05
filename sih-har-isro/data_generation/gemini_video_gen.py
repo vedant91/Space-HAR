@@ -195,7 +195,6 @@ def generate_video_for_step(
     step_id: int,
     prompt: str,
     output_path: str,
-    duration_seconds: int = 8,
 ) -> bool:
     """Generate a single video using Veo 3.1, with retry on 429 quota errors."""
     if not GENAI_AVAILABLE:
@@ -336,10 +335,7 @@ def run_generation(step_ids: Optional[list] = None, videos_per_step: int = 3):
                 logger.info("  Waiting 35s for rate limit before next request...")
                 time.sleep(35)
 
-                success = generate_video_for_step(
-                    client, sid, prompt, vid_path,
-                    duration_seconds=max(4, min(8, step.get("duration_hint_sec", 8))),
-                )
+                success = generate_video_for_step(client, sid, prompt, vid_path)
                 if not success:
                     continue
                 total_generated += 1

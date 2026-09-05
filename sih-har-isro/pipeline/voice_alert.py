@@ -13,12 +13,10 @@ Usage:
     python pipeline/voice_alert.py --text "Step 3 skipped"
 """
 
-import os
 import queue
 import threading
 import logging
 import subprocess
-import tempfile
 import time
 from typing import Optional
 
@@ -39,6 +37,7 @@ class VoiceAlertSystem:
     ALERT_OUT_OF_SEQUENCE = "Warning. Out of sequence action detected. Please return to step {expected_id}."
     ALERT_EXPERIMENT_COMPLETE = "Experiment complete. All steps have been successfully executed."
     ALERT_EXPERIMENT_START = "Experiment started. Please proceed with step 1."
+    ALERT_UNCERTAIN = "Uncertain about the current action near step {step_id}. Please confirm manually."
 
     def __init__(self, voice_model: str = "en_US-lessac-medium",
                  piper_binary: str = "piper", enabled: bool = True):
@@ -48,6 +47,7 @@ class VoiceAlertSystem:
         self._queue: queue.Queue = queue.Queue(maxsize=10)
         self._lock = threading.Lock()
         self._speaking = False
+        self._pyttsx3_engine = None  # created once in _detect_backend, reused for every alert
         # Retained even when audio is disabled.  This makes the simulator able
         # to verify the exact recovery guidance without playing sound.
         self.history: list[str] = []
@@ -73,14 +73,19 @@ class VoiceAlertSystem:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-        # Try pyttsx3
+        # Try pyttsx3 — create the engine once here and reuse it for every
+        # alert. Re-running pyttsx3.init()/stop() per call is a known cause of
+        # hangs/"run loop already started" errors on the Windows SAPI5 driver
+        # in a long-running process; all speech already happens serially on
+        # this single _speaker_loop thread, so one persistent engine is safe.
         try:
             import pyttsx3
-            engine = pyttsx3.init()
-            engine.stop()
+            self._pyttsx3_engine = pyttsx3.init()
+            self._pyttsx3_engine.setProperty("rate", 160)
+            self._pyttsx3_engine.setProperty("volume", 1.0)
             return "pyttsx3"
         except Exception:
-            pass
+            self._pyttsx3_engine = None
 
         logger.warning("No TTS backend found. Voice alerts disabled.")
         return "none"
@@ -131,7 +136,6 @@ class VoiceAlertSystem:
     def _speak_piper(self, text: str):
         """Speak using Piper TTS (high quality, fully offline)."""
         model_path = f"{self.voice_model}.onnx"
-        config_path = f"{self.voice_model}.onnx.json"
 
         cmd = [
             self.piper_binary,
@@ -139,38 +143,37 @@ class VoiceAlertSystem:
             "--output-raw",
         ]
 
-        # Pipe text to piper, pipe output to aplay/ffplay
+        # Pipe text to piper, capture raw 16-bit mono 22050Hz PCM.
         proc1 = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
         )
         audio_data, _ = proc1.communicate(text.encode())
+        self._play_pcm(audio_data)
 
-        # Play audio
-        if os.name == "nt":  # Windows — use PowerShell
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                f.write(audio_data)
-                tmp_path = f.name
-            subprocess.run(
-                ["powershell", "-c", f"(New-Object Media.SoundPlayer '{tmp_path}').PlaySync()"],
-                capture_output=True
-            )
-            os.unlink(tmp_path)
-        else:
-            proc2 = subprocess.Popen(
-                ["aplay", "-r", "22050", "-f", "S16_LE", "-c", "1"],
-                stdin=subprocess.PIPE, stderr=subprocess.DEVNULL
-            )
-            proc2.communicate(audio_data)
+    def _play_pcm(self, audio_data: bytes):
+        """Play raw 16-bit mono 22050Hz PCM via ffplay.
+
+        Replaces the previous Windows(PowerShell SoundPlayer)/Linux(aplay)
+        fork — that fork had no macOS branch at all (fell through to the
+        Linux path, `aplay` missing there just silently dropped every alert),
+        and the Windows path wrote headerless raw PCM into a `.wav`-suffixed
+        temp file that `SoundPlayer` expects a real RIFF header for. ffmpeg
+        is already a hard dependency (video streaming), and `ffplay` ships
+        alongside it on every platform this project targets, so one command
+        replaces all three previous paths.
+        """
+        proc2 = subprocess.Popen(
+            ["ffplay", "-autoexit", "-nodisp", "-loglevel", "quiet",
+             "-f", "s16le", "-ar", "22050", "-ac", "1", "-"],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        proc2.communicate(audio_data)
 
     def _speak_pyttsx3(self, text: str):
-        """Speak using pyttsx3 (cross-platform fallback)."""
-        import pyttsx3
-        engine = pyttsx3.init()
-        engine.setProperty("rate", 160)  # Slower for clarity
-        engine.setProperty("volume", 1.0)
-        engine.say(text)
-        engine.runAndWait()
-        engine.stop()
+        """Speak using pyttsx3 (cross-platform fallback). Reuses the single
+        engine created once in _detect_backend — see its comment for why."""
+        self._pyttsx3_engine.say(text)
+        self._pyttsx3_engine.runAndWait()
 
     # ── Alert convenience methods ──────────────────────────────
 
@@ -204,6 +207,12 @@ class VoiceAlertSystem:
 
     def alert_experiment_start(self):
         self.speak(self.ALERT_EXPERIMENT_START)
+
+    def alert_uncertain(self, step_id: int):
+        """LSTM/CNN ensemble disagreement — ask for confirmation rather than
+        silently guessing, per the PS's own confidence principle."""
+        text = self.ALERT_UNCERTAIN.format(step_id=step_id)
+        self.speak(text, priority=True)
 
     @property
     def is_speaking(self) -> bool:

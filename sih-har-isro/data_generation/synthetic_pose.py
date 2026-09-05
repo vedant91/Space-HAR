@@ -10,15 +10,19 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config.experiment_config import SKELETON_FEATURES
+
 logger = logging.getLogger(__name__)
 
 NUM_LANDMARKS = 33
-FEATURE_DIM = NUM_LANDMARKS * 4  # 132
+FEATURE_DIM = SKELETON_FEATURES  # single source of truth: config.SKELETON_FEATURES (132)
 
 # MediaPipe Pose landmark indices
 NOSE, L_EYE, R_EYE = 0, 2, 5
@@ -267,7 +271,15 @@ def generate_dataset(
     include_orientations: bool = True,
     steps: Optional[list] = None,
 ) -> Dict:
-    """Generate train-ready X_sequences.npy / y_labels.npy and return metadata."""
+    """Generate train-ready X_sequences.npy / y_labels.npy and return metadata.
+
+    Also writes groups.npy — one source-trial id per window, aligned with
+    X/y — so train_lstm.py can split by trial instead of by window. Adjacent
+    windows (stride=15, window=30 → 50% overlap) come from the same trial
+    and share its per-trial identity jitter (body_shift/scale/z_bias, see
+    generate_sequence); splitting at the window level let near-duplicate
+    windows land on both sides of train/val, inflating the reported val acc.
+    """
     rng = np.random.default_rng(seed)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -275,8 +287,9 @@ def generate_dataset(
         steps = list(range(1, 9))
 
     orientations = (0, 1, 2, 3) if include_orientations else (0,)
-    all_x, all_y = [], []
+    all_x, all_y, all_groups = [], [], []
     per_step = {}
+    trial_id = 0
 
     for step_id in steps:
         step_windows = 0
@@ -292,20 +305,25 @@ def generate_dataset(
                     continue
                 all_x.append(xw)
                 all_y.append(yw)
+                all_groups.append(np.full(len(xw), trial_id, dtype=np.int64))
                 step_windows += len(xw)
+                trial_id += 1
         per_step[int(step_id)] = int(step_windows)
         logger.info("Step %d: %d windows", step_id, step_windows)
 
     X = np.concatenate(all_x, axis=0)
     y = np.concatenate(all_y, axis=0)
-    # Shuffle
+    groups = np.concatenate(all_groups, axis=0)
+    # Shuffle (keep groups aligned with X/y)
     idx = rng.permutation(len(X))
-    X, y = X[idx], y[idx]
+    X, y, groups = X[idx], y[idx], groups[idx]
 
     np.save(str(out / "X_sequences.npy"), X)
     np.save(str(out / "y_labels.npy"), y)
+    np.save(str(out / "groups.npy"), groups)
     meta = {
         "total_windows": int(len(X)),
+        "n_source_trials": int(trial_id),
         "feature_dim": int(X.shape[-1]),
         "window": int(window),
         "source": "synthetic_pose",
@@ -313,7 +331,7 @@ def generate_dataset(
         "steps": [{"step_id": k, "windows": v} for k, v in per_step.items()],
     }
     (out / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    logger.info("Wrote %s  X=%s y=%s", out, X.shape, y.shape)
+    logger.info("Wrote %s  X=%s y=%s groups=%s", out, X.shape, y.shape, groups.shape)
     return meta
 
 

@@ -12,6 +12,7 @@ import os
 import time
 import json
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -31,11 +32,17 @@ class ExperimentLogger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        self.session_id = session_id or datetime.now().strftime("%Y%m%d_%H%M%S")
+        # LOG_FILENAME_FORMAT has only second resolution, so two loggers built
+        # in the same wall-clock second (e.g. simulation/space_sim.py building
+        # one HARPipeline per clip) would otherwise collide on the same path.
+        # A short per-instance suffix makes every session's filename unique.
+        disambiguator = uuid.uuid4().hex[:6]
+        self.session_id = session_id or f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{disambiguator}"
         self.start_time = time.time()
 
         # Human-readable log
-        ts = datetime.now().strftime(LOG_FILENAME_FORMAT)
+        ts_base = datetime.now().strftime(LOG_FILENAME_FORMAT)
+        ts = f"{ts_base[:-4]}_{disambiguator}{ts_base[-4:]}"  # insert before ".txt"
         self.txt_path = self.log_dir / ts
         # Machine-readable JSONL log
         self.jsonl_path = self.log_dir / ts.replace(".txt", ".jsonl")
@@ -44,6 +51,12 @@ class ExperimentLogger:
         logger.info("Experiment logger initialized: %s", self.txt_path)
 
     def _init_log(self):
+        # Never clobber an existing file's header — the disambiguated filename
+        # already makes a same-second collision astronomically unlikely, but a
+        # residual collision (or a caller passing a fixed session_id) must not
+        # silently truncate a prior session's log.
+        if self.txt_path.exists():
+            return
         header = (
             "=" * 70 + "\n"
             f"ISRO HAR EXPERIMENT LOG\n"
@@ -80,17 +93,35 @@ class ExperimentLogger:
         logger.info("LOG: %s", text)
 
     def log_step_complete(self, step_id: int, step_name: str,
-                          confidence: float, duration_sec: float):
+                          confidence: float, duration_sec: float,
+                          recovered: bool = False):
         ts = self._elapsed()
+        status = "RECOVERED" if recovered else "OK"
         text = (f"[{ts}] [COMPLETE]  Step {step_id:02d} | {step_name:<30} | "
-                f"conf={confidence:.3f} | dur={duration_sec:.1f}s | STATUS=OK")
+                f"conf={confidence:.3f} | dur={duration_sec:.1f}s | STATUS={status}")
         entry = {
             "event": "step_complete", "timestamp": ts, "wall_time": datetime.now().isoformat(),
             "step_id": step_id, "step_name": step_name, "confidence": round(confidence, 3),
-            "duration_sec": round(duration_sec, 2), "status": "OK"
+            "duration_sec": round(duration_sec, 2), "status": status, "recovered": recovered,
         }
         self._write(text, entry)
         logger.info("LOG: %s", text)
+
+    def log_uncertain(self, step_id: int, lstm_step: int, cnn_step: int,
+                      lstm_conf: float, cnn_conf: float):
+        """LSTM/CNN ensemble disagreement — the pipeline chose to ask rather
+        than guess, per the PS's own confidence principle."""
+        ts = self._elapsed()
+        text = (f"[{ts}] [UNCERTAIN] Expected Step {step_id:02d} | "
+                f"lstm={lstm_step}({lstm_conf:.2f}) cnn={cnn_step}({cnn_conf:.2f}) | "
+                f"STATUS=NEEDS_CONFIRMATION")
+        entry = {
+            "event": "uncertain", "timestamp": ts, "wall_time": datetime.now().isoformat(),
+            "expected_step_id": step_id, "lstm_step": lstm_step, "lstm_confidence": round(lstm_conf, 3),
+            "cnn_step": cnn_step, "cnn_confidence": round(cnn_conf, 3), "status": "NEEDS_CONFIRMATION",
+        }
+        self._write(text, entry)
+        logger.warning("LOG: %s", text)
 
     def log_step_skipped(self, expected_step_id: int, expected_name: str,
                          observed_step_id: int):
@@ -132,15 +163,30 @@ class ExperimentLogger:
         self._write(text, entry)
 
     def log_experiment_complete(self, total_duration_sec: float,
-                                steps_completed: int, steps_skipped: int):
+                                steps_completed: int, steps_skipped: int,
+                                recovery_events: int = 0):
         ts = self._elapsed()
+        # Three-tier outcome: a run that needed a hold+correction mid-way is
+        # real information the PS asks for ("outcomes/status") — it must not
+        # be indistinguishable from a clean run just because every step was
+        # eventually completed. steps_skipped stays for a genuinely abandoned
+        # step (the state machine currently always holds for correction
+        # instead, so this is 0 in practice today, but a future policy change
+        # could set it — keep the field meaningful either way.)
+        if steps_skipped > 0:
+            outcome = "PARTIAL"
+        elif recovery_events > 0:
+            outcome = "RECOVERED"
+        else:
+            outcome = "SUCCESS"
         text = (
             "\n" + "=" * 70 + "\n"
             f"[{ts}] [COMPLETE]  EXPERIMENT FINISHED\n"
             f"           Total Duration : {total_duration_sec:.1f}s\n"
             f"           Steps Completed: {steps_completed}/{len(EXPERIMENT_STEPS)}\n"
             f"           Steps Skipped  : {steps_skipped}\n"
-            f"           Outcome        : {'SUCCESS' if steps_skipped == 0 else 'PARTIAL'}\n"
+            f"           Recovery Events: {recovery_events}\n"
+            f"           Outcome        : {outcome}\n"
             "=" * 70
         )
         entry = {
@@ -149,7 +195,8 @@ class ExperimentLogger:
             "total_duration_sec": round(total_duration_sec, 2),
             "steps_completed": steps_completed,
             "steps_skipped": steps_skipped,
-            "outcome": "SUCCESS" if steps_skipped == 0 else "PARTIAL",
+            "recovery_events": recovery_events,
+            "outcome": outcome,
         }
         self._write(text, entry)
         logger.info("Experiment log saved: %s", self.txt_path)

@@ -69,8 +69,20 @@ class HSVBoxDetector:
         self._kernel_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         self._kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
 
-        # Calibration state (updated by calibrate())
-        self._cal_offsets: Dict[str, Tuple] = {}
+        # Live HSV bounds — instance state (not module constants) so
+        # calibrate_from_roi() can actually adjust what detect() uses.
+        # Seeded from config; np.array once here instead of per-frame.
+        self._red_lo1 = np.array(HSV_RED_LOWER1, dtype=np.float64)
+        self._red_hi1 = np.array(HSV_RED_UPPER1, dtype=np.float64)
+        self._red_lo2 = np.array(HSV_RED_LOWER2, dtype=np.float64)
+        self._red_hi2 = np.array(HSV_RED_UPPER2, dtype=np.float64)
+        self._yellow_lo = np.array(HSV_YELLOW_LOWER, dtype=np.float64)
+        self._yellow_hi = np.array(HSV_YELLOW_UPPER, dtype=np.float64)
+        self._white_lo = np.array(HSV_WHITE_LOWER, dtype=np.float64)
+        self._white_hi = np.array(HSV_WHITE_UPPER, dtype=np.float64)
+
+        # Calibration state (updated by calibrate_from_roi())
+        self._cal_offsets: Dict[str, Dict[str, Tuple[float, float]]] = {}
 
         logger.info("HSVBoxDetector initialized (frame=%dx%d)", frame_width, frame_height)
 
@@ -149,18 +161,69 @@ class HSVBoxDetector:
         return out
 
     def calibrate_from_roi(self, frame_bgr: np.ndarray, label: str,
-                           roi: Tuple[int, int, int, int]):
+                           roi: Tuple[int, int, int, int], k: float = 2.5):
         """
-        Sample HSV from a user-drawn ROI to fine-tune detection ranges.
-        roi = (x1, y1, x2, y2)
+        Sample HSV from a user-drawn ROI and actually shift the live detection
+        bounds for `label` to `mean +/- k*std` (clipped to the valid HSV
+        range). `label` must be one of "red_box"/"yellow_box"/"main_box".
+
+        Hue is circular (OpenCV's 0-180 range wraps): a plain arithmetic mean
+        would be wrong for red, whose true samples straddle the 0/180 seam
+        (e.g. hues near 2 and 178 averaging to a bogus ~90). Hue is doubled to
+        map the half-circle onto a full circle, averaged as a vector, then
+        halved back — a proper circular mean/std.
         """
         x1, y1, x2, y2 = roi
         crop = frame_bgr[y1:y2, x1:x2]
-        hsv_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        mean_hsv = hsv_crop.mean(axis=(0, 1))
-        std_hsv  = hsv_crop.std(axis=(0, 1))
-        logger.info("Calibrated %s: mean_HSV=%s std=%s", label, mean_hsv.round(1), std_hsv.round(1))
-        self._cal_offsets[label] = (mean_hsv, std_hsv)
+        if crop.size == 0:
+            logger.warning("calibrate_from_roi: empty ROI for %s, ignoring", label)
+            return
+
+        hsv_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV).reshape(-1, 3).astype(np.float64)
+        h, s, v = hsv_crop[:, 0], hsv_crop[:, 1], hsv_crop[:, 2]
+
+        theta = np.deg2rad(h * 2.0)
+        cos_m, sin_m = np.cos(theta).mean(), np.sin(theta).mean()
+        mean_h = (np.rad2deg(np.arctan2(sin_m, cos_m)) / 2.0) % 180.0
+        resultant = np.hypot(sin_m, cos_m)
+        std_h = min(float(np.rad2deg(np.sqrt(max(-2.0 * np.log(max(resultant, 1e-6)), 0.0))) / 2.0), 45.0)
+        mean_s, std_s = float(s.mean()), float(s.std())
+        mean_v, std_v = float(v.mean()), float(v.std())
+
+        self._cal_offsets[label] = {"h": (mean_h, std_h), "s": (mean_s, std_s), "v": (mean_v, std_v)}
+
+        s_lo, s_hi = max(0.0, mean_s - k * std_s), min(255.0, mean_s + k * std_s)
+        v_lo, v_hi = max(0.0, mean_v - k * std_v), min(255.0, mean_v + k * std_v)
+        h_half = max(k * std_h, 4.0)  # never collapse to a zero-width band
+
+        if label == "red_box":
+            lo_edge, hi_edge = (mean_h - h_half) % 180.0, (mean_h + h_half) % 180.0
+            if lo_edge <= hi_edge:
+                # Calibrated band doesn't straddle the seam — keep the
+                # dual-range *shape* anyway (second range becomes a no-op).
+                self._red_lo1 = np.array([lo_edge, s_lo, v_lo])
+                self._red_hi1 = np.array([hi_edge, s_hi, v_hi])
+                self._red_lo2 = np.array([180.0, s_lo, v_lo])
+                self._red_hi2 = np.array([180.0, s_hi, v_hi])
+            else:
+                self._red_lo1 = np.array([0.0, s_lo, v_lo])
+                self._red_hi1 = np.array([hi_edge, s_hi, v_hi])
+                self._red_lo2 = np.array([lo_edge, s_lo, v_lo])
+                self._red_hi2 = np.array([179.0, s_hi, v_hi])
+        elif label == "yellow_box":
+            self._yellow_lo = np.array([max(0.0, mean_h - h_half), s_lo, v_lo])
+            self._yellow_hi = np.array([min(179.0, mean_h + h_half), s_hi, v_hi])
+        elif label == "main_box":
+            # The main box is detected by being light/low-saturation, not by
+            # hue — keep hue span wide, recenter S/V only.
+            self._white_lo = np.array([0.0, 0.0, v_lo])
+            self._white_hi = np.array([180.0, max(10.0, s_hi), 255.0])
+        else:
+            logger.warning("calibrate_from_roi: unknown label '%s', ignoring", label)
+            return
+
+        logger.info("Calibrated %s: mean_H=%.1f std_H=%.1f mean_S=%.1f mean_V=%.1f — bounds updated",
+                   label, mean_h, std_h, mean_s, mean_v)
 
     # ── Internal detection methods ─────────────────────────────────────────────
 
@@ -209,18 +272,15 @@ class HSVBoxDetector:
 
     def _detect_red(self, hsv: np.ndarray) -> List[Detection]:
         """Detect red box using dual HSV range (red wraps hue 170→0→10)."""
-        lo1 = np.array(HSV_RED_LOWER1); hi1 = np.array(HSV_RED_UPPER1)
-        lo2 = np.array(HSV_RED_LOWER2); hi2 = np.array(HSV_RED_UPPER2)
-        mask1 = cv2.inRange(hsv, lo1, hi1)
-        mask2 = cv2.inRange(hsv, lo2, hi2)
+        mask1 = cv2.inRange(hsv, self._red_lo1, self._red_hi1)
+        mask2 = cv2.inRange(hsv, self._red_lo2, self._red_hi2)
         mask = cv2.bitwise_or(mask1, mask2)
         mask = self._apply_mask_pipeline(mask)
         return self._contours_to_detections(mask, "red_box", top_n=1)
 
     def _detect_yellow(self, hsv: np.ndarray) -> List[Detection]:
         """Detect yellow box."""
-        lo = np.array(HSV_YELLOW_LOWER); hi = np.array(HSV_YELLOW_UPPER)
-        mask = cv2.inRange(hsv, lo, hi)
+        mask = cv2.inRange(hsv, self._yellow_lo, self._yellow_hi)
         mask = self._apply_mask_pipeline(mask)
         return self._contours_to_detections(mask, "yellow_box", top_n=1)
 
@@ -230,8 +290,7 @@ class HSVBoxDetector:
         Detect the main white container.
         Strategy: find largest white region, apply rectangular shape filter.
         """
-        lo = np.array(HSV_WHITE_LOWER); hi = np.array(HSV_WHITE_UPPER)
-        mask = cv2.inRange(hsv, lo, hi)
+        mask = cv2.inRange(hsv, self._white_lo, self._white_hi)
         mask = self._apply_mask_pipeline(mask)
 
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

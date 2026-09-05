@@ -1,0 +1,5 @@
+{"event": "experiment_start", "timestamp": "00:00:00.199", "wall_time": "2026-09-05T22:04:16.551934"}
+{"event": "step_skipped", "timestamp": "00:00:04.287", "wall_time": "2026-09-05T22:04:20.639404", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 6, "status": "RECOVERY_REQUIRED"}
+{"event": "step_start", "timestamp": "00:00:05.089", "wall_time": "2026-09-05T22:04:21.442004", "step_id": 1, "step_name": "Approach Main Box", "confidence": 0.679}
+{"event": "step_skipped", "timestamp": "00:00:08.481", "wall_time": "2026-09-05T22:04:24.833274", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 8, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:09.072", "wall_time": "2026-09-05T22:04:25.424634", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 6, "status": "RECOVERY_REQUIRED"}

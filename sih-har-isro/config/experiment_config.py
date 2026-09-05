@@ -5,7 +5,10 @@
 
 from dataclasses import dataclass, field
 from typing import List, Dict
+import json
+import logging
 import os
+from pathlib import Path
 
 # ── Experiment Step Definitions ──────────────────────────────
 EXPERIMENT_STEPS = [
@@ -82,7 +85,11 @@ DETECTION_CLASSES = {
     3: "main_box",
 }
 CLASS_NAMES = list(DETECTION_CLASSES.values())
-NUM_CLASSES = len(CLASS_NAMES)
+# Named DETECTION_NUM_CLASSES (not NUM_CLASSES) — this is the HSV detection
+# class count (4: hand/red_box/yellow_box/main_box), unrelated to the step
+# classifiers' class count (NUM_STEPS, 9). A generic "NUM_CLASSES" name here
+# previously collided in meaning with train_cnn.py's own same-named local.
+DETECTION_NUM_CLASSES = len(CLASS_NAMES)
 
 # ── Camera & Video Settings ───────────────────────────────────
 CAMERA_INDEX = 0          # Default webcam
@@ -117,6 +124,7 @@ HMR_BACKEND = "none"
 # ── Streaming Settings ────────────────────────────────────────
 STREAM_HOST = "0.0.0.0"
 STREAM_PORT = 8554
+ENABLE_STREAMING = False   # Push video over UDP to STREAM_HOST:STREAM_PORT (needs ffmpeg on PATH)
 LOCAL_RECORDING_DIR = "recordings"
 
 # ── Model Paths ───────────────────────────────────────────────
@@ -137,6 +145,20 @@ NUM_STEPS = len(EXPERIMENT_STEPS) + 1  # +1 for "idle/unknown"
 # ── State Machine Thresholds ──────────────────────────────────
 STEP_CONFIRM_FRAMES = 15    # Consecutive frames needed to confirm a step
 STEP_CONFIDENCE_THRESHOLD = 0.65
+
+# ── CNN Ensemble (optional, off by default) ────────────────────
+# The CNN (frame-level classifier) is trained but was previously never used
+# for inference — pure dead weight. When enabled, its prediction is fused
+# with the LSTM's (see pipeline/har_pipeline.py's _fuse_predictions): if both
+# are confident but DISAGREE, the pipeline does not guess — it fires an
+# "uncertain, please confirm" alert instead, per the PS's own stated
+# principle (ask rather than silently pass or fail).
+# Default False: the shipped CNN checkpoint was trained before its
+# train/val-split leakage fix (see train/train_cnn.py) — retrain it clean
+# before trusting it in production, same off-until-retrained convention as
+# RACK_FRAME_NORMALIZE.
+CNN_ENSEMBLE_ENABLED = False
+CNN_CONFIDENCE_THRESHOLD = 0.60
 
 # ── HSV Color Ranges for Box Detection (no training needed) ───
 # Format: (H_min, S_min, V_min), (H_max, S_max, V_max)
@@ -195,3 +217,22 @@ E2E_HSV_MIN_RECALL = 0.85
 E2E_MAX_MEAN_LATENCY_MS = 80.0
 E2E_MAX_P95_LATENCY_MS = 130.0
 E2E_MIN_ORACLE_STEP_ACC = 0.85
+
+# ── Tuned runtime overrides ────────────────────────────────────
+# Written by end_to_end_loop.py's auto-fix loop when a gate failure implies a
+# different runtime threshold (e.g. STEP_CONFIRM_FRAMES) would pass. Applied
+# last, here, so it can override any constant defined above.
+#
+# Previously that loop only monkeypatched pipeline.state_machine's already-
+# imported module attribute — correct for the rest of that one process (the
+# state machine re-reads its module global on every ExperimentStateMachine()
+# call), but it evaporated the instant the process exited: a "passed" e2e
+# run's config was not the config that actually ships. Loading a small file
+# here makes any future process (including a real main.py --mode pipeline
+# run) see the same tuned value.
+_TUNED_OVERRIDES_PATH = Path(__file__).parent / "tuned_overrides.json"
+if _TUNED_OVERRIDES_PATH.exists():
+    try:
+        globals().update(json.loads(_TUNED_OVERRIDES_PATH.read_text(encoding="utf-8")))
+    except Exception as _e:
+        logging.getLogger(__name__).warning("Failed to load tuned_overrides.json: %s", _e)

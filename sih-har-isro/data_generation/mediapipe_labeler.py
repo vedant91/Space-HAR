@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect  # noqa: E402
 from pipeline.hsv_detector import HSVBoxDetector  # noqa: E402
+from config.experiment_config import SKELETON_FEATURES  # noqa: E402
 
 try:
     import mediapipe as mp
@@ -40,7 +41,8 @@ NUM_POSE_LANDMARKS = 33
 # Feature vector length per frame:
 # pose only: 33 × 4 (x,y,z,vis) = 132
 # (Hands removed for faster inference — pose captures key motion)
-FEATURE_DIM = NUM_POSE_LANDMARKS * 4  # 132
+# Single source of truth is config.SKELETON_FEATURES.
+FEATURE_DIM = SKELETON_FEATURES
 
 
 def extract_landmarks_from_frame(results) -> np.ndarray:
@@ -213,7 +215,15 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
             if seq is None or len(seq) == 0:
                 continue
 
-            # Create sliding windows of SEQUENCE_WINDOW frames
+            # Create sliding windows of SEQUENCE_WINDOW frames.
+            # NOTE for whoever wires this into training later: this output is
+            # currently NOT consumed by train_lstm.py (only synthetic_pose.py's
+            # output is, and that one now saves groups.npy for a leakage-safe
+            # split — see its generate_dataset()). If this path is wired in,
+            # give it the same treatment: a per-VIDEO group id (not per-step —
+            # grouping by step_id here would put entire classes only in train
+            # or only in val, since GroupShuffleSplit keeps whole groups
+            # together and there's only one group per step in this function).
             from config.experiment_config import SEQUENCE_WINDOW
             windows = []
             for start in range(0, len(seq) - SEQUENCE_WINDOW + 1, SEQUENCE_WINDOW // 2):

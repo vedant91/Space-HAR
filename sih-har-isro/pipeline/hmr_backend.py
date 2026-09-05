@@ -27,20 +27,28 @@ Nothing in this file is required for the current CPU pipeline to run.
 from __future__ import annotations
 
 import logging
+import sys
+from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config.experiment_config import SKELETON_FEATURES
+
 logger = logging.getLogger(__name__)
 
 NUM_LANDMARKS = 33
-FEATURE_DIM = NUM_LANDMARKS * 4  # 132
+FEATURE_DIM = SKELETON_FEATURES  # single source of truth: config.SKELETON_FEATURES (132)
 
 # SMPL joint indices (45-joint layout) for the subset we map into the
 # MediaPipe-style 33-slot contract. Only unambiguous major joints are mapped;
-# everything else is zero-filled and marked invisible.
+# everything else is zero-filled and marked invisible — slot 0 (nose)
+# intentionally has no SMPL joint mapped to it: SMPL joint 12 is a
+# pelvis/spine landmark, not the head, and mapping it here would write a
+# bogus "visible nose" from an unrelated joint whenever an HMR backend is
+# actually active.
 _SMPL_TO_SLOT = {
-    12: 0,    # pelvis-ish head slot is unused; nose left zero
     9: 11,    # left hip
     8: 12,    # right hip
     4: 13,    # left knee

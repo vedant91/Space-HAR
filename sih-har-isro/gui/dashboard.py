@@ -13,11 +13,15 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def launch_dashboard(gui_queue: "queue.Queue"):
-    """Drain pipeline GUI events. Prefer PyQt if installed, else no-op consumer."""
+def launch_dashboard(gui_queue: "queue.Queue", **kwargs):
+    """Drain pipeline GUI events. Prefer PyQt if installed, else no-op consumer.
+
+    kwargs (on_close, enable_streaming, stream_host, stream_port) are forwarded
+    to launch_qt_dashboard and ignored by the no-op fallback.
+    """
     try:
         from gui.qt_dashboard import launch_qt_dashboard  # optional richer UI
-        launch_qt_dashboard(gui_queue)
+        launch_qt_dashboard(gui_queue, **kwargs)
         return
     except ImportError:
         logger.info("PyQt dashboard not present — running queue drain (headless GUI).")

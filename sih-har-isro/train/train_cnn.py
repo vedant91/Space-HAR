@@ -32,7 +32,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import platform
 
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader
 from torch.cuda.amp import GradScaler, autocast
 
 _NUM_WORKERS = 0 if platform.system() == "Windows" else 4
@@ -44,10 +44,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config.experiment_config import (
     CNN_EPOCHS, CNN_BATCH_SIZE, CNN_IMG_SIZE, CNN_LEARNING_RATE,
     CNN_WEIGHT_DECAY, CNN_DROPOUT, CNN_NUM_FRAMES_IN,
-    TRAIN_VAL_SPLIT, USE_AMP, CNN_MODEL_PATH, EXPERIMENT_STEPS,
+    TRAIN_VAL_SPLIT, USE_AMP, CNN_MODEL_PATH, EXPERIMENT_STEPS, NUM_STEPS,
 )
 
-NUM_CLASSES = len(EXPERIMENT_STEPS) + 1   # +1 for idle
+# NUM_STEPS is config's single source of truth for len(EXPERIMENT_STEPS)+1
+# (+1 for idle) — this used to recompute it locally under the name
+# NUM_CLASSES, which collided in meaning (not value — this file's is 9,
+# config's own unrelated NUM_CLASSES was 4 HSV-detection classes) with
+# anyone who later did `from config.experiment_config import NUM_CLASSES`
+# in this file.
+NUM_CLASSES = NUM_STEPS
 IN_CHANNELS = 3 * CNN_NUM_FRAMES_IN       # RGB × N frames
 
 
@@ -220,17 +226,30 @@ class FrameStackDataset(Dataset):
     """
 
     def __init__(self, data_dir: str, img_size: int = CNN_IMG_SIZE,
-                 n_frames: int = CNN_NUM_FRAMES_IN, augment: bool = True):
+                 n_frames: int = CNN_NUM_FRAMES_IN, augment: bool = True,
+                 split: str = "all", train_frac: float = TRAIN_VAL_SPLIT):
+        """
+        split: "all" (every window), "train" (windows built only from the
+        first `train_frac` of each step folder's frames), or "val" (the
+        remaining tail). Splitting the underlying FRAMES first — before
+        windowing — means no window can straddle the train/val boundary and
+        no frame is ever shared between a train and a val sample. Previously
+        this class built one flat, stride-1 (87.5% frame overlap between
+        adjacent samples) window list and let torch's random_split divide
+        individual windows, which routinely put near-duplicate windows on
+        both sides of the split.
+        """
         self.img_size = img_size
         self.n_frames = n_frames
         self.augment  = augment
         self.samples  = []   # [(frame_paths_list, label_idx)]
         self.label_map = {}  # {step_id: class_idx}
 
-        self._load_samples(data_dir)
-        logger.info("FrameStackDataset: %d samples, %d classes", len(self.samples), len(self.label_map))
+        self._load_samples(data_dir, split=split, train_frac=train_frac)
+        logger.info("FrameStackDataset(split=%s): %d samples, %d classes",
+                   split, len(self.samples), len(self.label_map))
 
-    def _load_samples(self, data_dir: str):
+    def _load_samples(self, data_dir: str, split: str = "all", train_frac: float = 0.8):
         data_path = Path(data_dir)
         step_dirs = sorted([d for d in data_path.iterdir() if d.is_dir()])
 
@@ -248,9 +267,19 @@ class FrameStackDataset(Dataset):
             if len(frames) < self.n_frames:
                 continue
 
-            # Create sliding window samples
-            for i in range(len(frames) - self.n_frames + 1):
-                window = frames[i: i + self.n_frames]
+            split_at = int(len(frames) * train_frac)
+            if split == "train":
+                usable = frames[:split_at]
+            elif split == "val":
+                usable = frames[split_at:]
+            else:
+                usable = frames
+            if len(usable) < self.n_frames:
+                continue
+
+            # Create sliding window samples within this split's frame range only
+            for i in range(len(usable) - self.n_frames + 1):
+                window = usable[i: i + self.n_frames]
                 self.samples.append((window, class_idx))
 
     def _load_frame(self, path: Path) -> np.ndarray:
@@ -319,16 +348,31 @@ def train_cnn(data_dir: str = "dataset/annotated",
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     # ── Dataset ───────────────────────────────────────────────
-    full_ds  = FrameStackDataset(data_dir, augment=True)
-    if len(full_ds) == 0:
-        raise RuntimeError(f"No samples found in {data_dir}. Run mediapipe_labeler first.")
+    # Seeded so the split itself is reproducible run-to-run (previously
+    # random_split had no generator at all).
+    torch.manual_seed(42)
+    train_ds = FrameStackDataset(data_dir, augment=True, split="train")
+    val_ds   = FrameStackDataset(data_dir, augment=False, split="val")
+    if len(train_ds) == 0 or len(val_ds) == 0:
+        raise RuntimeError(
+            f"No samples found in {data_dir} for one or both splits. "
+            "Run mediapipe_labeler first, or check TRAIN_VAL_SPLIT against clip length."
+        )
+    train_n, val_n = len(train_ds), len(val_ds)
+    full_label_map = train_ds.label_map  # identical to val_ds.label_map (same folders)
 
-    train_n  = int(TRAIN_VAL_SPLIT * len(full_ds))
-    val_n    = len(full_ds) - train_n
-    train_ds, val_ds = random_split(full_ds, [train_n, val_n])
-
-    # Disable augmentation for val split
-    val_ds.dataset.augment = False
+    # A very short clip (frames_per_step * (1-TRAIN_VAL_SPLIT) < CNN_NUM_FRAMES_IN)
+    # can leave a class with zero windows in one split's tail — silent unless
+    # surfaced explicitly, and would skew val_acc without explaining why.
+    train_classes = {c for _, c in train_ds.samples}
+    val_classes = {c for _, c in val_ds.samples}
+    missing_in_val = train_classes - val_classes
+    if missing_in_val:
+        logger.warning(
+            "Classes with ZERO validation windows (clip too short for "
+            "TRAIN_VAL_SPLIT=%.2f at n_frames=%d): class_idx=%s — val_acc will not "
+            "reflect these classes. Increase frames_per_step or lower CNN_NUM_FRAMES_IN.",
+            TRAIN_VAL_SPLIT, CNN_NUM_FRAMES_IN, sorted(missing_in_val))
 
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True,
@@ -424,7 +468,7 @@ def train_cnn(data_dir: str = "dataset/annotated",
                 "num_classes":    NUM_CLASSES,
                 "img_size":       CNN_IMG_SIZE,
                 "n_frames_in":    CNN_NUM_FRAMES_IN,
-                "label_map":      full_ds.label_map,
+                "label_map":      full_label_map,
                 "val_acc":        val_acc,
                 "epoch":          epoch,
                 "architecture":   "HARActivityCNN-scratch",

@@ -17,7 +17,8 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, Subset
+from sklearn.model_selection import GroupShuffleSplit
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -29,12 +30,13 @@ from config.experiment_config import (
     LSTM_EPOCHS, LSTM_BATCH_SIZE, LSTM_LEARNING_RATE,
     LSTM_HIDDEN_SIZE, LSTM_NUM_LAYERS, LSTM_DROPOUT,
     TRAIN_VAL_SPLIT, SEQUENCE_WINDOW,
-    NUM_STEPS, LSTM_PATH, LSTM_ONNX_PATH, EXPERIMENT_STEPS,
+    LSTM_PATH, LSTM_ONNX_PATH, SKELETON_FEATURES,
 )
 
-# Feature dimension: MediaPose only (33×4 = 132)
-# Pose only (no hands) for faster inference
-FEATURE_DIM = 33 * 4  # 132
+# Feature dimension: MediaPipe Pose only (33×4 = 132), no hands, for speed.
+# Single source of truth is config.SKELETON_FEATURES — this used to
+# re-derive the same 132 independently.
+FEATURE_DIM = SKELETON_FEATURES
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -158,14 +160,36 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     logger.info("Class distribution: %s", {int(k): int(v) for k, v in zip(*np.unique(y, return_counts=True))})
 
     # ── Dataset split ─────────────────────────────────────────
+    # Split by source trial (groups.npy), not by individual window. Adjacent
+    # windows overlap 50% (window=30, stride=15) and share their trial's
+    # identity jitter (see synthetic_pose.generate_sequence) — splitting at
+    # the window level let near-duplicate windows land on both sides of
+    # train/val, inflating the reported val accuracy. groups.npy is written
+    # by synthetic_pose.generate_dataset(); older datasets generated before
+    # that fix won't have it, so fall back to a plain (still seeded, just not
+    # leakage-safe) window-level split rather than hard-failing.
     dataset = SkeletonSequenceDataset(X, y)
     num_classes = dataset.num_classes
-    train_size = int(TRAIN_VAL_SPLIT * len(dataset))
-    val_size = len(dataset) - train_size
-    train_ds, val_ds = random_split(
-        dataset, [train_size, val_size],
-        generator=torch.Generator().manual_seed(seed),
-    )
+
+    groups_path = Path(data_dir) / "groups.npy"
+    if groups_path.exists():
+        groups = np.load(str(groups_path))
+        gss = GroupShuffleSplit(n_splits=1, train_size=TRAIN_VAL_SPLIT, random_state=seed)
+        train_idx, val_idx = next(gss.split(X, y, groups=groups))
+        logger.info("Group-aware split: %d source trials -> %d train / %d val windows",
+                   len(np.unique(groups)), len(train_idx), len(val_idx))
+    else:
+        logger.warning("groups.npy not found in %s — falling back to a window-level split "
+                       "(not leakage-safe). Regenerate with the current synthetic_pose.py.",
+                       data_dir)
+        rng = np.random.default_rng(seed)
+        perm = rng.permutation(len(X))
+        split_at = int(TRAIN_VAL_SPLIT * len(X))
+        train_idx, val_idx = perm[:split_at], perm[split_at:]
+
+    train_ds = Subset(dataset, train_idx.tolist())
+    val_ds = Subset(dataset, val_idx.tolist())
+    train_size, val_size = len(train_ds), len(val_ds)
 
     train_loader = DataLoader(train_ds, batch_size=LSTM_BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=LSTM_BATCH_SIZE, shuffle=False)

@@ -176,6 +176,7 @@ def run_pipeline_on_clip(
     metas: List[dict],
     inject_pose: bool = True,
     headless: bool = True,
+    warmup: int = 20,
 ) -> Dict:
     """Run HARPipeline.process_frame over a clip. Measures real per-frame latency."""
     from pipeline.har_pipeline import HARPipeline
@@ -195,7 +196,6 @@ def run_pipeline_on_clip(
     oracle_total = 0
     visual_preds = []
     label_window: List[int] = []
-    warmup = 20
 
     for i, (frame, meta) in enumerate(zip(frames, metas)):
         injected = meta["pose"] if inject_pose else None
@@ -298,10 +298,17 @@ def run_full_space_sim(
     out_dir: str = "dataset/space_sim",
     frames_per_step: int = 72,
     test_sequences_dir: Optional[str] = None,
+    seed: int = 5,
+    warmup_frames: int = 20,
 ) -> Dict:
-    """Generate assets, run HSV / LSTM / pipeline / state-machine tests."""
+    """Generate assets, run HSV / LSTM / pipeline / state-machine tests.
+
+    `seed` and `warmup_frames` are exposed (rather than hardcoded) so
+    end_to_end_loop.py's auto-fix loop can actually vary them between
+    iterations instead of recomputing the identical scenario every time.
+    """
     t0 = time.time()
-    assets = generate_sim_assets(out_dir, frames_per_step=frames_per_step)
+    assets = generate_sim_assets(out_dir, frames_per_step=frames_per_step, seed=seed)
     hsv = evaluate_hsv(assets["frames"], assets["metas"])
     sm = evaluate_state_machine()
 
@@ -313,9 +320,11 @@ def run_full_space_sim(
             lstm_test = evaluate_lstm_arrays(np.load(str(xp)), np.load(str(yp)))
 
     logger.info("Running headless pipeline on %d sim frames...", assets["n_frames"])
-    pipe = run_pipeline_on_clip(assets["frames"], assets["metas"], inject_pose=True)
+    pipe = run_pipeline_on_clip(assets["frames"], assets["metas"], inject_pose=True,
+                                warmup=warmup_frames)
     recovery_pipe = run_pipeline_on_clip(
-        assets["recovery_frames"], assets["recovery_metas"], inject_pose=True
+        assets["recovery_frames"], assets["recovery_metas"], inject_pose=True,
+        warmup=warmup_frames,
     )
     recovery_guidance = any("now correct" in text.lower() for text in recovery_pipe["voice_history"])
 
@@ -333,7 +342,13 @@ def run_full_space_sim(
         },
         "accuracy_interpretation": (
             "oracle_step_acc uses injected synthetic pose. It verifies temporal-model and "
-            "protocol integration only, not end-to-end camera-to-pose accuracy."
+            "protocol integration only, not end-to-end camera-to-pose accuracy. "
+            "sequence_complete / skip_detected / recovery_hold_at_expected_step / "
+            "recovery_confirmed / sequence_complete_after_correction come from "
+            "evaluate_state_machine()'s scripted, perfect-confidence, directly-injected "
+            "predictions (see feed()) — they verify state_machine.py's own hold/recovery "
+            "logic is correct, not that the deployed camera->pose->LSTM pipeline reliably "
+            "produces a clean, confident prediction stream from real inference."
         ),
         "elapsed_sec": round(time.time() - t0, 2),
         "assets_dir": assets["out_dir"],

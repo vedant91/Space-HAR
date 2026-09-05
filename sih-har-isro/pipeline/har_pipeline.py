@@ -37,17 +37,19 @@ from config.experiment_config import (
     CAMERA_INDEX, FRAME_WIDTH, FRAME_HEIGHT, FPS,
     PROCESS_EVERY_N_FRAMES, SEQUENCE_WINDOW,
     LSTM_PATH, CNN_MODEL_PATH, CNN_ONNX_PATH, LSTM_ONNX_PATH, LSTM_USE_ONNX,
-    VOICE_ENABLED, STREAM_PORT, LOCAL_RECORDING_DIR,
-    STEP_CONFIDENCE_THRESHOLD,
+    VOICE_ENABLED, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
+    STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES,
     MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
     MEDIAPIPE_DOWNSCALE, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
+    CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
 )
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
+from pipeline.stream_sender import NetworkStreamer
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -71,7 +73,8 @@ except ImportError:
 # Feature dimension: MediaPipe Pose only (faster than Holistic)
 # Pose: 33 landmarks × 4 (x, y, z, visibility) = 132
 # Hands removed for speed — pose alone captures the key motion
-POSE_FEATURE_DIM = 33 * 4  # 132
+# Single source of truth is config.SKELETON_FEATURES.
+POSE_FEATURE_DIM = SKELETON_FEATURES
 
 
 class ThreadedInference:
@@ -218,17 +221,26 @@ class HARPipeline:
 
     def __init__(self,
                  source: int | str = 0,
-                 enable_streaming: bool = False,
+                 enable_streaming: Optional[bool] = None,
+                 stream_host: Optional[str] = None,
+                 stream_port: Optional[int] = None,
                  gui_queue: Optional[queue.Queue] = None,
                  headless: bool = False,
                  enable_voice: Optional[bool] = None,
                  enable_recording: bool = True,
+                 enable_cnn_ensemble: Optional[bool] = None,
                  use_threaded: Optional[bool] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
         self.headless       = headless
         self.enable_recording = enable_recording and not headless
+        self.enable_streaming = ENABLE_STREAMING if enable_streaming is None else enable_streaming
+        self.stream_host    = stream_host or STREAM_HOST
+        self.stream_port    = stream_port or STREAM_PORT
+        self.streamer: Optional[NetworkStreamer] = None
+        self.enable_cnn_ensemble = (CNN_ENSEMBLE_ENABLED if enable_cnn_ensemble is None
+                                    else enable_cnn_ensemble)
         self.frame_idx      = 0
         self._running       = False
         self._last_pred     = (0, 0.0)
@@ -276,6 +288,9 @@ class HARPipeline:
 
         # ── Sequence buffer (for LSTM) ─────────────────────────
         self.skeleton_buffer: Deque[np.ndarray] = deque(maxlen=SEQUENCE_WINDOW)
+        # ── Frame-stack buffer (for the optional CNN ensemble signal) ──
+        # Only populated when enable_cnn_ensemble — zero cost otherwise.
+        self.frame_stack_buffer: Deque[np.ndarray] = deque(maxlen=CNN_NUM_FRAMES_IN)
 
         # ── Pre-allocated buffers for zero-copy ─────────────────
         self._frame_rgb_full = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
@@ -354,22 +369,41 @@ class HARPipeline:
             if self.lstm_ort_sess is None:
                 logger.warning("LSTM not found at %s — train first.", LSTM_PATH)
 
-        # CNN (ONNX preferred for speed)
-        if ORT_AVAILABLE and Path(CNN_ONNX_PATH).exists():
-            try:
-                sess_opts = ort.SessionOptions()
-                sess_opts.intra_op_num_threads = 4
-                sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                self.cnn_session = ort.InferenceSession(
-                    CNN_ONNX_PATH,
-                    sess_options=sess_opts,
-                    providers=["CPUExecutionProvider"],
-                )
-                logger.info("CNN ONNX session loaded: %s", CNN_ONNX_PATH)
-            except Exception as e:
-                logger.warning("CNN ONNX load failed: %s", e)
-        elif Path(CNN_MODEL_PATH).exists():
-            logger.info("CNN .pt found but ONNX preferred. Export with train_cnn._export_onnx()")
+        # CNN (ONNX preferred for speed) — only loaded eagerly when the
+        # ensemble is actually enabled; otherwise this used to load a session
+        # that nothing ever called (pure startup memory/latency for zero
+        # effect on any prediction).
+        self._cnn_idx_to_step = {}
+        if self.enable_cnn_ensemble:
+            if ORT_AVAILABLE and Path(CNN_ONNX_PATH).exists():
+                try:
+                    sess_opts = ort.SessionOptions()
+                    sess_opts.intra_op_num_threads = 4
+                    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    self.cnn_session = ort.InferenceSession(
+                        CNN_ONNX_PATH,
+                        sess_options=sess_opts,
+                        providers=["CPUExecutionProvider"],
+                    )
+                    logger.info("CNN ONNX session loaded: %s", CNN_ONNX_PATH)
+                except Exception as e:
+                    logger.warning("CNN ONNX load failed: %s", e)
+            elif Path(CNN_MODEL_PATH).exists():
+                logger.info("CNN .pt found but ONNX preferred. Export with train_cnn._export_onnx()")
+
+            # Class-index -> step-id map, needed regardless of ONNX/PyTorch —
+            # only the .pt checkpoint carries train_cnn.py's label_map.
+            if Path(CNN_MODEL_PATH).exists():
+                try:
+                    ckpt = torch.load(CNN_MODEL_PATH, map_location="cpu", weights_only=False)
+                    raw_map = ckpt.get("label_map", {})  # {step_id: class_idx}
+                    self._cnn_idx_to_step = {int(v): int(k) for k, v in raw_map.items()}
+                except Exception as e:
+                    logger.warning("CNN label map load failed: %s", e)
+
+            if self.cnn_session is None:
+                logger.warning("CNN ensemble enabled but no usable CNN model found/loaded — "
+                               "ensemble will behave as LSTM-only until a CNN is trained.")
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 
@@ -381,7 +415,8 @@ class HARPipeline:
 
         def on_step_completed(rec: StepRecord):
             self.exp_logger.log_step_complete(
-                rec.step_id, rec.name, rec.confidence, rec.duration_sec or 0.0
+                rec.step_id, rec.name, rec.confidence, rec.duration_sec or 0.0,
+                recovered=rec.recovered,
             )
             if not rec.recovered:
                 self.voice.alert_step_complete(rec.step_id)
@@ -418,8 +453,15 @@ class HARPipeline:
         def on_experiment_complete():
             summary = self.state_machine.get_status_summary()
             completed = sum(1 for s in summary["steps"] if s["status"] == "COMPLETED")
+            # StepStatus.SKIPPED is never actually assigned (holds are always
+            # resolved by correction, not abandonment) — this stays for a
+            # possible future policy change. recovery_events is the real
+            # signal for "did this run need a hold/correction."
             skipped   = sum(1 for s in summary["steps"] if s["status"] == "SKIPPED")
-            self.exp_logger.log_experiment_complete(summary["elapsed_sec"], completed, skipped)
+            self.exp_logger.log_experiment_complete(
+                summary["elapsed_sec"], completed, skipped,
+                recovery_events=summary["recovery"]["events"],
+            )
             self.voice.alert_experiment_complete()
             if self.gui_queue:
                 self.gui_queue.put_nowait(("experiment_complete", summary))
@@ -501,6 +543,112 @@ class HARPipeline:
         """NumPy softmax for ONNX path."""
         e = np.exp(x - np.max(x))
         return e / e.sum()
+
+    # ── Optional CNN ensemble signal (off by default, see config) ───────────
+
+    def _append_cnn_frame(self, frame_rgb_full: np.ndarray):
+        """Resize + buffer one frame for the CNN's temporal stack. Cheap;
+        only called when enable_cnn_ensemble."""
+        small = cv2.resize(frame_rgb_full, (CNN_IMG_SIZE, CNN_IMG_SIZE))
+        self.frame_stack_buffer.append(small)
+
+    def _run_cnn_inference(self) -> tuple[int, float]:
+        """
+        Run the CNN on the current frame-stack buffer. Mirrors
+        FrameStackDataset's exact (non-augmented) preprocessing in
+        train/train_cnn.py, since that's the distribution the model actually
+        learned — resize, RGB, stack-as-channels, ImageNet-ish normalize.
+        Returns (predicted_step_id, confidence); (0, 0.0) if unavailable.
+        """
+        if self.cnn_session is None or len(self.frame_stack_buffer) < CNN_NUM_FRAMES_IN:
+            return 0, 0.0
+
+        frames = list(self.frame_stack_buffer)  # each (CNN_IMG_SIZE, CNN_IMG_SIZE, 3) RGB uint8
+        stacked = np.concatenate(frames, axis=-1)               # (H, W, N*3)
+        stacked = stacked.transpose(2, 0, 1).astype(np.float32) / 255.0
+
+        mean = np.array([0.485, 0.456, 0.406] * CNN_NUM_FRAMES_IN, dtype=np.float32).reshape(-1, 1, 1)
+        std  = np.array([0.229, 0.224, 0.225] * CNN_NUM_FRAMES_IN, dtype=np.float32).reshape(-1, 1, 1)
+        stacked = (stacked - mean) / (std + 1e-7)
+
+        x = stacked[np.newaxis, ...].astype(np.float32)  # (1, N*3, H, W)
+        input_name = self.cnn_session.get_inputs()[0].name
+        logits = self.cnn_session.run(None, {input_name: x})[0]
+        probs = self._softmax(logits[0])
+        cls_idx = int(np.argmax(probs))
+        conf = float(probs[cls_idx])
+        step_id = self._cnn_idx_to_step.get(cls_idx, cls_idx + 1)
+        return int(step_id), conf
+
+    def _fuse_predictions(self, lstm_step: int, lstm_conf: float,
+                          cnn_step: int, cnn_conf: float) -> tuple[int, float, bool]:
+        """
+        Combine the LSTM's temporal-sequence prediction with the CNN's
+        frame-level prediction. Returns (step_id, confidence, uncertain).
+
+        When uncertain is True the caller must NOT feed this into the state
+        machine — this is the concrete implementation of the PS explainer's
+        own stated principle: "if the system isn't confident about what
+        it's seeing, it shouldn't silently pass or fail the step ... it
+        should ask the astronaut for a quick confirmation instead." Two
+        independently-confident models disagreeing is exactly that
+        situation, not a case to average or coin-flip through.
+        """
+        lstm_ok = lstm_step > 0 and lstm_conf >= STEP_CONFIDENCE_THRESHOLD
+        cnn_ok  = cnn_step > 0 and cnn_conf >= CNN_CONFIDENCE_THRESHOLD
+
+        if lstm_ok and cnn_ok:
+            if lstm_step == cnn_step:
+                return lstm_step, max(lstm_conf, cnn_conf), False
+            return 0, 0.0, True  # both confident, but disagree
+        if lstm_ok:
+            return lstm_step, lstm_conf, False
+        if cnn_ok:
+            return cnn_step, cnn_conf, False
+        return 0, 0.0, False  # neither confident — idle, same as today
+
+    def _handle_uncertain(self, lstm_step: int, lstm_conf: float,
+                          cnn_step: int, cnn_conf: float):
+        """LSTM and CNN are each individually confident but disagree — ask
+        the astronaut to confirm rather than feed a guess to the state
+        machine."""
+        expected = self.state_machine.expected_step_id
+        self.voice.alert_uncertain(expected)
+        self.exp_logger.log_uncertain(expected, lstm_step, cnn_step, lstm_conf, cnn_conf)
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("uncertain", {
+                    "expected_step_id": expected,
+                    "lstm_step": lstm_step, "lstm_confidence": lstm_conf,
+                    "cnn_step": cnn_step, "cnn_confidence": cnn_conf,
+                }))
+            except queue.Full:
+                pass
+
+    def _predict_and_feed_state_machine(self) -> tuple[int, float]:
+        """
+        Run LSTM inference (always) and, when enable_cnn_ensemble, fuse it
+        with a CNN frame-level prediction before feeding the state machine.
+        Shared by process_frame() and run() so the fusion/uncertainty policy
+        lives in exactly one place. Returns (step_id, confidence) for
+        HUD/GUI display — when uncertain, this is the LSTM's own raw result
+        (for display continuity only; the state machine was not fed).
+        """
+        lstm_step, lstm_conf = self._run_lstm_inference()
+
+        if not self.enable_cnn_ensemble or len(self.frame_stack_buffer) < CNN_NUM_FRAMES_IN:
+            self.state_machine.feed_prediction(lstm_step, lstm_conf)
+            return lstm_step, lstm_conf
+
+        cnn_step, cnn_conf = self._run_cnn_inference()
+        fused_step, fused_conf, uncertain = self._fuse_predictions(
+            lstm_step, lstm_conf, cnn_step, cnn_conf
+        )
+        if uncertain:
+            self._handle_uncertain(lstm_step, lstm_conf, cnn_step, cnn_conf)
+            return lstm_step, lstm_conf
+        self.state_machine.feed_prediction(fused_step, fused_conf)
+        return fused_step, fused_conf
 
     def _annotate_frame(self, frame: np.ndarray,
                         detections: list,
@@ -616,13 +764,14 @@ class HARPipeline:
                 skel, rack_rect=pick_rack_rect(detections)
             )
         self.skeleton_buffer.append(np.asarray(skel, dtype=np.float32).reshape(-1))
+        if self.enable_cnn_ensemble:
+            self._append_cnn_frame(self._frame_rgb_full)
 
         t_lstm = time.perf_counter()
         pred_step, pred_conf = self._last_pred
         if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
-            pred_step, pred_conf = self._run_lstm_inference()
+            pred_step, pred_conf = self._predict_and_feed_state_machine()
             self._last_pred = (pred_step, pred_conf)
-            self.state_machine.feed_prediction(pred_step, pred_conf)
         lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
         vis = self._annotate_frame(frame, detections, pred_step, pred_conf) if annotate else None
@@ -647,17 +796,43 @@ class HARPipeline:
         self.frame_idx = 0
         self._last_pred = (0, 0.0)
         self.skeleton_buffer.clear()
+        self.frame_stack_buffer.clear()
         self._times.clear()
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
         self._bind_callbacks()
 
+    def _push_gui_status(self):
+        """Push a full state-machine status snapshot to the GUI, alongside the
+        discrete step/alert events already pushed from the state-machine
+        callbacks. Lets the dashboard render the checklist/current/next step
+        without re-deriving state from individual events.
+
+        Also carries live recording/streaming health, since both can be true
+        one moment and false the next (a died mid-run) — a footer string set
+        once at GUI construction can't reflect that.
+        """
+        if not self.gui_queue:
+            return
+        summary = self.state_machine.get_status_summary()
+        summary["recording_active"] = self.video_writer is not None
+        summary["streaming_active"] = self.streamer is not None and self.streamer.available
+        summary["stream_target"] = (f"{self.stream_host}:{self.stream_port}"
+                                    if self.enable_streaming else None)
+        try:
+            self.gui_queue.put_nowait(("status", summary))
+        except queue.Full:
+            pass
+
     def close(self):
         self._running = False
         if self.video_writer is not None:
             self.video_writer.release()
             self.video_writer = None
+        if self.streamer is not None:
+            self.streamer.close()
+            self.streamer = None
         if self.mp_wrapper is not None:
             self.mp_wrapper.close()
             self.mp_wrapper = None
@@ -673,7 +848,7 @@ class HARPipeline:
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, FPS)
 
-        # Video writer
+        # Video writer (local storage)
         if self.enable_recording:
             ts  = time.strftime("%Y%m%d_%H%M%S")
             vw_path = str(Path(LOCAL_RECORDING_DIR) / f"experiment_{ts}.mp4")
@@ -681,7 +856,22 @@ class HARPipeline:
             self.video_writer = cv2.VideoWriter(vw_path, fourcc, FPS,
                                                 (FRAME_WIDTH, FRAME_HEIGHT))
             logger.info("Recording to: %s", vw_path)
+
+        # Network streamer (push to a specific IP, alongside local storage)
+        if self.enable_streaming:
+            self.streamer = NetworkStreamer(self.stream_host, self.stream_port,
+                                            FRAME_WIDTH, FRAME_HEIGHT, FPS)
+            if not self.streamer.available:
+                self.streamer = None
+
         self.voice.alert_experiment_start()
+        # "At the start ... the model should suggest the next step to be
+        # performed" — alert_experiment_start() only ever named step 1 by
+        # number, never by action. Announce it properly, same as every later
+        # step gets via alert_step_next() after completion.
+        first_step = self.state_machine.current_step
+        if first_step:
+            self.voice.alert_step_next(first_step["id"], first_step["name"])
         self.exp_logger.log_experiment_start()
         self._running = True
 
@@ -693,12 +883,28 @@ class HARPipeline:
                 logger.info("Video source exhausted.")
                 break
 
+            # A camera/video source isn't guaranteed to deliver exactly
+            # FRAME_WIDTH x FRAME_HEIGHT (cap.set() above is a no-op for file
+            # sources and not guaranteed for webcams). The network stream is a
+            # fixed-size raw-video pipe (stream_sender.py), so a mismatched
+            # frame desyncs it. Normalize once, here, before anything writes
+            # or converts the frame — process_frame() already does this;
+            # run() didn't.
+            if frame.shape[1] != FRAME_WIDTH or frame.shape[0] != FRAME_HEIGHT:
+                frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+
             self.frame_idx += 1
             t_start = time.time()
 
-            # ── Always write raw frame ──────────────────────
+            # ── Always write raw frame (local) + push to network stream ──
             if self.video_writer:
                 self.video_writer.write(frame)
+            if self.streamer and not self.streamer.available:
+                # The sender died mid-run (e.g. ffmpeg exited) — drop the
+                # reference so the GUI status stops claiming it's active.
+                self.streamer = None
+            if self.streamer:
+                self.streamer.write(frame)
 
             # ── Process every N frames for speed ────────────
             if self.frame_idx % PROCESS_EVERY_N_FRAMES != 0:
@@ -708,7 +914,8 @@ class HARPipeline:
                         self.gui_queue.put_nowait(("frame", frame))
                     except queue.Full:
                         pass
-                if not self.headless:
+                    self._push_gui_status()
+                if not self.headless and self.gui_queue is None:
                     cv2.imshow("ISRO HAR Monitor", frame)
                     if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                         break
@@ -732,11 +939,12 @@ class HARPipeline:
                     skel, rack_rect=pick_rack_rect(detections)
                 )
             self.skeleton_buffer.append(skel)
+            if self.enable_cnn_ensemble:
+                self._append_cnn_frame(self._frame_rgb_full)
 
-            # ── LSTM Inference (when buffer full) ────────────
+            # ── LSTM (+ optional CNN ensemble) inference ─────
             if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
-                pred_step, pred_conf = self._run_lstm_inference()
-                self.state_machine.feed_prediction(pred_step, pred_conf)
+                pred_step, pred_conf = self._predict_and_feed_state_machine()
 
             # ── Build annotated frame & push to GUI ──────────
             vis = self._annotate_frame(frame, detections, pred_step, pred_conf)
@@ -746,12 +954,13 @@ class HARPipeline:
                     self.gui_queue.put_nowait(("frame", vis))
                 except queue.Full:
                     pass
+                self._push_gui_status()
 
             # ── Timing ───────────────────────────────────────
             t_elapsed = time.time() - t_start
             self._times.append(t_elapsed)
 
-            if not self.headless:
+            if not self.headless and self.gui_queue is None:
                 cv2.imshow("ISRO HAR Monitor", vis)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break
@@ -762,9 +971,12 @@ class HARPipeline:
         if self.video_writer:
             self.video_writer.release()
             self.video_writer = None
+        if self.streamer:
+            self.streamer.close()
+            self.streamer = None
         if self.mp_wrapper:
             self.mp_wrapper.close()
-        if not self.headless:
+        if not self.headless and self.gui_queue is None:
             cv2.destroyAllWindows()
         logger.info("Pipeline stopped. Log: %s", self.exp_logger.get_log_path())
 
@@ -777,8 +989,17 @@ if __name__ == "__main__":
     parser.add_argument("--camera", type=int, default=CAMERA_INDEX)
     parser.add_argument("--video",  type=str, default=None,
                         help="Path to video file (uses camera if not set)")
+    parser.add_argument("--stream", action="store_true",
+                        help="Also push video to STREAM_HOST:STREAM_PORT via ffmpeg")
+    parser.add_argument("--stream-host", type=str, default=None)
+    parser.add_argument("--stream-port", type=int, default=None)
+    parser.add_argument("--cnn-ensemble", action="store_true",
+                        help="Fuse CNN + LSTM predictions (retrain CNN first — see train/train_cnn.py)")
     args = parser.parse_args()
 
     source = args.video if args.video else args.camera
-    pipeline = HARPipeline(source=source)
+    pipeline = HARPipeline(source=source,
+                           enable_streaming=True if args.stream else None,
+                           stream_host=args.stream_host, stream_port=args.stream_port,
+                           enable_cnn_ensemble=True if args.cnn_ensemble else None)
     pipeline.run()

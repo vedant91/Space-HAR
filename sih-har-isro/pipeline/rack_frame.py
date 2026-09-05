@@ -34,14 +34,19 @@ from __future__ import annotations
 
 import logging
 import math
+import sys
+from pathlib import Path
 from typing import Optional, Sequence
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config.experiment_config import SKELETON_FEATURES
+
 logger = logging.getLogger(__name__)
 
 NUM_LANDMARKS = 33
-FEATURE_DIM = NUM_LANDMARKS * 4  # 132
+FEATURE_DIM = SKELETON_FEATURES  # single source of truth: config.SKELETON_FEATURES (132)
 
 # MediaPipe Pose indices (mirrors data_generation/synthetic_pose.py)
 L_SHOULDER, R_SHOULDER = 11, 12
@@ -50,8 +55,6 @@ L_WRIST, R_WRIST = 15, 16
 L_HIP, R_HIP = 23, 24
 L_KNEE, R_KNEE = 25, 26
 L_ANKLE, R_ANKLE = 27, 28
-
-_SQ_EPS = 1e-8
 
 
 def wrap180(a: float) -> float:
@@ -170,8 +173,12 @@ class RackFrameNormalizer:
                 else:
                     self._rep = line
             else:
-                # Continuity: follow the line without ever flipping polarity.
-                self._rep = self._closest_lift(line, self._rep)
+                # Continuity: follow the line without ever flipping polarity,
+                # smoothed the same way the torso-fallback branch below is —
+                # previously this assigned the raw lift with zero damping, so
+                # angle_ema had no effect at all whenever a rack was visible.
+                raw = self._closest_lift(line, self._rep)
+                self._rep = self._ema_angle(self._rep, raw)
         elif theta_body is not None:
             # No rack visible: the torso vector carries full polarity by
             # itself, so rotate it straight to the canonical direction (+y).
@@ -189,7 +196,15 @@ class RackFrameNormalizer:
                 self._scale = (self.scale_ema * self._scale
                                + (1.0 - self.scale_ema) * torso_len)
 
-        scale = self._scale if self._scale else max(torso_len, _SQ_EPS)
+        if self._scale is None:
+            # No valid torso has ever been seen yet (degenerate on every frame
+            # so far) — there is no reasonable scale to fall back to. Dividing
+            # by the current (near-zero, invalid) torso_len instead of
+            # refusing output produced finite-but-nonsense feature magnitudes
+            # in the hundreds (vs. the expected O(1)) that would silently
+            # poison the LSTM. Treat this frame as unusable instead.
+            return out.reshape(-1).astype(np.float32)
+        scale = self._scale
         phi = math.radians(self._rep)
         cos_t, sin_t = math.cos(phi), math.sin(phi)
 
@@ -322,7 +337,33 @@ def _selftest() -> None:
     z = RackFrameNormalizer().normalize(np.zeros(FEATURE_DIM, dtype=np.float32))
     assert np.isfinite(z).all() and not np.any(z)
 
-    logger.info("rack_frame selftest passed: equivariance, inversion, scale, fallbacks, NaN-safety")
+    # 7) Angle EMA actually damps rack-line jitter (regression: this branch
+    # previously assigned the raw lift with zero smoothing, so angle_ema had
+    # no effect whenever a rack was visible — only the no-rack/torso-fallback
+    # branch ever used it). An undamped ±8° jitter would swing a full 16°
+    # frame to frame; damping must measurably reduce that.
+    n = RackFrameNormalizer(angle_ema=0.9, scale_ema=0.0)
+    seen = []
+    for j in (8.0, -8.0, 8.0, -8.0, 8.0, -8.0, 8.0, -8.0):
+        n.normalize(_make_pose(90.0).reshape(-1), rack_rect=_rect_from_line(j))
+        seen.append(n.rack_angle_deg)
+    swing = max(seen) - min(seen)
+    assert swing < 15.0, f"angle EMA not damping rack-visible jitter: swing={swing:.2f} (raw=16.0)"
+
+    # 8) Degenerate torso on the very first frame(s) — before any valid scale
+    # has ever been established — must yield exact zeros, not a garbage
+    # large-magnitude output from dividing by a near-zero torso length.
+    # (Regression: this used to fall back to `max(torso_len, eps)` and
+    # produce finite-but-nonsense feature magnitudes in the hundreds.)
+    n = RackFrameNormalizer()
+    degenerate = _make_pose(90.0)
+    degenerate[L_SHOULDER, :2] = degenerate[R_SHOULDER, :2] = (0.5, 0.5)
+    degenerate[L_HIP, :2] = degenerate[R_HIP, :2] = (0.5, 0.5 + 1e-6)  # torso_len ~ 1e-6
+    out_bad = n.normalize(degenerate.reshape(-1), rack_rect=_rect_from_line(0.0))
+    assert not np.any(out_bad), f"degenerate first frame should be all-zero, got max={np.abs(out_bad).max():.2f}"
+
+    logger.info("rack_frame selftest passed: equivariance, inversion, scale, fallbacks, "
+               "NaN-safety, angle-EMA damping, degenerate-scale-before-init")
 
 
 if __name__ == "__main__":

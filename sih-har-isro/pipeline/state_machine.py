@@ -79,6 +79,13 @@ class ExperimentStateMachine:
         self.recovery_required: bool = False
         self.recovery_expected_id: Optional[int] = None
         self.recovery_observed_id: Optional[int] = None
+        # StepStatus.SKIPPED is never actually assigned anywhere (a hold is
+        # always resolved by correction, not by giving up on the step), so a
+        # count of *that* status is always zero. This counter is the real
+        # record of "did this run need a hold/recovery at all" for the final
+        # outcome/structured log — see get_status_summary() and
+        # har_pipeline.py's on_experiment_complete.
+        self.recovery_events: int = 0
 
         # Callbacks
         self.on_step_completed: Optional[Callable] = None
@@ -160,6 +167,7 @@ class ExperimentStateMachine:
             self.recovery_required = True
             self.recovery_expected_id = expected
             self.recovery_observed_id = stable_step_id
+            self.recovery_events += 1
             rec = self._get_record(expected)
             if rec:
                 rec.notes = f"Recovery required: observed step {stable_step_id} before this step"
@@ -266,6 +274,7 @@ class ExperimentStateMachine:
                 "active": self.recovery_required,
                 "expected_step_id": self.recovery_expected_id,
                 "observed_step_id": self.recovery_observed_id,
+                "events": self.recovery_events,
             },
             "elapsed_sec": round(time.time() - self.experiment_start_time, 1)
                            if self.experiment_start_time else 0,

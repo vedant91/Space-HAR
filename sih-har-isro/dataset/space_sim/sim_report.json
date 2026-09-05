@@ -30,68 +30,54 @@
     "7": "COMPLETED",
     "8": "COMPLETED"
   },
-  "lstm_test_acc": 0.0,
-  "n": 0,
+  "lstm_test_acc": 0.9548611111111112,
+  "n": 576,
+  "correct": 550,
   "n_frames": 576,
-  "mean_latency_ms": 83.24263938849079,
-  "p50_latency_ms": 86.76829999990332,
-  "p95_latency_ms": 103.18642499998987,
-  "p99_latency_ms": 118.77553999993332,
-  "fps_equivalent": 12.013074157019835,
+  "mean_latency_ms": 22.606419444659124,
+  "p50_latency_ms": 22.245145504712127,
+  "p95_latency_ms": 25.082437263336033,
+  "p99_latency_ms": 27.547220938140537,
+  "fps_equivalent": 44.235222762632354,
   "breakdown_mean_ms": {
-    "hsv": 24.234158633089955,
-    "mediapipe": 49.6157034172626,
-    "lstm": 7.956692985613281,
-    "total": 83.24263938849079
+    "hsv": 8.63015924902003,
+    "mediapipe": 12.140193637422781,
+    "lstm": 0.0458543992680062,
+    "total": 22.606419444659124
   },
-  "oracle_step_acc": 0.9767441860465116,
-  "oracle_n": 344,
-  "experiment_complete": true,
+  "oracle_step_acc": 0.0,
+  "oracle_n": 0,
+  "experiment_complete": false,
   "recovery_state": {
     "active": false,
     "expected_step_id": null,
-    "observed_step_id": null
+    "observed_step_id": null,
+    "events": 0
   },
   "oracle_pose_injected": true,
   "sm_statuses": {
-    "1": "COMPLETED",
-    "2": "COMPLETED",
-    "3": "COMPLETED",
-    "4": "COMPLETED",
-    "5": "COMPLETED",
-    "6": "COMPLETED",
-    "7": "COMPLETED",
-    "8": "COMPLETED"
+    "1": "PENDING",
+    "2": "PENDING",
+    "3": "PENDING",
+    "4": "PENDING",
+    "5": "PENDING",
+    "6": "PENDING",
+    "7": "PENDING",
+    "8": "PENDING"
   },
   "recovery_scenario": {
-    "experiment_complete": true,
+    "experiment_complete": false,
     "recovery_state": {
       "active": false,
       "expected_step_id": null,
-      "observed_step_id": null
+      "observed_step_id": null,
+      "events": 0
     },
-    "guidance_emitted": true,
-    "voice_history": [
-      "Step 1 complete. Well done.",
-      "Step 2: Open Main Box. Please proceed.",
-      "Warning. Step 2 was skipped. Please complete the missed step before continuing.",
-      "Step 2 is now correct. Next, step 3: Pick Red Box.",
-      "Step 3 complete. Well done.",
-      "Step 4: Examine Red Box. Please proceed.",
-      "Step 4 complete. Well done.",
-      "Step 5: Place Red Box. Please proceed.",
-      "Step 5 complete. Well done.",
-      "Step 6: Pick Yellow Box. Please proceed.",
-      "Step 6 complete. Well done.",
-      "Step 7: Examine Yellow Box. Please proceed.",
-      "Step 7 complete. Well done.",
-      "Step 8: Place Yellow Box. Please proceed.",
-      "Step 8 complete. Well done.",
-      "Experiment complete. All steps have been successfully executed."
-    ]
+    "guidance_emitted": false,
+    "voice_history": []
   },
-  "accuracy_interpretation": "oracle_step_acc uses injected synthetic pose. It verifies temporal-model and protocol integration only, not end-to-end camera-to-pose accuracy.",
-  "elapsed_sec": 160.81,
-  "assets_dir": "dataset\\space_sim",
+  "accuracy_interpretation": "oracle_step_acc uses injected synthetic pose. It verifies temporal-model and protocol integration only, not end-to-end camera-to-pose accuracy. sequence_complete / skip_detected / recovery_hold_at_expected_step / recovery_confirmed / sequence_complete_after_correction come from evaluate_state_machine()'s scripted, perfect-confidence, directly-injected predictions (see feed()) \u2014 they verify state_machine.py's own hold/recovery logic is correct, not that the deployed camera->pose->LSTM pipeline reliably produces a clean, confident prediction stream from real inference.",
+  "elapsed_sec": 50.15,
+  "assets_dir": "dataset/space_sim",
   "n_sim_frames": 576
 }

@@ -1,0 +1,2 @@
+{"event": "experiment_start", "timestamp": "00:00:00.187", "wall_time": "2026-09-05T22:08:46.680395"}
+{"event": "step_skipped", "timestamp": "00:00:01.628", "wall_time": "2026-09-05T22:08:48.121157", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 4, "status": "RECOVERY_REQUIRED"}
