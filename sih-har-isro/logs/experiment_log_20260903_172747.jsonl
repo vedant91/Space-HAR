@@ -1,0 +1,181 @@
+{"event": "step_start", "timestamp": "00:00:02.583", "wall_time": "2026-09-03T17:27:50.397431", "step_id": 1, "step_name": "Approach Main Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:03.226", "wall_time": "2026-09-03T17:27:51.040612", "step_id": 1, "step_name": "Approach Main Box", "confidence": 1.0, "duration_sec": 0.64, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:03.902", "wall_time": "2026-09-03T17:27:51.716836", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:03.970", "wall_time": "2026-09-03T17:27:51.784643", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.079", "wall_time": "2026-09-03T17:27:51.894284", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.158", "wall_time": "2026-09-03T17:27:51.973089", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.230", "wall_time": "2026-09-03T17:27:52.044987", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.286", "wall_time": "2026-09-03T17:27:52.100511", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.358", "wall_time": "2026-09-03T17:27:52.172824", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.440", "wall_time": "2026-09-03T17:27:52.254957", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:04.504", "wall_time": "2026-09-03T17:27:52.318475", "expected_step_id": 2, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:04.733", "wall_time": "2026-09-03T17:27:52.548259", "step_id": 2, "step_name": "Open Main Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:05.437", "wall_time": "2026-09-03T17:27:53.252279", "step_id": 2, "step_name": "Open Main Box", "confidence": 1.0, "duration_sec": 0.7, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.142", "wall_time": "2026-09-03T17:27:53.957361", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.231", "wall_time": "2026-09-03T17:27:54.046144", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.302", "wall_time": "2026-09-03T17:27:54.117312", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.386", "wall_time": "2026-09-03T17:27:54.200917", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.452", "wall_time": "2026-09-03T17:27:54.267053", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.542", "wall_time": "2026-09-03T17:27:54.356952", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.618", "wall_time": "2026-09-03T17:27:54.436957", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.699", "wall_time": "2026-09-03T17:27:54.513696", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.775", "wall_time": "2026-09-03T17:27:54.589401", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.825", "wall_time": "2026-09-03T17:27:54.639723", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.900", "wall_time": "2026-09-03T17:27:54.714962", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:06.990", "wall_time": "2026-09-03T17:27:54.804884", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.081", "wall_time": "2026-09-03T17:27:54.896114", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.166", "wall_time": "2026-09-03T17:27:54.980419", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.247", "wall_time": "2026-09-03T17:27:55.061974", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.323", "wall_time": "2026-09-03T17:27:55.138203", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.408", "wall_time": "2026-09-03T17:27:55.223216", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.578", "wall_time": "2026-09-03T17:27:55.393123", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.644", "wall_time": "2026-09-03T17:27:55.458502", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.707", "wall_time": "2026-09-03T17:27:55.522178", "expected_step_id": 3, "observed_step_id": 2, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.913", "wall_time": "2026-09-03T17:27:55.728045", "expected_step_id": 3, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:07.980", "wall_time": "2026-09-03T17:27:55.795210", "expected_step_id": 3, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:08.120", "wall_time": "2026-09-03T17:27:55.934506", "expected_step_id": 3, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:08.194", "wall_time": "2026-09-03T17:27:56.008854", "expected_step_id": 3, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:08.270", "wall_time": "2026-09-03T17:27:56.084883", "expected_step_id": 3, "observed_step_id": 1, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:08.518", "wall_time": "2026-09-03T17:27:56.333223", "step_id": 3, "step_name": "Pick Red Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:09.191", "wall_time": "2026-09-03T17:27:57.005688", "step_id": 3, "step_name": "Pick Red Box", "confidence": 1.0, "duration_sec": 0.67, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:09.872", "wall_time": "2026-09-03T17:27:57.686536", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:09.963", "wall_time": "2026-09-03T17:27:57.777747", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.055", "wall_time": "2026-09-03T17:27:57.869696", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.163", "wall_time": "2026-09-03T17:27:57.978245", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.263", "wall_time": "2026-09-03T17:27:58.078364", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.331", "wall_time": "2026-09-03T17:27:58.145407", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.365", "wall_time": "2026-09-03T17:27:58.179508", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.410", "wall_time": "2026-09-03T17:27:58.224504", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.496", "wall_time": "2026-09-03T17:27:58.310668", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.567", "wall_time": "2026-09-03T17:27:58.381916", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.622", "wall_time": "2026-09-03T17:27:58.437072", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.695", "wall_time": "2026-09-03T17:27:58.510203", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.769", "wall_time": "2026-09-03T17:27:58.584217", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.829", "wall_time": "2026-09-03T17:27:58.644086", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.902", "wall_time": "2026-09-03T17:27:58.717161", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:10.963", "wall_time": "2026-09-03T17:27:58.778160", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.017", "wall_time": "2026-09-03T17:27:58.832090", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.081", "wall_time": "2026-09-03T17:27:58.895576", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.125", "wall_time": "2026-09-03T17:27:58.940188", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.165", "wall_time": "2026-09-03T17:27:58.979951", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.225", "wall_time": "2026-09-03T17:27:59.041489", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.279", "wall_time": "2026-09-03T17:27:59.093796", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.335", "wall_time": "2026-09-03T17:27:59.150121", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.384", "wall_time": "2026-09-03T17:27:59.199229", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.429", "wall_time": "2026-09-03T17:27:59.244200", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.588", "wall_time": "2026-09-03T17:27:59.403234", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:11.665", "wall_time": "2026-09-03T17:27:59.480067", "expected_step_id": 4, "observed_step_id": 3, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:12.318", "wall_time": "2026-09-03T17:28:00.132768", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.994}
+{"event": "step_complete", "timestamp": "00:00:12.930", "wall_time": "2026-09-03T17:28:00.744578", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.994, "duration_sec": 0.61, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:13.628", "wall_time": "2026-09-03T17:28:01.442884", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:13.706", "wall_time": "2026-09-03T17:28:01.521316", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:13.802", "wall_time": "2026-09-03T17:28:01.617354", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:13.881", "wall_time": "2026-09-03T17:28:01.695624", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:13.955", "wall_time": "2026-09-03T17:28:01.770348", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.030", "wall_time": "2026-09-03T17:28:01.844861", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.082", "wall_time": "2026-09-03T17:28:01.896643", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.157", "wall_time": "2026-09-03T17:28:01.972357", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.264", "wall_time": "2026-09-03T17:28:02.079291", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.344", "wall_time": "2026-09-03T17:28:02.158516", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.416", "wall_time": "2026-09-03T17:28:02.230370", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.458", "wall_time": "2026-09-03T17:28:02.272623", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.553", "wall_time": "2026-09-03T17:28:02.367951", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.628", "wall_time": "2026-09-03T17:28:02.443233", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.686", "wall_time": "2026-09-03T17:28:02.500437", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:14.740", "wall_time": "2026-09-03T17:28:02.554763", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:14.964", "wall_time": "2026-09-03T17:28:02.779176", "step_id": 5, "step_name": "Place Red Box", "confidence": 0.996}
+{"event": "step_complete", "timestamp": "00:00:15.661", "wall_time": "2026-09-03T17:28:03.476284", "step_id": 5, "step_name": "Place Red Box", "confidence": 1.0, "duration_sec": 0.7, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.261", "wall_time": "2026-09-03T17:28:04.075811", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.315", "wall_time": "2026-09-03T17:28:04.129435", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.400", "wall_time": "2026-09-03T17:28:04.215345", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.479", "wall_time": "2026-09-03T17:28:04.294280", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.545", "wall_time": "2026-09-03T17:28:04.360111", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.623", "wall_time": "2026-09-03T17:28:04.437864", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.697", "wall_time": "2026-09-03T17:28:04.512120", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.752", "wall_time": "2026-09-03T17:28:04.566576", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.816", "wall_time": "2026-09-03T17:28:04.630527", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.859", "wall_time": "2026-09-03T17:28:04.675984", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:16.911", "wall_time": "2026-09-03T17:28:04.726166", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.023", "wall_time": "2026-09-03T17:28:04.838191", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.119", "wall_time": "2026-09-03T17:28:04.934116", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.192", "wall_time": "2026-09-03T17:28:05.006991", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.247", "wall_time": "2026-09-03T17:28:05.061565", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.344", "wall_time": "2026-09-03T17:28:05.158697", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.406", "wall_time": "2026-09-03T17:28:05.220805", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.470", "wall_time": "2026-09-03T17:28:05.284823", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.549", "wall_time": "2026-09-03T17:28:05.364049", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.617", "wall_time": "2026-09-03T17:28:05.431700", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.680", "wall_time": "2026-09-03T17:28:05.494557", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.734", "wall_time": "2026-09-03T17:28:05.548531", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.787", "wall_time": "2026-09-03T17:28:05.601508", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.836", "wall_time": "2026-09-03T17:28:05.651175", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.877", "wall_time": "2026-09-03T17:28:05.691819", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.922", "wall_time": "2026-09-03T17:28:05.736564", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:17.965", "wall_time": "2026-09-03T17:28:05.779867", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.051", "wall_time": "2026-09-03T17:28:05.865763", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.080", "wall_time": "2026-09-03T17:28:05.895095", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.131", "wall_time": "2026-09-03T17:28:05.946008", "expected_step_id": 6, "observed_step_id": 5, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:18.284", "wall_time": "2026-09-03T17:28:06.099109", "step_id": 6, "step_name": "Pick Yellow Box", "confidence": 0.998}
+{"event": "step_complete", "timestamp": "00:00:18.607", "wall_time": "2026-09-03T17:28:06.421848", "step_id": 6, "step_name": "Pick Yellow Box", "confidence": 1.0, "duration_sec": 0.32, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.927", "wall_time": "2026-09-03T17:28:06.741942", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.961", "wall_time": "2026-09-03T17:28:06.775473", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:18.996", "wall_time": "2026-09-03T17:28:06.810781", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.035", "wall_time": "2026-09-03T17:28:06.849656", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.055", "wall_time": "2026-09-03T17:28:06.869654", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.103", "wall_time": "2026-09-03T17:28:06.917763", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.140", "wall_time": "2026-09-03T17:28:06.954921", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.175", "wall_time": "2026-09-03T17:28:06.989811", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.212", "wall_time": "2026-09-03T17:28:07.026479", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.247", "wall_time": "2026-09-03T17:28:07.062259", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.277", "wall_time": "2026-09-03T17:28:07.092292", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.318", "wall_time": "2026-09-03T17:28:07.132718", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.356", "wall_time": "2026-09-03T17:28:07.170927", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.392", "wall_time": "2026-09-03T17:28:07.206521", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.430", "wall_time": "2026-09-03T17:28:07.245366", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.466", "wall_time": "2026-09-03T17:28:07.281130", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.497", "wall_time": "2026-09-03T17:28:07.311959", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.543", "wall_time": "2026-09-03T17:28:07.357858", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.579", "wall_time": "2026-09-03T17:28:07.393415", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.610", "wall_time": "2026-09-03T17:28:07.424429", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.640", "wall_time": "2026-09-03T17:28:07.454748", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.684", "wall_time": "2026-09-03T17:28:07.498823", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.725", "wall_time": "2026-09-03T17:28:07.539439", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.769", "wall_time": "2026-09-03T17:28:07.583842", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.807", "wall_time": "2026-09-03T17:28:07.621454", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.845", "wall_time": "2026-09-03T17:28:07.660084", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:19.877", "wall_time": "2026-09-03T17:28:07.692060", "expected_step_id": 7, "observed_step_id": 6, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:19.994", "wall_time": "2026-09-03T17:28:07.808373", "step_id": 7, "step_name": "Examine Yellow Box", "confidence": 0.996}
+{"event": "step_complete", "timestamp": "00:00:20.323", "wall_time": "2026-09-03T17:28:08.138184", "step_id": 7, "step_name": "Examine Yellow Box", "confidence": 0.992, "duration_sec": 0.33, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.665", "wall_time": "2026-09-03T17:28:08.480306", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.704", "wall_time": "2026-09-03T17:28:08.519084", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.743", "wall_time": "2026-09-03T17:28:08.557672", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.776", "wall_time": "2026-09-03T17:28:08.590972", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.814", "wall_time": "2026-09-03T17:28:08.628425", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.839", "wall_time": "2026-09-03T17:28:08.654160", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.883", "wall_time": "2026-09-03T17:28:08.697436", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.919", "wall_time": "2026-09-03T17:28:08.733599", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.951", "wall_time": "2026-09-03T17:28:08.765618", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:20.985", "wall_time": "2026-09-03T17:28:08.799939", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.014", "wall_time": "2026-09-03T17:28:08.829291", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.046", "wall_time": "2026-09-03T17:28:08.861073", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.093", "wall_time": "2026-09-03T17:28:08.907861", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.125", "wall_time": "2026-09-03T17:28:08.940024", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.166", "wall_time": "2026-09-03T17:28:08.980962", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.191", "wall_time": "2026-09-03T17:28:09.005914", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.238", "wall_time": "2026-09-03T17:28:09.052529", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.269", "wall_time": "2026-09-03T17:28:09.084098", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.309", "wall_time": "2026-09-03T17:28:09.123948", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.346", "wall_time": "2026-09-03T17:28:09.161290", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.378", "wall_time": "2026-09-03T17:28:09.193273", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.421", "wall_time": "2026-09-03T17:28:09.236087", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.457", "wall_time": "2026-09-03T17:28:09.271472", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.496", "wall_time": "2026-09-03T17:28:09.310912", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.547", "wall_time": "2026-09-03T17:28:09.361991", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.589", "wall_time": "2026-09-03T17:28:09.403484", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.624", "wall_time": "2026-09-03T17:28:09.438537", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.649", "wall_time": "2026-09-03T17:28:09.464336", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.694", "wall_time": "2026-09-03T17:28:09.508868", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "out_of_sequence", "timestamp": "00:00:21.733", "wall_time": "2026-09-03T17:28:09.548199", "expected_step_id": 8, "observed_step_id": 7, "status": "OUT_OF_SEQUENCE"}
+{"event": "step_start", "timestamp": "00:00:21.837", "wall_time": "2026-09-03T17:28:09.652039", "step_id": 8, "step_name": "Place Yellow Box", "confidence": 1.0}
+{"event": "step_complete", "timestamp": "00:00:22.168", "wall_time": "2026-09-03T17:28:09.983005", "step_id": 8, "step_name": "Place Yellow Box", "confidence": 1.0, "duration_sec": 0.33, "status": "OK"}
+{"event": "experiment_complete", "timestamp": "00:00:22.168", "wall_time": "2026-09-03T17:28:09.983005", "total_duration_sec": 20.2, "steps_completed": 8, "steps_skipped": 0, "outcome": "SUCCESS"}

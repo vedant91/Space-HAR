@@ -1,0 +1,40 @@
+# ISRO SIH 2026 — HAR Pipeline
+# RTX 3050 6GB | Offline | No YOLO | Custom CNN + LSTM from scratch
+
+# ── Core computer vision ──────────────────────────────────────
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+
+# ── Deep learning (custom CNN + LSTM, trained from scratch) ───
+torch>=2.1.0
+torchvision>=0.16.0
+
+# ── ONNX for CPU-optimized inference ─────────────────────────
+onnx>=1.14.0
+onnxruntime>=1.16.0
+
+# ── Data augmentation ─────────────────────────────────────────
+albumentations>=1.3.0
+
+# ── Synthetic data generation ─────────────────────────────────
+google-genai>=0.8.0
+
+# ── Voice alerts ──────────────────────────────────────────────
+pyttsx3>=2.90           # Fallback TTS (offline, cross-platform)
+# piper-tts             # Install separately: https://github.com/rhasspy/piper
+
+# ── GUI ────────────────────────────────────────────────────────
+PyQt6>=6.5.0
+
+# ── Utilities ─────────────────────────────────────────────────
+Pillow>=9.0.0
+
+# ── Development / annotation (optional) ──────────────────────
+# roboflow             # Dataset management
+# pyinstaller          # Package as standalone .exe
+
+# ── Training extras ───────────────────────────────────────────
+tqdm>=4.65.0
+matplotlib>=3.7.0
+scikit-learn>=1.3.0     # Confusion matrix, metrics

@@ -1,0 +1,231 @@
+{
+  "passed": true,
+  "iterations": 1,
+  "finished_at": "2026-09-03T19:12:14",
+  "final_metrics": {
+    "lstm_val_acc": 0.9980732177263969,
+    "lstm_test_acc": 0.984375,
+    "hsv_red_recall": 1.0,
+    "hsv_yellow_recall": 1.0,
+    "mean_latency_ms": 32.027448561100805,
+    "p95_latency_ms": 36.55337499867528,
+    "oracle_step_acc": 0.9767441860465116,
+    "sequence_complete": true,
+    "skip_detected": true,
+    "recovery_hold_at_expected_step": true,
+    "recovery_confirmed": true,
+    "sequence_complete_after_correction": true,
+    "cnn_val_acc": null,
+    "fps_equivalent": 31.223217737505262,
+    "breakdown_mean_ms": {
+      "hsv": 9.638208633035209,
+      "mediapipe": 18.556383273335086,
+      "lstm": 3.285535431730999,
+      "total": 32.027448561100805
+    },
+    "train_windows": 1152
+  },
+  "final_gates": [
+    {
+      "gate": "lstm_val_acc",
+      "threshold": 0.9,
+      "value": 0.9980732177263969,
+      "passed": true
+    },
+    {
+      "gate": "lstm_test_acc",
+      "threshold": 0.88,
+      "value": 0.984375,
+      "passed": true
+    },
+    {
+      "gate": "hsv_red_recall",
+      "threshold": 0.85,
+      "value": 1.0,
+      "passed": true
+    },
+    {
+      "gate": "hsv_yellow_recall",
+      "threshold": 0.85,
+      "value": 1.0,
+      "passed": true
+    },
+    {
+      "gate": "mean_latency_ms",
+      "threshold": 80.0,
+      "value": 32.027448561100805,
+      "passed": true
+    },
+    {
+      "gate": "p95_latency_ms",
+      "threshold": 130.0,
+      "value": 36.55337499867528,
+      "passed": true
+    },
+    {
+      "gate": "oracle_step_acc",
+      "threshold": 0.85,
+      "value": 0.9767441860465116,
+      "passed": true
+    },
+    {
+      "gate": "sequence_complete",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "skip_detected",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "recovery_hold_at_expected_step",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "recovery_confirmed",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "sequence_complete_after_correction",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    }
+  ],
+  "history": [
+    {
+      "iteration": 1,
+      "hyper": {
+        "n_seq": 48,
+        "epochs": 45,
+        "dropout": 0.4,
+        "frames_per_step": 72,
+        "cnn_epochs": 8,
+        "cnn_batch": 16,
+        "warmup_frames": 0,
+        "skip_lstm": true
+      },
+      "metrics": {
+        "lstm_val_acc": 0.9980732177263969,
+        "lstm_test_acc": 0.984375,
+        "hsv_red_recall": 1.0,
+        "hsv_yellow_recall": 1.0,
+        "mean_latency_ms": 32.027448561100805,
+        "p95_latency_ms": 36.55337499867528,
+        "oracle_step_acc": 0.9767441860465116,
+        "sequence_complete": true,
+        "skip_detected": true,
+        "recovery_hold_at_expected_step": true,
+        "recovery_confirmed": true,
+        "sequence_complete_after_correction": true,
+        "cnn_val_acc": null,
+        "fps_equivalent": 31.223217737505262,
+        "breakdown_mean_ms": {
+          "hsv": 9.638208633035209,
+          "mediapipe": 18.556383273335086,
+          "lstm": 3.285535431730999,
+          "total": 32.027448561100805
+        },
+        "train_windows": 1152
+      },
+      "gates": [
+        {
+          "gate": "lstm_val_acc",
+          "threshold": 0.9,
+          "value": 0.9980732177263969,
+          "passed": true
+        },
+        {
+          "gate": "lstm_test_acc",
+          "threshold": 0.88,
+          "value": 0.984375,
+          "passed": true
+        },
+        {
+          "gate": "hsv_red_recall",
+          "threshold": 0.85,
+          "value": 1.0,
+          "passed": true
+        },
+        {
+          "gate": "hsv_yellow_recall",
+          "threshold": 0.85,
+          "value": 1.0,
+          "passed": true
+        },
+        {
+          "gate": "mean_latency_ms",
+          "threshold": 80.0,
+          "value": 32.027448561100805,
+          "passed": true
+        },
+        {
+          "gate": "p95_latency_ms",
+          "threshold": 130.0,
+          "value": 36.55337499867528,
+          "passed": true
+        },
+        {
+          "gate": "oracle_step_acc",
+          "threshold": 0.85,
+          "value": 0.9767441860465116,
+          "passed": true
+        },
+        {
+          "gate": "sequence_complete",
+          "threshold": true,
+          "value": true,
+          "passed": true
+        },
+        {
+          "gate": "skip_detected",
+          "threshold": true,
+          "value": true,
+          "passed": true
+        },
+        {
+          "gate": "recovery_hold_at_expected_step",
+          "threshold": true,
+          "value": true,
+          "passed": true
+        },
+        {
+          "gate": "recovery_confirmed",
+          "threshold": true,
+          "value": true,
+          "passed": true
+        },
+        {
+          "gate": "sequence_complete_after_correction",
+          "threshold": true,
+          "value": true,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "elapsed_sec": 77.32,
+      "fixes": []
+    }
+  ],
+  "gates": {
+    "lstm_val_acc": 0.9,
+    "lstm_test_acc": 0.88,
+    "hsv_red_recall": 0.85,
+    "hsv_yellow_recall": 0.85,
+    "mean_latency_ms": 80.0,
+    "p95_latency_ms": 130.0,
+    "oracle_step_acc": 0.85,
+    "sequence_complete": true,
+    "skip_detected": true,
+    "recovery_hold_at_expected_step": true,
+    "recovery_confirmed": true,
+    "sequence_complete_after_correction": true
+  }
+}

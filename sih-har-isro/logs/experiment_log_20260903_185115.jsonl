@@ -1,0 +1,6 @@
+{"event": "experiment_start", "timestamp": "00:00:00.255", "wall_time": "2026-09-03T18:51:15.495213"}
+{"event": "step_skipped", "timestamp": "00:00:01.950", "wall_time": "2026-09-03T18:51:17.189763", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 4, "status": "SKIPPED"}
+{"event": "step_start", "timestamp": "00:00:01.950", "wall_time": "2026-09-03T18:51:17.189763", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.996}
+{"event": "step_skipped", "timestamp": "00:00:02.498", "wall_time": "2026-09-03T18:51:17.737428", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 4, "status": "SKIPPED"}
+{"event": "step_complete", "timestamp": "00:00:02.499", "wall_time": "2026-09-03T18:51:17.738366", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.996, "duration_sec": 0.55, "status": "OK"}
+{"event": "out_of_sequence", "timestamp": "00:00:03.025", "wall_time": "2026-09-03T18:51:18.264481", "expected_step_id": 5, "observed_step_id": 4, "status": "OUT_OF_SEQUENCE"}

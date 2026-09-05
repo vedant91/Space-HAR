@@ -1,0 +1,9 @@
+{"event": "experiment_start", "timestamp": "00:00:05.616", "wall_time": "2026-09-03T19:19:33.776427"}
+{"event": "step_skipped", "timestamp": "00:00:09.584", "wall_time": "2026-09-03T19:19:37.744449", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 3, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:15.006", "wall_time": "2026-09-03T19:19:43.166464", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 8, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:17.207", "wall_time": "2026-09-03T19:19:45.367827", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 3, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:19.342", "wall_time": "2026-09-03T19:19:47.502177", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 6, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:21.850", "wall_time": "2026-09-03T19:19:50.010610", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 8, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:24.156", "wall_time": "2026-09-03T19:19:52.316527", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 4, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:25.501", "wall_time": "2026-09-03T19:19:53.661946", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 7, "status": "RECOVERY_REQUIRED"}
+{"event": "step_skipped", "timestamp": "00:00:27.172", "wall_time": "2026-09-03T19:19:55.332652", "expected_step_id": 1, "expected_name": "Approach Main Box", "observed_step_id": 4, "status": "RECOVERY_REQUIRED"}

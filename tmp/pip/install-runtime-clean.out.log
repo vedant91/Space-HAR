@@ -1,0 +1,59 @@
+Collecting opencv-python
+  Downloading opencv_python-5.0.0.93-cp37-abi3-win_amd64.whl.metadata (20 kB)
+Collecting torch
+  Downloading torch-2.14.0-cp312-cp312-win_amd64.whl.metadata (38 kB)
+Collecting onnxruntime
+  Downloading onnxruntime-1.29.0-cp312-cp312-win_amd64.whl.metadata (5.8 kB)
+Collecting numpy>=2 (from opencv-python)
+  Downloading numpy-2.5.2-cp312-cp312-win_amd64.whl.metadata (6.6 kB)
+Collecting filelock (from torch)
+  Downloading filelock-3.32.5-py3-none-any.whl.metadata (2.0 kB)
+Collecting typing-extensions>=4.10.0 (from torch)
+  Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting setuptools>=77.0.3 (from torch)
+  Downloading setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting sympy>=1.13.3 (from torch)
+  Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+Collecting networkx>=2.5.1 (from torch)
+  Downloading networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting jinja2 (from torch)
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting fsspec>=0.8.5 (from torch)
+  Downloading fsspec-2026.7.0-py3-none-any.whl.metadata (10 kB)
+Collecting flatbuffers (from onnxruntime)
+  Downloading flatbuffers-25.12.19-py2.py3-none-any.whl.metadata (1.0 kB)
+Collecting packaging (from onnxruntime)
+  Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Collecting protobuf>=4.25.8 (from onnxruntime)
+  Downloading protobuf-7.36.1-cp310-abi3-win_amd64.whl.metadata (595 bytes)
+Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->torch)
+  Downloading markupsafe-3.0.3-cp312-cp312-win_amd64.whl.metadata (2.8 kB)
+Downloading opencv_python-5.0.0.93-cp37-abi3-win_amd64.whl (44.0 MB)
+   ---------------------------------------- 44.0/44.0 MB 5.0 MB/s  0:00:08
+Downloading torch-2.14.0-cp312-cp312-win_amd64.whl (124.1 MB)
+   ---------------------------------------- 124.1/124.1 MB 5.0 MB/s  0:00:24
+Downloading onnxruntime-1.29.0-cp312-cp312-win_amd64.whl (14.0 MB)
+   ---------------------------------------- 14.0/14.0 MB 5.0 MB/s  0:00:02
+Downloading fsspec-2026.7.0-py3-none-any.whl (206 kB)
+Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+   ---------------------------------------- 2.1/2.1 MB 5.0 MB/s  0:00:00
+Downloading numpy-2.5.2-cp312-cp312-win_amd64.whl (12.5 MB)
+   ---------------------------------------- 12.5/12.5 MB 5.0 MB/s  0:00:02
+Downloading protobuf-7.36.1-cp310-abi3-win_amd64.whl (456 kB)
+Downloading setuptools-84.0.0-py3-none-any.whl (818 kB)
+   ---------------------------------------- 818.2/818.2 kB 5.1 MB/s  0:00:00
+Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+   ---------------------------------------- 6.3/6.3 MB 5.1 MB/s  0:00:01
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ---------------------------------------- 536.2/536.2 kB 5.8 MB/s  0:00:00
+Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Downloading filelock-3.32.5-py3-none-any.whl (100 kB)
+Downloading flatbuffers-25.12.19-py2.py3-none-any.whl (26 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading markupsafe-3.0.3-cp312-cp312-win_amd64.whl (15 kB)
+Downloading packaging-26.3-py3-none-any.whl (129 kB)
+Installing collected packages: mpmath, flatbuffers, typing-extensions, sympy, setuptools, protobuf, packaging, numpy, networkx, MarkupSafe, fsspec, filelock, opencv-python, onnxruntime, jinja2, torch
+
+Successfully installed MarkupSafe-3.0.3 filelock-3.32.5 flatbuffers-25.12.19 fsspec-2026.7.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.6.1 numpy-2.5.2 onnxruntime-1.29.0 opencv-python-5.0.0.93 packaging-26.3 protobuf-7.36.1 setuptools-84.0.0 sympy-1.14.0 torch-2.14.0 typing-extensions-4.16.0

@@ -1,0 +1,19 @@
+{"event": "step_start", "timestamp": "00:00:01.477", "wall_time": "2026-09-03T19:11:54.342422", "step_id": 1, "step_name": "Approach Main Box", "confidence": 0.998}
+{"event": "step_complete", "timestamp": "00:00:01.969", "wall_time": "2026-09-03T19:11:54.834333", "step_id": 1, "step_name": "Approach Main Box", "confidence": 1.0, "duration_sec": 0.49, "status": "OK"}
+{"event": "step_skipped", "timestamp": "00:00:03.406", "wall_time": "2026-09-03T19:11:56.271356", "expected_step_id": 2, "expected_name": "Open Main Box", "observed_step_id": 3, "status": "RECOVERY_REQUIRED"}
+{"event": "step_start", "timestamp": "00:00:05.820", "wall_time": "2026-09-03T19:11:58.685555", "step_id": 2, "step_name": "Open Main Box", "confidence": 1.0}
+{"event": "alert", "timestamp": "00:00:06.318", "wall_time": "2026-09-03T19:11:59.182927", "message": "Recovery confirmed: step 2 corrected after observed step 3."}
+{"event": "step_complete", "timestamp": "00:00:06.318", "wall_time": "2026-09-03T19:11:59.182927", "step_id": 2, "step_name": "Open Main Box", "confidence": 1.0, "duration_sec": 0.5, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:07.617", "wall_time": "2026-09-03T19:12:00.482724", "step_id": 3, "step_name": "Pick Red Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:08.091", "wall_time": "2026-09-03T19:12:00.956410", "step_id": 3, "step_name": "Pick Red Box", "confidence": 1.0, "duration_sec": 0.47, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:10.057", "wall_time": "2026-09-03T19:12:02.922240", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:10.545", "wall_time": "2026-09-03T19:12:03.409991", "step_id": 4, "step_name": "Examine Red Box", "confidence": 0.992, "duration_sec": 0.49, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:12.607", "wall_time": "2026-09-03T19:12:05.472741", "step_id": 5, "step_name": "Place Red Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:13.111", "wall_time": "2026-09-03T19:12:05.976422", "step_id": 5, "step_name": "Place Red Box", "confidence": 0.999, "duration_sec": 0.5, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:14.559", "wall_time": "2026-09-03T19:12:07.423900", "step_id": 6, "step_name": "Pick Yellow Box", "confidence": 1.0}
+{"event": "step_complete", "timestamp": "00:00:15.057", "wall_time": "2026-09-03T19:12:07.922554", "step_id": 6, "step_name": "Pick Yellow Box", "confidence": 1.0, "duration_sec": 0.5, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:16.959", "wall_time": "2026-09-03T19:12:09.823862", "step_id": 7, "step_name": "Examine Yellow Box", "confidence": 0.999}
+{"event": "step_complete", "timestamp": "00:00:17.437", "wall_time": "2026-09-03T19:12:10.302604", "step_id": 7, "step_name": "Examine Yellow Box", "confidence": 0.999, "duration_sec": 0.48, "status": "OK"}
+{"event": "step_start", "timestamp": "00:00:19.392", "wall_time": "2026-09-03T19:12:12.257697", "step_id": 8, "step_name": "Place Yellow Box", "confidence": 1.0}
+{"event": "step_complete", "timestamp": "00:00:19.884", "wall_time": "2026-09-03T19:12:12.749764", "step_id": 8, "step_name": "Place Yellow Box", "confidence": 1.0, "duration_sec": 0.49, "status": "OK"}
+{"event": "experiment_complete", "timestamp": "00:00:19.886", "wall_time": "2026-09-03T19:12:12.751001", "total_duration_sec": 18.8, "steps_completed": 8, "steps_skipped": 0, "outcome": "SUCCESS"}

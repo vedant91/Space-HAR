@@ -1,0 +1,41 @@
+{
+  "total_windows": 1152,
+  "feature_dim": 132,
+  "window": 30,
+  "source": "synthetic_pose",
+  "seed": 8,
+  "steps": [
+    {
+      "step_id": 1,
+      "windows": 144
+    },
+    {
+      "step_id": 2,
+      "windows": 144
+    },
+    {
+      "step_id": 3,
+      "windows": 144
+    },
+    {
+      "step_id": 4,
+      "windows": 144
+    },
+    {
+      "step_id": 5,
+      "windows": 144
+    },
+    {
+      "step_id": 6,
+      "windows": 144
+    },
+    {
+      "step_id": 7,
+      "windows": 144
+    },
+    {
+      "step_id": 8,
+      "windows": 144
+    }
+  ]
+}
