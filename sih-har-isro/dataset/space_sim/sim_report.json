@@ -30,20 +30,19 @@
     "7": "COMPLETED",
     "8": "COMPLETED"
   },
-  "lstm_test_acc": 0.984375,
-  "n": 384,
-  "correct": 378,
+  "lstm_test_acc": 0.0,
+  "n": 0,
   "n_frames": 576,
-  "mean_latency_ms": 32.027448561100805,
-  "p50_latency_ms": 31.889249999949243,
-  "p95_latency_ms": 36.55337499867528,
-  "p99_latency_ms": 38.15351499961253,
-  "fps_equivalent": 31.223217737505262,
+  "mean_latency_ms": 83.24263938849079,
+  "p50_latency_ms": 86.76829999990332,
+  "p95_latency_ms": 103.18642499998987,
+  "p99_latency_ms": 118.77553999993332,
+  "fps_equivalent": 12.013074157019835,
   "breakdown_mean_ms": {
-    "hsv": 9.638208633035209,
-    "mediapipe": 18.556383273335086,
-    "lstm": 3.285535431730999,
-    "total": 32.027448561100805
+    "hsv": 24.234158633089955,
+    "mediapipe": 49.6157034172626,
+    "lstm": 7.956692985613281,
+    "total": 83.24263938849079
   },
   "oracle_step_acc": 0.9767441860465116,
   "oracle_n": 344,
@@ -92,7 +91,7 @@
     ]
   },
   "accuracy_interpretation": "oracle_step_acc uses injected synthetic pose. It verifies temporal-model and protocol integration only, not end-to-end camera-to-pose accuracy.",
-  "elapsed_sec": 69.29,
+  "elapsed_sec": 160.81,
   "assets_dir": "dataset\\space_sim",
   "n_sim_frames": 576
 }

@@ -21,6 +21,9 @@ from typing import List, Optional
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect  # noqa: E402
+from pipeline.hsv_detector import HSVBoxDetector  # noqa: E402
+
 try:
     import mediapipe as mp
     MP_AVAILABLE = True
@@ -54,15 +57,29 @@ def extract_landmarks_from_frame(results) -> np.ndarray:
     return np.array(features, dtype=np.float32)
 
 
-def process_video(video_path: str, step_label: int, pose) -> Optional[np.ndarray]:
+def _rack_rect_for_frame(frame_bgr: np.ndarray, hsv_detector: Optional[HSVBoxDetector]):
+    """Pick the rack-anchor rect for a frame (None when no box is visible)."""
+    if hsv_detector is None:
+        return None
+    return pick_rack_rect(hsv_detector.detect(frame_bgr))
+
+
+def process_video(video_path: str, step_label: int, pose,
+                  normalizer: Optional[RackFrameNormalizer] = None,
+                  hsv_detector: Optional[HSVBoxDetector] = None) -> Optional[np.ndarray]:
     """
     Process a video file and return skeleton sequence array.
     Returns: shape (num_frames, FEATURE_DIM)
+    If normalizer is given, features are re-expressed in the rack frame
+    (matching RACK_FRAME_NORMALIZE at inference).
     """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         logger.warning("Cannot open: %s", video_path)
         return None
+
+    if normalizer is not None:
+        normalizer.reset()  # each video is a new session: re-latch polarity
 
     sequences = []
     while cap.isOpened():
@@ -73,6 +90,10 @@ def process_video(video_path: str, step_label: int, pose) -> Optional[np.ndarray
         rgb.flags.writeable = False
         results = pose.process(rgb)
         features = extract_landmarks_from_frame(results)
+        if normalizer is not None:
+            features = normalizer.normalize(
+                features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
+            )
         sequences.append(features)
 
     cap.release()
@@ -81,13 +102,18 @@ def process_video(video_path: str, step_label: int, pose) -> Optional[np.ndarray
     return np.array(sequences)
 
 
-def process_frames_folder(folder: str, step_label: int, pose) -> Optional[np.ndarray]:
+def process_frames_folder(folder: str, step_label: int, pose,
+                          normalizer: Optional[RackFrameNormalizer] = None,
+                          hsv_detector: Optional[HSVBoxDetector] = None) -> Optional[np.ndarray]:
     """Process a folder of image frames as a sequence."""
     frame_files = sorted(
         list(Path(folder).glob("*.jpg")) + list(Path(folder).glob("*.png"))
     )
     if not frame_files:
         return None
+
+    if normalizer is not None:
+        normalizer.reset()  # each folder is a new session: re-latch polarity
 
     sequences = []
     for fpath in frame_files:
@@ -98,17 +124,25 @@ def process_frames_folder(folder: str, step_label: int, pose) -> Optional[np.nda
         rgb.flags.writeable = False
         results = pose.process(rgb)
         features = extract_landmarks_from_frame(results)
+        if normalizer is not None:
+            features = normalizer.normalize(
+                features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
+            )
         sequences.append(features)
 
     return np.array(sequences) if sequences else None
 
 
-def run_labeling(input_path: str, output_dir: str, step_label_map: dict):
+def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
+                 rack_normalize: bool = False):
     """
     Main labeling loop.
     
     step_label_map: {folder_or_file_pattern: step_id}
     Example: {"step_01": 1, "step_02": 2, ...}
+
+    rack_normalize: re-express landmarks in the payload-rack frame so training
+    data matches RACK_FRAME_NORMALIZE=True at inference.
     """
     if not MP_AVAILABLE:
         logger.error("mediapipe not installed.")
@@ -122,6 +156,13 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict):
     all_sequences = []
     all_labels = []
     metadata = []
+
+    normalizer = None
+    hsv_detector = None
+    if rack_normalize:
+        normalizer = RackFrameNormalizer()
+        hsv_detector = HSVBoxDetector()
+        logger.info("Rack-frame normalization enabled for labeling.")
 
     with mp_pose.Pose(
         static_image_mode=False,
@@ -137,12 +178,16 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict):
             if candidate.is_dir():
                 # Process as folder of frames
                 logger.info("Processing folder: %s → Step %d", candidate, step_id)
-                seq = process_frames_folder(str(candidate), step_id, pose)
+                seq = process_frames_folder(str(candidate), step_id, pose,
+                                            normalizer=normalizer,
+                                            hsv_detector=hsv_detector)
 
             elif candidate.is_file() and candidate.suffix in {".mp4", ".avi", ".mov"}:
                 # Process as video file
                 logger.info("Processing video: %s → Step %d", candidate, step_id)
-                seq = process_video(str(candidate), step_id, pose)
+                seq = process_video(str(candidate), step_id, pose,
+                                    normalizer=normalizer,
+                                    hsv_detector=hsv_detector)
 
             else:
                 # Try globbing videos in a step folder
@@ -155,7 +200,9 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict):
                 all_step_seqs = []
                 for vid in videos:
                     logger.info("  → %s", vid.name)
-                    s = process_video(str(vid), step_id, pose)
+                    s = process_video(str(vid), step_id, pose,
+                                      normalizer=normalizer,
+                                      hsv_detector=hsv_detector)
                     if s is not None:
                         all_step_seqs.append(s)
 
@@ -195,6 +242,7 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict):
 
     with open(str(out_path / "metadata.json"), "w") as f:
         json.dump({"total_windows": int(len(X)), "feature_dim": int(FEATURE_DIM),
+                   "rack_normalized": bool(rack_normalize),
                    "steps": metadata}, f, indent=2)
 
     logger.info("=" * 60)
@@ -214,7 +262,11 @@ if __name__ == "__main__":
                         help="Input directory (contains step_XX sub-folders)")
     parser.add_argument("--output", default="dataset/skeleton_sequences",
                         help="Output directory for .npy sequence files")
+    parser.add_argument("--rack-normalize", action="store_true",
+                        help="Re-express pose in the payload-rack frame "
+                             "(must match RACK_FRAME_NORMALIZE=True at inference)")
     args = parser.parse_args()
 
     label_map = build_default_label_map()
-    run_labeling(args.input, args.output, label_map)
+    run_labeling(args.input, args.output, label_map,
+                 rack_normalize=args.rack_normalize)

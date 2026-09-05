@@ -321,4 +321,11 @@ if __name__ == "__main__":
             y = 30
             for k, v in feats.items():
                 if isinstance(v, bool) or isinstance(v, float):
-                    cv2.putText(vis, f"{k}: {v}", (10, 
+                    cv2.putText(vis, f"{k}: {v}", (10, y),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                    y += 20
+            cv2.imshow("HSV Detector", vis)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv2.destroyAllWindows()

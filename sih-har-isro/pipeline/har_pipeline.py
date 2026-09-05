@@ -41,7 +41,9 @@ from config.experiment_config import (
     STEP_CONFIDENCE_THRESHOLD,
     MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
     MEDIAPIPE_DOWNSCALE, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
+    RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
 )
+from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
@@ -243,6 +245,21 @@ class HARPipeline:
             frame_width=FRAME_WIDTH,
             frame_height=FRAME_HEIGHT,
         )
+
+        # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
+        # Stage 1: rack-anchored reference frame (CPU, always available).
+        self.rack_normalizer = None
+        if RACK_FRAME_NORMALIZE:
+            self.rack_normalizer = RackFrameNormalizer(
+                angle_ema=RACK_ANGLE_EMA,
+                scale_ema=RACK_SCALE_EMA,
+            )
+            logger.info("Rack-frame normalization ENABLED (pose is rack-relative).")
+        # Stage 2: optional 3D HMR backend; silently falls back to MediaPipe.
+        self.hmr = None
+        if HMR_BACKEND not in ("none", "mediapipe", ""):
+            from pipeline.hmr_backend import HMRBackend
+            self.hmr = HMRBackend(backend=HMR_BACKEND)
 
         # ── Models ────────────────────────────────────────────
         self.mp_wrapper     = None
@@ -543,6 +560,10 @@ class HARPipeline:
                     (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
         cv2.putText(vis, f"Elapsed: {sm_status['elapsed_sec']:.1f}s",
                     (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 180, 180), 1)
+        if (self.rack_normalizer is not None
+                and self.rack_normalizer.rack_angle_deg is not None):
+            cv2.putText(vis, f"Rack frame: {self.rack_normalizer.rack_angle_deg:.1f} deg",
+                        (10, 122), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 220, 255), 1)
 
         # FPS + latency
         if len(self._times) > 1:
@@ -582,10 +603,18 @@ class HARPipeline:
         hsv_ms = (time.perf_counter() - t_hsv) * 1000.0
 
         t_mp = time.perf_counter()
-        skel_mp = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+        if self.hmr is not None and self.hmr.available:
+            # Stage 2: root-relative 3D from the HMR mesh (same 132-dim contract).
+            skel_mp, _ = self.hmr.get_pose_features(self._frame_rgb_full)
+        else:
+            skel_mp = self._extract_skeleton_features_optimized(self._frame_rgb_full)
         mp_ms = (time.perf_counter() - t_mp) * 1000.0
 
         skel = injected_skel if injected_skel is not None else skel_mp
+        if self.rack_normalizer is not None:
+            skel = self.rack_normalizer.normalize(
+                skel, rack_rect=pick_rack_rect(detections)
+            )
         self.skeleton_buffer.append(np.asarray(skel, dtype=np.float32).reshape(-1))
 
         t_lstm = time.perf_counter()
@@ -619,6 +648,8 @@ class HARPipeline:
         self._last_pred = (0, 0.0)
         self.skeleton_buffer.clear()
         self._times.clear()
+        if self.rack_normalizer is not None:
+            self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
         self._bind_callbacks()
 
@@ -696,6 +727,10 @@ class HARPipeline:
                 detections = self.hsv_detector.detect(frame)
                 skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
 
+            if self.rack_normalizer is not None:
+                skel = self.rack_normalizer.normalize(
+                    skel, rack_rect=pick_rack_rect(detections)
+                )
             self.skeleton_buffer.append(skel)
 
             # ── LSTM Inference (when buffer full) ────────────
