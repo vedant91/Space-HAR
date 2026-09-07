@@ -41,25 +41,52 @@ logger = logging.getLogger(__name__)
 NUM_LANDMARKS = 33
 FEATURE_DIM = SKELETON_FEATURES  # single source of truth: config.SKELETON_FEATURES (132)
 
-# SMPL joint indices (45-joint layout) for the subset we map into the
-# MediaPipe-style 33-slot contract. Only unambiguous major joints are mapped;
-# everything else is zero-filled and marked invisible — slot 0 (nose)
-# intentionally has no SMPL joint mapped to it: SMPL joint 12 is a
-# pelvis/spine landmark, not the head, and mapping it here would write a
-# bogus "visible nose" from an unrelated joint whenever an HMR backend is
-# actually active.
+# SMPL -> MediaPipe slot mapping.
+#
+# Both index spaces are fixed and public, so this table is checkable rather
+# than a matter of taste:
+#
+#   SMPL (24-joint body skeleton)
+#     0 pelvis   1 L_hip     2 R_hip    3 spine1   4 L_knee   5 R_knee
+#     6 spine2   7 L_ankle   8 R_ankle  9 spine3  10 L_foot  11 R_foot
+#    12 neck    13 L_collar 14 R_collar 15 head   16 L_shoulder 17 R_shoulder
+#    18 L_elbow 19 R_elbow  20 L_wrist 21 R_wrist 22 L_hand  23 R_hand
+#
+#   MediaPipe Pose (33 landmarks)
+#     0 nose   11/12 shoulders  13/14 elbows  15/16 wrists  19/20 index
+#    23/24 hips  25/26 knees  27/28 ankles  31/32 foot_index
+#
+# The previous table was wrong on the MediaPipe side for every single entry:
+# it sent hips to 11/12 (which are the SHOULDERS), knees to 13/14 (ELBOWS),
+# ankles to 15/16 (WRISTS), wrists to 17/18 (PINKY), and shoulders to 20/21
+# (INDEX and THUMB). Every mapped joint landed one limb away from where it
+# belonged, so an active HMR backend would have fed the LSTM a scrambled
+# skeleton — silently, because the vector still had the right shape and the
+# right magnitudes. It was dormant only because HMR_BACKEND defaults to
+# "none".
 _SMPL_TO_SLOT = {
-    9: 11,    # left hip
-    8: 12,    # right hip
-    4: 13,    # left knee
-    5: 14,    # right knee
-    7: 15,    # left ankle
-    10: 16,   # right ankle
-    18: 17,   # left wrist
-    19: 18,   # right wrist
-    16: 20,   # left shoulder
-    17: 21,   # right shoulder
+    15: 0,    # head        -> nose (closest available head landmark)
+    16: 11,   # L_shoulder  -> left_shoulder
+    17: 12,   # R_shoulder  -> right_shoulder
+    18: 13,   # L_elbow     -> left_elbow
+    19: 14,   # R_elbow     -> right_elbow
+    20: 15,   # L_wrist     -> left_wrist
+    21: 16,   # R_wrist     -> right_wrist
+    22: 19,   # L_hand      -> left_index
+    23: 20,   # R_hand      -> right_index
+    1: 23,    # L_hip       -> left_hip
+    2: 24,    # R_hip       -> right_hip
+    4: 25,    # L_knee      -> left_knee
+    5: 26,    # R_knee      -> right_knee
+    7: 27,    # L_ankle     -> left_ankle
+    8: 28,    # R_ankle     -> right_ankle
+    10: 31,   # L_foot      -> left_foot_index
+    11: 32,   # R_foot      -> right_foot_index
 }
+
+# MediaPipe slots for the hips, used to root the output the same way
+# MediaPipe itself does (z is expressed relative to the hip midpoint).
+_L_HIP_SLOT, _R_HIP_SLOT = 23, 24
 
 
 class HMRBackend:
@@ -160,11 +187,22 @@ class HMRBackend:
         """(J, 3) root-relative 3D → 132-dim MediaPipe-style contract."""
         feats = np.zeros((NUM_LANDMARKS, 4), dtype=np.float32)
         smpl = np.asarray(joints, dtype=np.float32).reshape(-1, 3)
-        center = smpl.mean(axis=0)
+
         for smpl_idx, slot in _SMPL_TO_SLOT.items():
             if smpl_idx < len(smpl):
-                feats[slot, :3] = smpl[smpl_idx] - center
+                feats[slot, :3] = smpl[smpl_idx]
                 feats[slot, 3] = 1.0
+
+        # Root on the hip midpoint, not the mean of all joints. MediaPipe's
+        # own convention is hip-centred, and a mean over whatever subset of
+        # joints happens to be mapped would move the origin whenever the
+        # mapping changed — making features from two builds incomparable.
+        if feats[_L_HIP_SLOT, 3] > 0.0 and feats[_R_HIP_SLOT, 3] > 0.0:
+            origin = 0.5 * (feats[_L_HIP_SLOT, :3] + feats[_R_HIP_SLOT, :3])
+        else:
+            mapped = feats[feats[:, 3] > 0.0, :3]
+            origin = mapped.mean(axis=0) if len(mapped) else np.zeros(3, dtype=np.float32)
+        feats[feats[:, 3] > 0.0, :3] -= origin
         return feats.reshape(-1)
 
 

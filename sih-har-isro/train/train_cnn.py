@@ -33,7 +33,15 @@ import torch.nn.functional as F
 import platform
 
 from torch.utils.data import Dataset, DataLoader
-from torch.cuda.amp import GradScaler, autocast
+# torch.cuda.amp.{GradScaler,autocast} are deprecated in torch 2.x in favour
+# of the device-generic torch.amp API; the old path emits a FutureWarning on
+# every call and is scheduled for removal. Fall back for older torch.
+try:
+    from torch.amp import GradScaler, autocast
+    _AMP_DEVICE_ARG = True
+except ImportError:  # torch < 2.3
+    from torch.cuda.amp import GradScaler, autocast
+    _AMP_DEVICE_ARG = False
 
 _NUM_WORKERS = 0 if platform.system() == "Windows" else 4
 
@@ -292,22 +300,39 @@ class FrameStackDataset(Dataset):
         return img
 
     def _augment(self, frames: list) -> list:
-        """Apply consistent augmentation across all frames in a window."""
+        """Apply consistent augmentation across all frames in a window.
+
+        NOTE ON HORIZONTAL FLIP — deliberately absent.
+
+        This used to apply `np.fliplr` with probability 0.5 while keeping the
+        label. That is label-destroying for this protocol, not merely
+        aggressive: the eight steps are defined partly by WHICH SIDE of the
+        container the action happens on. Step 3 picks the red box from the
+        left, step 6 picks the yellow box from the right; step 5 places into
+        the left restraint zone, step 8 into the right. Mirroring the image
+        maps step 3's geometry onto step 6's and step 5's onto step 8's while
+        asserting the original label, so the network was being explicitly
+        taught that left/right position carries no information - discarding
+        the single most discriminative cue it has, and leaving colour as the
+        only separator between those pairs.
+
+        Rotation IS kept, including the full 90-degree steps: in microgravity
+        the crew member genuinely has no fixed 'up', so a rotated frame is a
+        real observation, not a fabricated one. Rotation preserves handedness;
+        reflection does not.
+        """
         import cv2
-        # Random horizontal flip (same for all frames)
-        if np.random.random() > 0.5:
-            frames = [np.fliplr(f) for f in frames]
         # Random brightness shift
         shift = np.random.uniform(0.7, 1.3)
         frames = [np.clip(f.astype(np.float32) * shift, 0, 255).astype(np.uint8) for f in frames]
-        # Random rotation (small — up to ±20°)
+        # Random small rotation (±20°) — camera mounting tolerance / body roll
         angle = np.random.uniform(-20, 20)
         M = cv2.getRotationMatrix2D((self.img_size // 2, self.img_size // 2), angle, 1.0)
         frames = [cv2.warpAffine(f, M, (self.img_size, self.img_size)) for f in frames]
         # Orientation augmentation: random 0/90/180/270 rotation (microgravity)
         k = np.random.randint(0, 4)
         if k > 0:
-            frames = [np.rot90(f, k=k) for f in frames]
+            frames = [np.ascontiguousarray(np.rot90(f, k=k)) for f in frames]
         return frames
 
     def __len__(self):
@@ -361,6 +386,20 @@ def train_cnn(data_dir: str = "dataset/annotated",
     train_n, val_n = len(train_ds), len(val_ds)
     full_label_map = train_ds.label_map  # identical to val_ds.label_map (same folders)
 
+    # Size the head to the classes that actually exist on disk, not to
+    # config.NUM_STEPS. NUM_STEPS is len(EXPERIMENT_STEPS)+1 = 9 (the +1 being
+    # an "idle" class), but `dataset/annotated/` only ever contains the eight
+    # step_XX folders - there is no idle folder and nothing writes one. The
+    # model therefore carried a ninth logit that no sample could ever
+    # activate: dead capacity that softmax still had to normalise over,
+    # slightly depressing every real class's confidence against
+    # STEP_CONFIDENCE_THRESHOLD at inference.
+    num_classes = len(full_label_map)
+    if num_classes != NUM_CLASSES:
+        logger.info("Sizing classifier head to %d classes found on disk "
+                    "(config.NUM_STEPS=%d includes an idle class that %s does "
+                    "not contain).", num_classes, NUM_CLASSES, data_dir)
+
     # A very short clip (frames_per_step * (1-TRAIN_VAL_SPLIT) < CNN_NUM_FRAMES_IN)
     # can leave a class with zero windows in one split's tail — silent unless
     # surfaced explicitly, and would skew val_acc without explaining why.
@@ -390,12 +429,12 @@ def train_cnn(data_dir: str = "dataset/annotated",
 
     model = HARActivityCNN(
         in_channels=IN_CHANNELS,
-        num_classes=NUM_CLASSES,
+        num_classes=num_classes,
         dropout=CNN_DROPOUT,
     ).to(device)
 
     logger.info("Model parameters: %s", f"{model.count_parameters():,}")
-    logger.info("Train: %d | Val: %d | Classes: %d", train_n, val_n, NUM_CLASSES)
+    logger.info("Train: %d | Val: %d | Classes: %d", train_n, val_n, num_classes)
 
     # ── Optimizer / Scheduler ──────────────────────────────────
     optimizer = torch.optim.AdamW(model.parameters(),
@@ -404,7 +443,9 @@ def train_cnn(data_dir: str = "dataset/annotated",
         optimizer, T_max=epochs, eta_min=1e-5
     )
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    scaler    = GradScaler(enabled=USE_AMP and device.type == "cuda")
+    _amp_on = USE_AMP and device.type == "cuda"
+    scaler = (GradScaler("cuda", enabled=_amp_on) if _AMP_DEVICE_ARG
+              else GradScaler(enabled=_amp_on))
 
     # ── Training loop ──────────────────────────────────────────
     best_val_acc = 0.0
@@ -420,7 +461,8 @@ def train_cnn(data_dir: str = "dataset/annotated",
             y_batch = y_batch.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
 
-            with autocast(enabled=USE_AMP and device.type == "cuda"):
+            with (autocast("cuda", enabled=_amp_on) if _AMP_DEVICE_ARG
+                  else autocast(enabled=_amp_on)):
                 logits = model(X_batch)
                 loss   = criterion(logits, y_batch)
 
@@ -440,7 +482,8 @@ def train_cnn(data_dir: str = "dataset/annotated",
             for X_batch, y_batch in val_loader:
                 X_batch = X_batch.to(device, non_blocking=True)
                 y_batch = y_batch.to(device, non_blocking=True)
-                with autocast(enabled=USE_AMP and device.type == "cuda"):
+                with (autocast("cuda", enabled=_amp_on) if _AMP_DEVICE_ARG
+                      else autocast(enabled=_amp_on)):
                     logits = model(X_batch)
                     val_loss += criterion(logits, y_batch).item()
                 preds    = logits.argmax(dim=1)
@@ -465,7 +508,7 @@ def train_cnn(data_dir: str = "dataset/annotated",
             torch.save({
                 "model_state":    model.state_dict(),
                 "in_channels":    IN_CHANNELS,
-                "num_classes":    NUM_CLASSES,
+                "num_classes":    num_classes,
                 "img_size":       CNN_IMG_SIZE,
                 "n_frames_in":    CNN_NUM_FRAMES_IN,
                 "label_map":      full_label_map,
