@@ -204,6 +204,30 @@ is a first-class argument rather than something a caller has to construct.
 Train/test are split **by take**, so a held-out orientation is genuinely
 unseen — which is what the orientation-agnostic requirement is actually about.
 
+### Known fidelity gap: step duration
+
+`study` renders 32 frames per step. At the pipeline's nominal 30 fps that is
+**~1.07 s per step, against the 4–6 s in `EXPERIMENT_STEPS[*].duration_hint_sec`**.
+The motion is therefore roughly 4× faster than a real crew member's, so
+landmark *velocities* in this dataset are not to scale even though positions
+and geometry are.
+
+This is a deliberate trade against the available hardware, not an oversight —
+matching the real 4–6 s would mean 120–180 frames per step, i.e. ~1,400 frames
+per take and roughly 2.5 hours of render each on this machine. It is recorded
+here because it bounds what the resulting accuracy number means.
+
+Two ways to close it, in order of preference:
+
+1. **Render longer steps** on a machine with a CUDA GPU: raise
+   `frames_per_step` to 120–150 in the plan.
+2. **Sample the live stream to match.** Arguably the better engineering fix
+   regardless: a 30-frame window at 30 fps only spans 1 s, which is too short
+   to contain a 5 s action in the first place. Feeding the buffer at ~10 fps
+   gives the same 30-frame LSTM contract a 3 s temporal span, which fits the
+   protocol's actual step durations far better. That is a change to
+   `PROCESS_EVERY_N_FRAMES` at inference, not to the model.
+
 ---
 
 ## Performance and stability notes
