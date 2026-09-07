@@ -105,17 +105,37 @@ def _mediapipe_poses(cam_dir: Path, n_frames: int, complexity: int,
 
 
 def _windows(seq: np.ndarray, labels: np.ndarray, window: int, stride: int,
-             pure_only: bool = True):
-    """Sliding windows. `pure_only` drops windows that straddle a step
-    boundary — a window containing two steps has no single correct label, and
-    including it teaches the classifier that its label is ambiguous."""
+             purity: float = 0.75):
+    """Sliding windows, labelled by the dominant step.
+
+    `purity` is the fraction of frames that must share the majority label for
+    the window to be kept. Requiring 1.0 (strictly pure windows) is the
+    obvious choice and the wrong one here, for two reasons:
+
+    * Data volume. A step lasting ~32 frames against a 30-frame window admits
+      only 3 pure start positions, so a whole 8-step take yields ~24 windows
+      even at stride 1. There is not enough signal there to train anything.
+
+    * Realism. The deployed pipeline slides a 30-frame buffer continuously
+      over a live camera; the majority of windows it ever sees near a
+      transition ARE mixed. Training only on pure windows means every step
+      boundary at inference is out of distribution — precisely the moments
+      the state machine depends on. `STEP_CONFIRM_FRAMES` already debounces
+      the noisy stretch, so a dominant-label window is exactly what the state
+      machine is built to consume.
+
+    The label is the majority step, not the last frame's: a window that is
+    80% step 3 and ends on the first frame of step 4 is a picture of step 3.
+    """
     xs, ys = [], []
     for start in range(0, len(seq) - window + 1, stride):
         lab = labels[start:start + window]
-        if pure_only and len(np.unique(lab)) != 1:
+        values, counts = np.unique(lab, return_counts=True)
+        dominant = int(values[int(np.argmax(counts))])
+        if counts.max() / float(window) < purity:
             continue
         xs.append(seq[start:start + window])
-        ys.append(int(lab[-1]))
+        ys.append(dominant)
     if not xs:
         return (np.zeros((0, window, seq.shape[-1]), dtype=np.float32),
                 np.zeros((0,), dtype=np.int64))
@@ -123,7 +143,8 @@ def _windows(seq: np.ndarray, labels: np.ndarray, window: int, stride: int,
 
 
 def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
-          stride: int = 5, complexity: int = 1, camera: Optional[str] = None,
+          stride: int = 2, complexity: int = 1, camera: Optional[str] = None,
+          purity: float = 0.75,
           holdout_tags: Sequence[str] = (), rack_normalize: bool = False,
           exclude_tags: Sequence[str] = ()) -> dict:
     root = Path(dataset_dir)
@@ -165,7 +186,7 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
         n = min(len(poses), len(labels))
         poses, labels_n = poses[:n], labels[:n]
 
-        xs, ys = _windows(poses, labels_n, SEQUENCE_WINDOW, stride)
+        xs, ys = _windows(poses, labels_n, SEQUENCE_WINDOW, stride, purity)
         split = "holdout" if tag in holdout_tags else "train"
         if len(xs):
             bucket[split]["x"].append(xs)
@@ -220,7 +241,10 @@ def main():
     ap.add_argument("--out", default="dataset/sequences_mp")
     ap.add_argument("--pose-source", default="mediapipe",
                     choices=["mediapipe", "groundtruth"])
-    ap.add_argument("--stride", type=int, default=5)
+    ap.add_argument("--stride", type=int, default=2)
+    ap.add_argument("--purity", type=float, default=0.75,
+                    help="Fraction of a window that must share the majority "
+                         "step label for it to be kept")
     ap.add_argument("--complexity", type=int, default=1,
                     help="0=lite 1=full 2=heavy pose bundle")
     ap.add_argument("--camera", default=None)
@@ -235,7 +259,7 @@ def main():
     holdout = [t for t in args.holdout_tags.split(",") if t]
     exclude = [t for t in args.exclude_tags.split(",") if t]
     build(args.dataset, args.out, args.pose_source, args.stride,
-          args.complexity, args.camera, holdout, args.rack_normalize, exclude)
+          args.complexity, args.camera, args.purity, holdout, args.rack_normalize, exclude)
 
 
 if __name__ == "__main__":
