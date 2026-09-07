@@ -1,0 +1,143 @@
+{
+  "label": "shipped LSTM (trained on synthetic_pose) vs Blender render",
+  "model": "models/lstm_classifier.pt",
+  "model_reported_val_acc": 0.9826839826839827,
+  "rack_normalize": false,
+  "pose_complexity": 1,
+  "takes": [
+    {
+      "take": "take_0000",
+      "index": 0,
+      "tag": "nominal",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 154,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "latency_ms": {
+        "hsv": {
+          "mean": 6604.02,
+          "p95": 71.1
+        },
+        "pose": {
+          "mean": 95.06,
+          "p95": 202.23
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.2975,
+          "precision": 1.0,
+          "tp": 36,
+          "fp": 0,
+          "fn": 85,
+          "tn": 33,
+          "mean_iou": 0.8766
+        },
+        "yellow_box": {
+          "recall": 0.1299,
+          "precision": 1.0,
+          "tp": 20,
+          "fp": 0,
+          "fn": 134,
+          "tn": 0,
+          "mean_iou": 0.7434
+        },
+        "main_box": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "tp": 154,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "mean_iou": 0.0076
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 108.06,
+          "median_px": 104.53,
+          "p90_px": 195.66,
+          "pck@5pct": 0.1443,
+          "n": 3471
+        },
+        "key_landmarks": {
+          "mean_px": 134.53,
+          "median_px": 135.54,
+          "p90_px": 220.56,
+          "pck@5pct": 0.1102,
+          "n": 717
+        },
+        "frames_with_detection": 154,
+        "frames_total": 154
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.0,
+          "windows": 0,
+          "confident_frac": 0.0,
+          "top_confusions": {}
+        },
+        "oracle": {
+          "accuracy": 0.0,
+          "windows": 0,
+          "confident_frac": 0.0,
+          "top_confusions": {}
+        },
+        "perception_cost": 0.0
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [],
+        "n_completed": 0,
+        "experiment_complete": false,
+        "skip_events": [
+          [
+            1,
+            7
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 3,
+        "recovered_steps": []
+      }
+    }
+  ],
+  "aggregate": {
+    "n_takes": 1,
+    "total_frames": 154,
+    "step_acc_real": 0.0,
+    "step_acc_oracle": 0.0,
+    "perception_cost": 0.0,
+    "pose_detect_rate": 1.0,
+    "key_landmark_mean_px": 134.53,
+    "key_landmark_pck5": 0.1102,
+    "hsv_red_recall": 0.2975,
+    "hsv_red_precision": 1.0,
+    "hsv_yellow_recall": 0.1299,
+    "hsv_yellow_precision": 1.0,
+    "hsv_main_recall": 1.0,
+    "pose_latency_ms_mean": 95.06,
+    "hsv_latency_ms_mean": 6604.02,
+    "experiments_completed": 0
+  }
+}

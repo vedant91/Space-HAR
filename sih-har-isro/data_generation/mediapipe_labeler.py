@@ -25,12 +25,16 @@ from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect  # noqa: E40
 from pipeline.hsv_detector import HSVBoxDetector  # noqa: E402
 from config.experiment_config import SKELETON_FEATURES  # noqa: E402
 
-try:
-    import mediapipe as mp
-    MP_AVAILABLE = True
-except ImportError:
-    MP_AVAILABLE = False
-    print("[WARNING] mediapipe not installed. Run: pip install mediapipe")
+# Pose goes through pipeline/pose_backend.py, not `mp.solutions` directly:
+# that API was removed in MediaPipe 1.0 and this module would not import at
+# all on a current install. See pose_backend.py for the full note.
+from pipeline.pose_backend import PoseBackend, describe as describe_pose_backend  # noqa: E402
+
+_POSE_INFO = describe_pose_backend()
+MP_AVAILABLE = bool(_POSE_INFO.get("usable"))
+if not MP_AVAILABLE:
+    print(f"[WARNING] No usable MediaPipe pose backend: {_POSE_INFO}\n"
+          "          pip install mediapipe && python tools/fetch_pose_model.py")
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -89,9 +93,7 @@ def process_video(video_path: str, step_label: int, pose,
         if not ret:
             break
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = pose.process(rgb)
-        features = extract_landmarks_from_frame(results)
+        features = pose.process(rgb)
         if normalizer is not None:
             features = normalizer.normalize(
                 features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
@@ -123,9 +125,7 @@ def process_frames_folder(folder: str, step_label: int, pose,
         if frame is None:
             continue
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
-        results = pose.process(rgb)
-        features = extract_landmarks_from_frame(results)
+        features = pose.process(rgb)
         if normalizer is not None:
             features = normalizer.normalize(
                 features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
@@ -150,8 +150,6 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
         logger.error("mediapipe not installed.")
         return
 
-    # Use Pose only (not Holistic) for faster processing
-    mp_pose = mp.solutions.pose
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -166,13 +164,13 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
         hsv_detector = HSVBoxDetector()
         logger.info("Rack-frame normalization enabled for labeling.")
 
-    with mp_pose.Pose(
-        static_image_mode=False,
-        model_complexity=0,  # Fastest mode
-        smooth_landmarks=True,
-        min_detection_confidence=0.3,
-        min_tracking_confidence=0.3,
-    ) as pose:
+    # static_image_mode=False keeps the tracker's temporal smoothing, which
+    # matters because these frames are consecutive video, not independent
+    # stills. PoseBackend handles the Tasks-API timestamp bookkeeping that
+    # VIDEO mode requires.
+    pose = PoseBackend(complexity=0, min_det_conf=0.3, min_trk_conf=0.3,
+                       downscale=1, static_image_mode=False)
+    try:
 
         for step_tag, step_id in step_label_map.items():
             candidate = Path(input_path) / step_tag
@@ -238,6 +236,11 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
                 all_labels.append(labels_arr)
                 metadata.append({"step_id": step_id, "windows": len(windows)})
                 logger.info("  → %d windows extracted (step %d)", len(windows), step_id)
+    finally:
+        # The old `with mp_pose.Pose(...)` released the graph on any exit path.
+        # PoseBackend is not a context manager, so the close has to be explicit
+        # or an exception mid-labelling leaks the TFLite interpreter.
+        pose.close()
 
     if not all_sequences:
         logger.error("No sequences extracted. Check input data.")

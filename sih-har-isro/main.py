@@ -19,6 +19,23 @@ import argparse
 import logging
 from pathlib import Path
 
+# Force UTF-8 on stdout/stderr before anything prints.
+#
+# A stock Windows console runs cp1252, which cannot encode the check/cross
+# marks and box-drawing characters used throughout this file's status output
+# and the training scripts' progress banners. Without this, `python main.py
+# --mode status` dies with:
+#     UnicodeEncodeError: 'charmap' codec can't encode character '✅'
+# i.e. the status command - the first thing anyone runs to check an offline
+# deployment - crashed on the platform the config file is written for
+# (RTX 3050 / Windows). errors="replace" keeps output readable rather than
+# fatal even on a console that still refuses UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -155,9 +172,22 @@ def print_status():
     except ImportError:
         print("  ❌  PyTorch not installed")
 
+    # Report the pose backend, not just "is mediapipe importable". Importable
+    # is no longer sufficient information: MediaPipe 1.0 removed the
+    # `mp.solutions` API this project used to call, so a perfectly healthy
+    # `import mediapipe` can still leave the pipeline with no pose estimator.
+    # The Tasks API additionally needs a .task bundle on disk.
     try:
-        import mediapipe
-        print(f"  ✅  MediaPipe        {mediapipe.__version__}")
+        from pipeline.pose_backend import describe as describe_pose_backend
+        info = describe_pose_backend()
+        ok = "✅" if info["usable"] else "❌"
+        print(f"  {ok}  MediaPipe        {info['mediapipe_version']} "
+              f"(tasks={info['tasks_api']}, solutions={info['solutions_api']})")
+        if info["model_bundles"]:
+            for name in sorted(info["model_bundles"]):
+                print(f"     └─ pose bundle: {name}")
+        elif info["tasks_api"]:
+            print("     └─ ❌ no .task bundle — run: python tools/fetch_pose_model.py")
     except ImportError:
         print("  ❌  MediaPipe not installed")
 

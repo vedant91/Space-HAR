@@ -55,12 +55,18 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # ── Import optional dependencies ──────────────────────────────────────────────
-try:
-    import mediapipe as mp
-    MP_AVAILABLE = True
-except ImportError:
-    MP_AVAILABLE = False
-    logger.warning("mediapipe not installed. Skeleton features disabled.")
+# Pose estimation goes through pipeline/pose_backend.py rather than touching
+# mediapipe directly. `mp.solutions.pose` — what this file used to call — was
+# removed in MediaPipe 1.0, so the direct import made the whole pipeline
+# unimportable on any current install. The backend picks the Tasks API when
+# available and falls back to the legacy Solutions API on older versions.
+from pipeline.pose_backend import PoseBackend, describe as describe_pose_backend
+
+_POSE_INFO = describe_pose_backend()
+MP_AVAILABLE = bool(_POSE_INFO.get("usable"))
+if not MP_AVAILABLE:
+    logger.warning("No usable MediaPipe pose backend (%s). Skeleton features disabled.",
+                   _POSE_INFO)
 
 try:
     import onnxruntime as ort
@@ -107,9 +113,9 @@ class ThreadedInference:
         def _run_mediapipe():
             try:
                 if mp_wrapper is not None:
-                    results = mp_wrapper.process(frame_rgb_full)
-                    features = self._extract_pose_features(results)
-                    self._mp_result = features
+                    # PoseBackend.process() returns the 132-dim vector directly;
+                    # there is no intermediate results object to unpack.
+                    self._mp_result = mp_wrapper.process(frame_rgb_full)
                 else:
                     self._mp_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
             except Exception as e:
@@ -131,72 +137,57 @@ class ThreadedInference:
 
         return self._hsv_result, self._mp_result
 
-    @staticmethod
-    def _extract_pose_features(results) -> np.ndarray:
-        """Extract pose-only features (132-dim). Much faster than Holistic."""
-        features = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        if results and results.pose_landmarks:
-            idx = 0
-            for lm in results.pose_landmarks.landmark:
-                features[idx] = lm.x
-                features[idx + 1] = lm.y
-                features[idx + 2] = lm.z
-                features[idx + 3] = lm.visibility
-                idx += 4
-        return features
-
 
 class OptimizedMPWrapper:
     """
-    Wrapper around MediaPipe Pose with pre-allocated buffers
-    and configurable downscaling.
+    Pose estimator with configurable downscaling.
+
+    Kept as a named class (rather than using PoseBackend directly) because it
+    is the pipeline's stable seam for pose: `har_pipeline` and the simulation
+    harness both construct it, and the underlying MediaPipe API has now
+    changed once already. `process()` returns the 132-dim feature vector
+    directly — the old version returned MediaPipe's results object and left
+    every caller to unpack `.pose_landmarks.landmark`, which is precisely the
+    coupling that broke when Solutions was removed.
     """
 
     def __init__(self, complexity: int = 0,
                  min_det_conf: float = 0.3,
                  min_trk_conf: float = 0.3,
-                 downscale: int = 2):
+                 downscale: int = 2,
+                 static_image_mode: bool = False):
         self.downscale = downscale
         self.small_w = FRAME_WIDTH // downscale
         self.small_h = FRAME_HEIGHT // downscale
-
-        # Pre-allocate the small RGB buffer
-        self.frame_rgb_small = np.zeros((self.small_h, self.small_w, 3), dtype=np.uint8)
-        self.frame_flags = self.frame_rgb_small  # alias for writeable flag access
-
-        if MP_AVAILABLE:
-            mp_pose = mp.solutions.pose
-            self.holistic = mp_pose.Pose(
-                static_image_mode=False,
-                model_complexity=complexity,       # 0 = fastest
-                smooth_landmarks=True,
-                enable_segmentation=False,
-                min_detection_confidence=min_det_conf,
-                min_tracking_confidence=min_trk_conf,
-            )
+        self._backend = PoseBackend(
+            complexity=complexity,
+            min_det_conf=min_det_conf,
+            min_trk_conf=min_trk_conf,
+            downscale=downscale,
+            frame_width=FRAME_WIDTH,
+            frame_height=FRAME_HEIGHT,
+            static_image_mode=static_image_mode,
+        )
+        if self._backend.available:
             logger.info(
-                "MediaPipe Pose loaded (complexity=%d, det=%.1f, trk=%.1f, downscale=%d)",
-                complexity, min_det_conf, min_trk_conf, downscale
-            )
-        else:
-            self.holistic = None
+                "Pose backend '%s' ready (complexity=%d, det=%.1f, trk=%.1f, "
+                "downscale=%d)", self._backend.backend, complexity,
+                min_det_conf, min_trk_conf, downscale)
 
-    def process(self, frame_rgb_full: np.ndarray):
-        """Downscale + process. Returns pose landmarks result."""
-        if self.holistic is None:
-            return None
+    @property
+    def available(self) -> bool:
+        return self._backend.available
 
-        # Downscale for speed
-        cv2.resize(frame_rgb_full, (self.small_w, self.small_h),
-                   dst=self.frame_rgb_small, interpolation=cv2.INTER_LINEAR)
-        self.frame_rgb_small.flags.writeable = False
-        results = self.holistic.process(self.frame_rgb_small)
-        self.frame_rgb_small.flags.writeable = True
-        return results
+    @property
+    def backend_name(self) -> str:
+        return self._backend.backend
+
+    def process(self, frame_rgb_full: np.ndarray) -> np.ndarray:
+        """Full-resolution RGB frame -> (132,) float32 features."""
+        return self._backend.process(frame_rgb_full)
 
     def close(self):
-        if self.holistic:
-            self.holistic.close()
+        self._backend.close()
 
 
 class HARPipeline:
@@ -482,20 +473,7 @@ class HARPipeline:
         """
         if self.mp_wrapper is None:
             return np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-
-        results = self.mp_wrapper.process(frame_rgb)
-
-        features = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        if results and results.pose_landmarks:
-            idx = 0
-            for lm in results.pose_landmarks.landmark:
-                features[idx] = lm.x
-                features[idx + 1] = lm.y
-                features[idx + 2] = lm.z
-                features[idx + 3] = lm.visibility
-                idx += 4
-
-        return features
+        return self.mp_wrapper.process(frame_rgb)
 
     def _run_lstm_inference(self) -> tuple[int, float]:
         """

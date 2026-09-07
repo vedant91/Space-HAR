@@ -1,0 +1,64 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+.venv*/
+venv/
+env/
+
+# ── Vendored runtime ─────────────────────────────────────────────────────────
+# `sih-har-isro/.runtime/site-packages` is a full checked-in copy of torch,
+# numpy, sympy and friends - roughly 300 MB, and the reason a clone of this
+# repo is ~330 MB when the actual project source is under 1 MB. Dependencies
+# belong in requirements.txt, which already lists them; a committed
+# site-packages is also platform- and Python-version-locked (these are
+# cp312 Windows builds), so it cannot serve the offline-deployment purpose it
+# looks like it was meant for on any other machine.
+#
+# NOTE: adding it here stops it growing further but does NOT shrink existing
+# clones - the objects are already in history. To actually reclaim the space
+# someone has to rewrite history (git filter-repo --path sih-har-isro/.runtime
+# --invert-paths) and force-push, which is a decision for the repo owner
+# because it invalidates every existing clone.
+.runtime/
+tmp/pip/
+
+# ── Generated datasets and renders ───────────────────────────────────────────
+# Regenerate with:
+#   blender --background --factory-startup --python blender/render_dataset.py -- --plan study
+sih-har-isro/dataset/blender/
+sih-har-isro/dataset/blender_smoke/
+sih-har-isro/dataset/sequences_*/
+sih-har-isro/dataset/annotated/
+sih-har-isro/build/
+sih-har-isro/recordings/*.mp4
+
+# Keep the small ground-truth-only artefacts that document a run
+!sih-har-isro/dataset/**/meta.json
+!sih-har-isro/dataset/**/index.json
+
+# ── Blender ──────────────────────────────────────────────────────────────────
+*.blend1
+*.blend2
+
+# ── Runtime output ───────────────────────────────────────────────────────────
+sih-har-isro/config/tuned_overrides.json
+*.crash.txt
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ── MediaPipe pose bundles ───────────────────────────────────────────────────
+# lite + full are committed via Git LFS so a fresh clone is genuinely offline-
+# capable (the PS requires a standalone offline system). 'heavy' is a 30 MB
+# optional accuracy upgrade - fetch it on demand rather than paying for it in
+# every clone:  python tools/fetch_pose_model.py --variant heavy
+sih-har-isro/models/mediapipe/pose_landmarker_heavy.task
