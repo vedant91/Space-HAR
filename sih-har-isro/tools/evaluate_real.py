@@ -144,7 +144,16 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
     detector = HSVBoxDetector(frame_width=w, frame_height=h)
     normalizer = RackFrameNormalizer() if rack_normalize else None
 
+    # Two copies of MediaPipe's output are needed once rack normalisation is
+    # in play. `mp_raw` stays in image coordinates so it can be compared
+    # against the ground truth for landmark error; `mp_poses` is whatever the
+    # LSTM was actually trained on. Scoring normalised coordinates against
+    # raw ones silently produces a nonsense error (~700 px on a 900 px frame,
+    # because rack-frame units are torso-lengths, not pixels).
     mp_poses = np.zeros((n, SKELETON_FEATURES), dtype=np.float32)
+    mp_raw = np.zeros((n, SKELETON_FEATURES), dtype=np.float32)
+    gt_for_model = np.array(gt_pose[:n], dtype=np.float32)
+    gt_normalizer = RackFrameNormalizer() if rack_normalize else None
     timings = defaultdict(list)
     hsv_counts = {k: {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
                   for k in ("red_box", "yellow_box", "main_box")}
@@ -168,9 +177,17 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
 
         if np.any(feats):
             detected += 1
+        mp_raw[i] = feats
+        rack_rect = pick_rack_rect(dets)
         if normalizer is not None:
-            feats = normalizer.normalize(feats, rack_rect=pick_rack_rect(dets))
+            feats = normalizer.normalize(feats, rack_rect=rack_rect)
         mp_poses[i] = feats
+        if gt_normalizer is not None:
+            # The oracle path must see the ground truth put through the SAME
+            # transform as the live path, or it is measuring a feature-space
+            # mismatch rather than the cost of perception.
+            gt_for_model[i] = gt_normalizer.normalize(gt_for_model[i],
+                                                      rack_rect=rack_rect)
 
         timings["hsv"].append(t_hsv)
         timings["pose"].append(t_pose)
@@ -210,11 +227,11 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
             for k, v in timings.items()
         },
         "hsv": _hsv_summary(hsv_counts, iou_sums),
-        "pose_error": _pose_error(mp_poses, gt_pose[:n], w, h),
+        "pose_error": _pose_error(mp_raw, gt_pose[:n], w, h),
     }
 
     if runner is not None:
-        result["step"] = _step_accuracy(runner, mp_poses, gt_pose[:n], labels[:n])
+        result["step"] = _step_accuracy(runner, mp_poses, gt_for_model, labels[:n])
         result["protocol"] = _protocol_outcome(runner, mp_poses, labels[:n],
                                                meta.get("sequence", []))
     return result
