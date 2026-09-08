@@ -1,5 +1,5 @@
 {
-  "label": "retrained on rendered video, rack-normalised, upright pose",
+  "label": "retrained: rendered video + rack-normalised + upright pose",
   "model": "models/lstm_final_rack.pt",
   "model_reported_val_acc": 0.291044776119403,
   "rack_normalize": true,
@@ -20,12 +20,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 9.51,
-          "p95": 11.86
+          "mean": 8.99,
+          "p95": 11.42
         },
         "pose": {
-          "mean": 76.31,
-          "p95": 246.92
+          "mean": 71.08,
+          "p95": 222.32
         }
       },
       "hsv": {
@@ -77,27 +77,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.7619,
-          "windows": 21,
-          "confident_frac": 0.381,
+          "accuracy": 0.7032,
+          "correct": 154,
+          "windows": 219,
+          "confident_frac": 0.379,
           "top_confusions": {
-            "1->2": 3,
-            "6->7": 2
+            "1->2": 19,
+            "6->7": 16,
+            "5->4": 12,
+            "4->3": 10,
+            "8->7": 4
           }
         },
         "oracle": {
-          "accuracy": 0.1429,
-          "windows": 21,
-          "confident_frac": 0.0476,
+          "accuracy": 0.1233,
+          "correct": 27,
+          "windows": 219,
+          "confident_frac": 0.032,
           "top_confusions": {
-            "1->2": 3,
-            "5->7": 3,
-            "6->7": 3,
-            "4->6": 2,
-            "7->8": 2
+            "6->7": 27,
+            "5->7": 25,
+            "4->6": 22,
+            "7->6": 22,
+            "1->2": 19
           }
         },
-        "perception_cost": -0.619
+        "perception_cost": -0.5799
       },
       "protocol": {
         "rendered_sequence": [
@@ -146,12 +151,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.72,
-          "p95": 10.17
+          "mean": 8.47,
+          "p95": 10.76
         },
         "pose": {
-          "mean": 65.48,
-          "p95": 116.38
+          "mean": 61.24,
+          "p95": 104.31
         }
       },
       "hsv": {
@@ -203,27 +208,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.75,
-          "windows": 8,
-          "confident_frac": 0.5,
+          "accuracy": 0.6995,
+          "correct": 135,
+          "windows": 193,
+          "confident_frac": 0.2591,
           "top_confusions": {
-            "1->2": 1,
-            "5->4": 1
+            "5->4": 24,
+            "1->2": 15,
+            "8->4": 10,
+            "7->6": 3,
+            "5->3": 2
           }
         },
         "oracle": {
-          "accuracy": 0.25,
-          "windows": 8,
-          "confident_frac": 0.125,
+          "accuracy": 0.2487,
+          "correct": 48,
+          "windows": 193,
+          "confident_frac": 0.1813,
           "top_confusions": {
-            "3->4": 2,
-            "1->2": 1,
-            "5->4": 1,
-            "6->4": 1,
-            "7->4": 1
+            "6->4": 28,
+            "7->4": 28,
+            "5->4": 26,
+            "3->4": 23,
+            "1->2": 15
           }
         },
-        "perception_cost": -0.5
+        "perception_cost": -0.4508
       },
       "protocol": {
         "rendered_sequence": [
@@ -272,12 +282,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.9,
-          "p95": 10.64
+          "mean": 8.46,
+          "p95": 10.2
         },
         "pose": {
-          "mean": 90.68,
-          "p95": 337.86
+          "mean": 85.79,
+          "p95": 309.26
         }
       },
       "hsv": {
@@ -329,22 +339,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.0,
-          "windows": 1,
-          "confident_frac": 0.0,
+          "accuracy": 0.3779,
+          "correct": 65,
+          "windows": 172,
+          "confident_frac": 0.314,
           "top_confusions": {
-            "1->2": 1
+            "7->3": 25,
+            "5->6": 24,
+            "1->2": 15,
+            "4->6": 13,
+            "8->2": 10
           }
         },
         "oracle": {
-          "accuracy": 0.0,
-          "windows": 1,
-          "confident_frac": 0.0,
+          "accuracy": 0.1453,
+          "correct": 25,
+          "windows": 172,
+          "confident_frac": 0.0349,
           "top_confusions": {
-            "1->4": 1
+            "2->4": 24,
+            "5->7": 24,
+            "6->7": 24,
+            "3->6": 23,
+            "1->4": 15
           }
         },
-        "perception_cost": 0.0
+        "perception_cost": -0.2326
       },
       "protocol": {
         "rendered_sequence": [
@@ -386,11 +406,11 @@
       "latency_ms": {
         "hsv": {
           "mean": 8.65,
-          "p95": 10.01
+          "p95": 10.45
         },
         "pose": {
-          "mean": 69.91,
-          "p95": 230.79
+          "mean": 68.23,
+          "p95": 219.84
         }
       },
       "hsv": {
@@ -442,27 +462,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.6667,
-          "windows": 6,
-          "confident_frac": 0.3333,
+          "accuracy": 0.6425,
+          "correct": 115,
+          "windows": 179,
+          "confident_frac": 0.2458,
           "top_confusions": {
-            "4->5": 1,
-            "8->5": 1
+            "4->5": 21,
+            "1->2": 12,
+            "6->7": 10,
+            "3->4": 7,
+            "2->3": 6
           }
         },
         "oracle": {
-          "accuracy": 0.0,
-          "windows": 6,
-          "confident_frac": 0.3333,
+          "accuracy": 0.1341,
+          "correct": 24,
+          "windows": 179,
+          "confident_frac": 0.4413,
           "top_confusions": {
-            "2->3": 1,
-            "4->3": 1,
-            "5->3": 1,
-            "6->3": 1,
-            "7->4": 1
+            "2->3": 27,
+            "4->3": 25,
+            "5->3": 25,
+            "6->3": 25,
+            "7->4": 22
           }
         },
-        "perception_cost": -0.6667
+        "perception_cost": -0.5084
       },
       "protocol": {
         "rendered_sequence": [
@@ -507,12 +532,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.57,
-          "p95": 10.64
+          "mean": 8.32,
+          "p95": 10.77
         },
         "pose": {
-          "mean": 87.34,
-          "p95": 350.67
+          "mean": 82.22,
+          "p95": 321.74
         }
       },
       "hsv": {
@@ -564,30 +589,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.1667,
-          "windows": 6,
-          "confident_frac": 0.0,
+          "accuracy": 0.1865,
+          "correct": 36,
+          "windows": 193,
+          "confident_frac": 0.057,
           "top_confusions": {
-            "1->2": 1,
-            "2->3": 1,
-            "3->4": 1,
-            "4->6": 1,
-            "7->5": 1
+            "6->5": 25,
+            "3->4": 18,
+            "7->5": 17,
+            "1->2": 15,
+            "2->3": 15
           }
         },
         "oracle": {
-          "accuracy": 0.1667,
-          "windows": 6,
-          "confident_frac": 0.5,
+          "accuracy": 0.2124,
+          "correct": 41,
+          "windows": 193,
+          "confident_frac": 0.7047,
           "top_confusions": {
-            "1->3": 1,
-            "2->3": 1,
-            "3->4": 1,
-            "5->3": 1,
-            "7->3": 1
+            "2->3": 28,
+            "5->3": 28,
+            "7->3": 27,
+            "6->3": 25,
+            "1->3": 15
           }
         },
-        "perception_cost": 0.0
+        "perception_cost": 0.0259
       },
       "protocol": {
         "rendered_sequence": [
@@ -623,12 +650,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.73,
-          "p95": 10.25
+          "mean": 8.49,
+          "p95": 10.92
         },
         "pose": {
-          "mean": 53.72,
-          "p95": 58.64
+          "mean": 50.0,
+          "p95": 60.11
         }
       },
       "hsv": {
@@ -680,22 +707,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.6667,
-          "windows": 3,
-          "confident_frac": 0.0,
+          "accuracy": 0.2254,
+          "correct": 39,
+          "windows": 173,
+          "confident_frac": 0.1098,
           "top_confusions": {
-            "5->2": 1
+            "4->2": 26,
+            "5->2": 26,
+            "7->4": 19,
+            "6->2": 14,
+            "8->4": 11
           }
         },
         "oracle": {
-          "accuracy": 0.6667,
-          "windows": 3,
-          "confident_frac": 0.6667,
+          "accuracy": 0.2023,
+          "correct": 35,
+          "windows": 173,
+          "confident_frac": 0.5723,
           "top_confusions": {
-            "5->2": 1
+            "4->2": 26,
+            "7->2": 25,
+            "5->2": 23,
+            "6->3": 18,
+            "3->2": 12
           }
         },
-        "perception_cost": 0.0
+        "perception_cost": -0.0231
       },
       "protocol": {
         "rendered_sequence": [
@@ -736,12 +773,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.7,
-          "p95": 10.02
+          "mean": 9.11,
+          "p95": 13.79
         },
         "pose": {
-          "mean": 70.39,
-          "p95": 129.75
+          "mean": 72.65,
+          "p95": 155.83
         }
       },
       "hsv": {
@@ -793,28 +830,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.625,
-          "windows": 8,
-          "confident_frac": 0.5,
+          "accuracy": 0.7031,
+          "correct": 135,
+          "windows": 192,
+          "confident_frac": 0.4427,
           "top_confusions": {
-            "1->2": 1,
-            "4->5": 1,
-            "6->7": 1
+            "4->5": 19,
+            "1->2": 15,
+            "6->7": 14,
+            "8->7": 7,
+            "6->5": 1
           }
         },
         "oracle": {
-          "accuracy": 0.0,
-          "windows": 8,
-          "confident_frac": 0.125,
+          "accuracy": 0.0469,
+          "correct": 9,
+          "windows": 192,
+          "confident_frac": 0.0885,
           "top_confusions": {
-            "1->7": 1,
-            "2->6": 1,
-            "3->6": 1,
-            "4->8": 1,
-            "5->7": 1
+            "6->7": 27,
+            "2->6": 20,
+            "5->7": 19,
+            "7->6": 18,
+            "3->6": 17
           }
         },
-        "perception_cost": -0.625
+        "perception_cost": -0.6562
       },
       "protocol": {
         "rendered_sequence": [
@@ -863,12 +904,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.93,
-          "p95": 10.67
+          "mean": 8.72,
+          "p95": 10.43
         },
         "pose": {
-          "mean": 81.33,
-          "p95": 304.6
+          "mean": 81.46,
+          "p95": 319.47
         }
       },
       "hsv": {
@@ -920,30 +961,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.1667,
-          "windows": 12,
-          "confident_frac": 0.25,
+          "accuracy": 0.1952,
+          "correct": 41,
+          "windows": 210,
+          "confident_frac": 0.1667,
           "top_confusions": {
-            "1->2": 2,
-            "5->2": 2,
-            "7->2": 2,
-            "8->2": 2,
-            "3->2": 1
+            "7->2": 30,
+            "6->2": 29,
+            "3->2": 27,
+            "5->2": 22,
+            "8->2": 18
           }
         },
         "oracle": {
-          "accuracy": 0.1667,
-          "windows": 12,
-          "confident_frac": 0.0833,
+          "accuracy": 0.1429,
+          "correct": 30,
+          "windows": 210,
+          "confident_frac": 0.3571,
           "top_confusions": {
-            "1->4": 2,
-            "5->7": 2,
-            "8->7": 2,
-            "2->4": 1,
-            "3->7": 1
+            "5->7": 30,
+            "3->7": 29,
+            "6->7": 29,
+            "4->7": 28,
+            "8->7": 19
           }
         },
-        "perception_cost": 0.0
+        "perception_cost": -0.0523
       },
       "protocol": {
         "rendered_sequence": [
@@ -984,12 +1027,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 9.23,
-          "p95": 10.34
+          "mean": 8.97,
+          "p95": 10.18
         },
         "pose": {
-          "mean": 72.25,
-          "p95": 166.43
+          "mean": 69.64,
+          "p95": 161.55
         }
       },
       "hsv": {
@@ -1041,30 +1084,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.2381,
-          "windows": 21,
-          "confident_frac": 0.0476,
+          "accuracy": 0.2261,
+          "correct": 52,
+          "windows": 230,
+          "confident_frac": 0.0565,
           "top_confusions": {
-            "1->2": 3,
-            "3->6": 3,
-            "7->3": 3,
-            "8->4": 3,
-            "5->3": 2
+            "5->3": 22,
+            "6->3": 22,
+            "1->2": 19,
+            "3->6": 17,
+            "7->3": 17
           }
         },
         "oracle": {
-          "accuracy": 0.1429,
-          "windows": 21,
-          "confident_frac": 0.1429,
+          "accuracy": 0.1565,
+          "correct": 36,
+          "windows": 230,
+          "confident_frac": 0.1087,
           "top_confusions": {
-            "1->2": 3,
-            "7->6": 3,
-            "8->7": 3,
-            "3->6": 2,
-            "4->8": 2
+            "6->7": 32,
+            "7->6": 22,
+            "5->7": 20,
+            "1->2": 19,
+            "3->6": 18
           }
         },
-        "perception_cost": -0.0952
+        "perception_cost": -0.0696
       },
       "protocol": {
         "rendered_sequence": [
@@ -1100,12 +1145,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 9.22,
-          "p95": 11.57
+          "mean": 8.9,
+          "p95": 10.0
         },
         "pose": {
-          "mean": 70.77,
-          "p95": 138.0
+          "mean": 69.52,
+          "p95": 119.91
         }
       },
       "hsv": {
@@ -1157,28 +1202,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.6,
-          "windows": 10,
-          "confident_frac": 0.1,
+          "accuracy": 0.6062,
+          "correct": 117,
+          "windows": 193,
+          "confident_frac": 0.1088,
           "top_confusions": {
-            "1->2": 2,
-            "4->5": 1,
-            "8->4": 1
+            "4->5": 25,
+            "1->2": 16,
+            "7->6": 16,
+            "8->4": 9,
+            "3->4": 3
           }
         },
         "oracle": {
-          "accuracy": 0.1,
-          "windows": 10,
-          "confident_frac": 0.1,
+          "accuracy": 0.1762,
+          "correct": 34,
+          "windows": 193,
+          "confident_frac": 0.0311,
           "top_confusions": {
-            "1->2": 2,
-            "5->6": 2,
-            "6->7": 2,
-            "3->6": 1,
-            "4->8": 1
+            "5->6": 27,
+            "6->7": 21,
+            "3->6": 17,
+            "1->2": 16,
+            "4->8": 16
           }
         },
-        "perception_cost": -0.5
+        "perception_cost": -0.43
       },
       "protocol": {
         "rendered_sequence": [
@@ -1219,12 +1268,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 8.82,
-          "p95": 10.7
+          "mean": 8.83,
+          "p95": 9.9
         },
         "pose": {
-          "mean": 58.33,
-          "p95": 102.81
+          "mean": 61.83,
+          "p95": 105.46
         }
       },
       "hsv": {
@@ -1277,26 +1326,28 @@
       "step": {
         "real": {
           "accuracy": 0.0,
-          "windows": 8,
-          "confident_frac": 0.0,
+          "correct": 0,
+          "windows": 168,
+          "confident_frac": 0.0119,
           "top_confusions": {
-            "1->2": 2,
-            "6->2": 2,
-            "3->2": 1,
-            "4->2": 1,
-            "5->2": 1
+            "6->2": 29,
+            "4->2": 28,
+            "3->2": 27,
+            "5->2": 26,
+            "7->2": 26
           }
         },
         "oracle": {
           "accuracy": 0.0,
-          "windows": 8,
+          "correct": 0,
+          "windows": 168,
           "confident_frac": 0.0,
           "top_confusions": {
-            "1->2": 2,
-            "6->2": 2,
-            "3->2": 1,
-            "4->2": 1,
-            "5->2": 1
+            "6->2": 29,
+            "4->2": 28,
+            "3->2": 27,
+            "5->2": 26,
+            "7->2": 26
           }
         },
         "perception_cost": 0.0
@@ -1334,12 +1385,12 @@
       "upright_pose": true,
       "latency_ms": {
         "hsv": {
-          "mean": 9.36,
-          "p95": 12.93
+          "mean": 8.66,
+          "p95": 9.71
         },
         "pose": {
-          "mean": 70.82,
-          "p95": 186.52
+          "mean": 69.2,
+          "p95": 183.6
         }
       },
       "hsv": {
@@ -1391,30 +1442,32 @@
       },
       "step": {
         "real": {
-          "accuracy": 0.1667,
-          "windows": 18,
-          "confident_frac": 0.2778,
+          "accuracy": 0.2717,
+          "correct": 69,
+          "windows": 254,
+          "confident_frac": 0.3976,
           "top_confusions": {
-            "3->4": 3,
-            "6->7": 3,
-            "1->2": 2,
-            "3->2": 2,
-            "4->8": 2
+            "6->7": 33,
+            "3->2": 31,
+            "3->4": 20,
+            "1->2": 18,
+            "8->7": 17
           }
         },
         "oracle": {
-          "accuracy": 0.1111,
-          "windows": 18,
-          "confident_frac": 0.0556,
+          "accuracy": 0.1378,
+          "correct": 35,
+          "windows": 254,
+          "confident_frac": 0.0236,
           "top_confusions": {
-            "6->7": 3,
-            "1->2": 2,
-            "3->2": 2,
-            "3->6": 2,
-            "4->6": 2
+            "3->2": 31,
+            "6->7": 26,
+            "5->7": 23,
+            "4->6": 22,
+            "1->2": 18
           }
         },
-        "perception_cost": -0.0556
+        "perception_cost": -0.1339
       },
       "protocol": {
         "rendered_sequence": [
@@ -1450,9 +1503,11 @@
   "aggregate": {
     "n_takes": 12,
     "total_frames": 3144,
-    "step_acc_real": 0.4007,
-    "step_acc_oracle": 0.1456,
-    "perception_cost": -0.2551,
+    "step_windows_scored": 2376,
+    "step_acc_real": 0.4032,
+    "step_acc_oracle": 0.1448,
+    "step_acc_real_take_mean": 0.4031,
+    "perception_cost": -0.2584,
     "pose_detect_rate": 0.9984,
     "key_landmark_mean_px": 100.965,
     "key_landmark_pck5": 0.191,
@@ -1461,8 +1516,8 @@
     "hsv_yellow_recall": 0.1183,
     "hsv_yellow_precision": 1.0,
     "hsv_main_recall": 0.8849,
-    "pose_latency_ms_mean": 72.2775,
-    "hsv_latency_ms_mean": 8.945,
+    "pose_latency_ms_mean": 70.2383,
+    "hsv_latency_ms_mean": 8.7142,
     "experiments_completed": 0
   }
 }
