@@ -43,7 +43,7 @@ CAMERA_PRESETS: Dict[str, Tuple[Tuple[float, float, float],
     # is exactly why it is in the set.
     "payload_over": ((1.30, -0.62, 2.00), (-0.05, -0.42, 1.12), 24.0, 0.0),
     # Cinematic - showcase stills only, never used for dataset frames.
-    "showcase": ((2.10, -0.52, 1.72), (-0.15, -0.55, 1.20), 50.0, 0.0),
+    "showcase": ((2.62, -1.34, 1.84), (-0.12, -0.45, 1.22), 32.0, 0.0),
 }
 
 DATASET_CAMERAS = ("payload_a", "payload_b", "payload_wide", "payload_over")
@@ -143,11 +143,25 @@ def setup_showcase_render(scene: bpy.types.Scene,
     response, more samples, and depth of field on the showcase camera."""
     setup_render(scene, resolution=resolution, samples=samples,
                  view_transform="AgX", quality="showcase")
-    scene.view_settings.look = "AgX - Medium Contrast"
+
+    # The AgX look names are not stable across Blender versions - 5.2 offers
+    # "AgX - Base Contrast" where earlier builds had "AgX - Medium Contrast",
+    # and assigning a missing enum member is a hard TypeError that kills the
+    # whole render. Pick the first name this build actually offers.
+    try:
+        available = [item.identifier for item in
+                     scene.view_settings.bl_rna.properties["look"].enum_items]
+    except Exception:
+        available = []
+    for candidate in ("AgX - Base Contrast", "AgX - Medium Contrast",
+                      "AgX - Medium High Contrast", "AgX - High Contrast"):
+        if candidate in available:
+            scene.view_settings.look = candidate
+            break
     cam = bpy.data.objects.get("showcase")
     if cam is not None:
         cam.data.dof.use_dof = True
-        cam.data.dof.focus_distance = (cam.location - Vector((-0.15, -0.55, 1.20))).length
+        cam.data.dof.focus_distance = (cam.location - Vector((-0.12, -0.45, 1.22))).length
         cam.data.dof.aperture_fstop = 2.8
 
 
