@@ -25,7 +25,8 @@ from sklearn.model_selection import GroupShuffleSplit
 # (the exporter prints a check mark). Without this the export step dies with
 # UnicodeEncodeError *after* a successful training run, so the .pt exists but
 # the .onnx the pipeline prefers never appears.
-for _stream in (sys.stdout, sys.stderr):
+import sys as _sys
+for _stream in (_sys.stdout, _sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError):
@@ -299,8 +300,17 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     return best_val_acc
 
 
-def _export_lstm_onnx(model_pt_path: str):
-    """Export trained LSTM model to ONNX for CPU-optimized inference."""
+def _export_lstm_onnx(model_pt_path: str, onnx_path: str = None):
+    """Export a trained LSTM checkpoint to ONNX for CPU inference.
+
+    `onnx_path` defaults to the checkpoint's own path with a .onnx
+    suffix, NOT to the single config-level LSTM_ONNX_PATH. Hardcoding
+    the config path meant every training run - including experiments
+    written to a different --output - silently overwrote the one ONNX
+    file the pipeline loads at inference. Training two model variants
+    back to back left the second one's weights sitting under the first
+    one's name, with nothing to indicate it had happened.
+    """
     if not os.path.exists(model_pt_path):
         logger.error("Model not found at %s — cannot export ONNX.", model_pt_path)
         return
@@ -325,8 +335,17 @@ def _export_lstm_onnx(model_pt_path: str):
         feature_dim = ckpt["feature_dim"]
         dummy = torch.randn(1, seq_len, feature_dim)
 
+        if onnx_path is None:
+            candidate = Path(model_pt_path).with_suffix(".onnx")
+            # Preserve the historical behaviour for the default checkpoint so
+            # `python train/train_lstm.py` still refreshes the file the
+            # pipeline actually loads.
+            onnx_path = (LSTM_ONNX_PATH
+                         if Path(model_pt_path).resolve() == Path(LSTM_PATH).resolve()
+                         else str(candidate))
+
         torch.onnx.export(
-            model, dummy, LSTM_ONNX_PATH,
+            model, dummy, onnx_path,
             export_params=True,
             opset_version=17,
             input_names=["skeleton_sequence"],
@@ -336,7 +355,7 @@ def _export_lstm_onnx(model_pt_path: str):
                 "logits": {0: "batch"},
             },
         )
-        logger.info("LSTM ONNX saved: %s", LSTM_ONNX_PATH)
+        logger.info("LSTM ONNX saved: %s", onnx_path)
     except Exception as e:
         logger.error("LSTM ONNX export failed: %s", e)
 

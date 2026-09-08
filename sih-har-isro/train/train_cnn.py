@@ -50,7 +50,8 @@ _NUM_WORKERS = 0 if platform.system() == "Windows" else 4
 # (the exporter prints a check mark). Without this the export step dies with
 # UnicodeEncodeError *after* a successful training run, so the .pt exists but
 # the .onnx the pipeline prefers never appears.
-for _stream in (sys.stdout, sys.stderr):
+import sys as _sys
+for _stream in (_sys.stdout, _sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError):
