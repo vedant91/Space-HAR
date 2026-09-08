@@ -43,6 +43,7 @@ from config.experiment_config import (
     MEDIAPIPE_DOWNSCALE, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
+    UPRIGHT_POSE, UPRIGHT_POSE_MIN_SCORE,
 )
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
@@ -155,24 +156,40 @@ class OptimizedMPWrapper:
                  min_det_conf: float = 0.3,
                  min_trk_conf: float = 0.3,
                  downscale: int = 2,
-                 static_image_mode: bool = False):
+                 static_image_mode: bool = False,
+                 upright: Optional[bool] = None):
         self.downscale = downscale
         self.small_w = FRAME_WIDTH // downscale
         self.small_h = FRAME_HEIGHT // downscale
-        self._backend = PoseBackend(
-            complexity=complexity,
-            min_det_conf=min_det_conf,
-            min_trk_conf=min_trk_conf,
-            downscale=downscale,
-            frame_width=FRAME_WIDTH,
-            frame_height=FRAME_HEIGHT,
-            static_image_mode=static_image_mode,
-        )
+        self.upright = UPRIGHT_POSE if upright is None else upright
+
+        if self.upright:
+            # Canonicalise the frame before pose. See config.UPRIGHT_POSE for
+            # the measurement that justifies this being on by default.
+            from pipeline.upright_pose import UprightPoseEstimator
+            self._backend = UprightPoseEstimator(
+                complexity=complexity,
+                min_det_conf=min_det_conf,
+                min_trk_conf=min_trk_conf,
+                downscale=downscale,
+                frame_width=FRAME_WIDTH,
+                frame_height=FRAME_HEIGHT,
+            )
+        else:
+            self._backend = PoseBackend(
+                complexity=complexity,
+                min_det_conf=min_det_conf,
+                min_trk_conf=min_trk_conf,
+                downscale=downscale,
+                frame_width=FRAME_WIDTH,
+                frame_height=FRAME_HEIGHT,
+                static_image_mode=static_image_mode,
+            )
         if self._backend.available:
             logger.info(
-                "Pose backend '%s' ready (complexity=%d, det=%.1f, trk=%.1f, "
-                "downscale=%d)", self._backend.backend, complexity,
-                min_det_conf, min_trk_conf, downscale)
+                "Pose backend '%s' ready (upright=%s, complexity=%d, det=%.1f, "
+                "trk=%.1f, downscale=%d)", self._backend.backend, self.upright,
+                complexity, min_det_conf, min_trk_conf, downscale)
 
     @property
     def available(self) -> bool:
@@ -182,9 +199,25 @@ class OptimizedMPWrapper:
     def backend_name(self) -> str:
         return self._backend.backend
 
-    def process(self, frame_rgb_full: np.ndarray) -> np.ndarray:
-        """Full-resolution RGB frame -> (132,) float32 features."""
+    def process(self, frame_rgb_full: np.ndarray,
+                detections: Optional[list] = None) -> np.ndarray:
+        """Full-resolution RGB frame -> (132,) float32 features.
+
+        `detections` (this frame's HSV output) is optional and only used by
+        the upright estimator, which reads the rack's roll from the main-box
+        rect as its first guess. Omitting it is not a failure - the coarse
+        angle search then does the work and the result latches - which is why
+        the threaded path, where HSV has not finished yet, can still pass None.
+        """
+        if self.upright:
+            return self._backend.process(
+                frame_rgb_full, detections=detections,
+                min_score=UPRIGHT_POSE_MIN_SCORE)
         return self._backend.process(frame_rgb_full)
+
+    def reset(self):
+        if hasattr(self._backend, "reset"):
+            self._backend.reset()
 
     def close(self):
         self._backend.close()
@@ -466,14 +499,15 @@ class HARPipeline:
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
-    def _extract_skeleton_features_optimized(self, frame_rgb: np.ndarray) -> np.ndarray:
+    def _extract_skeleton_features_optimized(self, frame_rgb: np.ndarray,
+                                             detections: Optional[list] = None) -> np.ndarray:
         """
         Run optimized MediaPipe Pose and return 132-dim feature vector.
         Uses pre-allocated buffers and downscaled frames.
         """
         if self.mp_wrapper is None:
             return np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        return self.mp_wrapper.process(frame_rgb)
+        return self.mp_wrapper.process(frame_rgb, detections=detections)
 
     def _run_lstm_inference(self) -> tuple[int, float]:
         """
@@ -733,7 +767,8 @@ class HARPipeline:
             # Stage 2: root-relative 3D from the HMR mesh (same 132-dim contract).
             skel_mp, _ = self.hmr.get_pose_features(self._frame_rgb_full)
         else:
-            skel_mp = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+            skel_mp = self._extract_skeleton_features_optimized(
+                self._frame_rgb_full, detections=detections)
         mp_ms = (time.perf_counter() - t_mp) * 1000.0
 
         skel = injected_skel if injected_skel is not None else skel_mp
@@ -776,6 +811,8 @@ class HARPipeline:
         self.skeleton_buffer.clear()
         self.frame_stack_buffer.clear()
         self._times.clear()
+        if self.mp_wrapper is not None:
+            self.mp_wrapper.reset()       # re-latch the upright working angle
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
@@ -910,7 +947,8 @@ class HARPipeline:
                 )
             else:
                 detections = self.hsv_detector.detect(frame)
-                skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+                skel = self._extract_skeleton_features_optimized(
+                    self._frame_rgb_full, detections=detections)
 
             if self.rack_normalizer is not None:
                 skel = self.rack_normalizer.normalize(

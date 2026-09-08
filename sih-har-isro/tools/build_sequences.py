@@ -57,7 +57,8 @@ def _load_take(take_dir: Path, camera: Optional[str] = None) -> Optional[dict]:
 
 
 def _mediapipe_poses(cam_dir: Path, n_frames: int, complexity: int,
-                     rack_normalize: bool) -> Tuple[np.ndarray, dict]:
+                     rack_normalize: bool,
+                     upright: bool = True) -> Tuple[np.ndarray, dict]:
     """Run the deployed pose backend over a take's rendered frames."""
     import cv2
     from pipeline.pose_backend import PoseBackend
@@ -72,12 +73,22 @@ def _mediapipe_poses(cam_dir: Path, n_frames: int, complexity: int,
     first = cv2.imread(str(frames[0]))
     h, w = first.shape[:2]
 
-    backend = PoseBackend(complexity=complexity, min_det_conf=0.3,
-                          min_trk_conf=0.3, downscale=1,
-                          frame_width=w, frame_height=h,
-                          static_image_mode=False)
+    # The upright estimator reads the rack roll from HSV every frame, so the
+    # detector is needed whenever either feature is on.
+    need_detector = rack_normalize or upright
+    detector = HSVBoxDetector(frame_width=w, frame_height=h) if need_detector else None
     normalizer = RackFrameNormalizer() if rack_normalize else None
-    detector = HSVBoxDetector(frame_width=w, frame_height=h) if rack_normalize else None
+
+    if upright:
+        from pipeline.upright_pose import UprightPoseEstimator
+        backend = UprightPoseEstimator(complexity=complexity, min_det_conf=0.3,
+                                       min_trk_conf=0.3, downscale=1,
+                                       frame_width=w, frame_height=h)
+    else:
+        backend = PoseBackend(complexity=complexity, min_det_conf=0.3,
+                              min_trk_conf=0.3, downscale=1,
+                              frame_width=w, frame_height=h,
+                              static_image_mode=False)
 
     out = np.zeros((len(frames), SKELETON_FEATURES), dtype=np.float32)
     detected = 0
@@ -85,12 +96,15 @@ def _mediapipe_poses(cam_dir: Path, n_frames: int, complexity: int,
     for i, path in enumerate(frames):
         img = cv2.imread(str(path))
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        feats = backend.process(rgb, timestamp_ms=int(i * 1000 / 30))
+        dets = detector.detect(img) if detector is not None else None
+        if upright:
+            feats = backend.process(rgb, detections=dets)
+        else:
+            feats = backend.process(rgb, timestamp_ms=int(i * 1000 / 30))
         if np.any(feats):
             detected += 1
         if normalizer is not None:
-            feats = normalizer.normalize(
-                feats, rack_rect=pick_rack_rect(detector.detect(img)))
+            feats = normalizer.normalize(feats, rack_rect=pick_rack_rect(dets))
         out[i] = feats
     backend.close()
 
@@ -100,6 +114,7 @@ def _mediapipe_poses(cam_dir: Path, n_frames: int, complexity: int,
         "detect_rate": round(detected / max(len(frames), 1), 4),
         "seconds": round(time.time() - t0, 1),
         "backend": backend.backend,
+        "upright": bool(upright),
     }
     return out, stats
 
@@ -144,7 +159,7 @@ def _windows(seq: np.ndarray, labels: np.ndarray, window: int, stride: int,
 
 def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
           stride: int = 2, complexity: int = 1, camera: Optional[str] = None,
-          purity: float = 0.75,
+          purity: float = 0.75, upright: bool = True,
           holdout_tags: Sequence[str] = (), rack_normalize: bool = False,
           exclude_tags: Sequence[str] = ()) -> dict:
     root = Path(dataset_dir)
@@ -181,7 +196,7 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
                 print(f"  skip {take_dir.name} (no frames rendered)")
                 continue
             poses, stats = _mediapipe_poses(cam_dir, len(labels), complexity,
-                                            rack_normalize)
+                                            rack_normalize, upright)
 
         n = min(len(poses), len(labels))
         poses, labels_n = poses[:n], labels[:n]
@@ -249,6 +264,9 @@ def main():
                     help="0=lite 1=full 2=heavy pose bundle")
     ap.add_argument("--camera", default=None)
     ap.add_argument("--rack-normalize", action="store_true")
+    ap.add_argument("--no-upright", action="store_true",
+                    help="Disable image canonicalisation before pose "
+                         "(see config.UPRIGHT_POSE for why it is default on)")
     ap.add_argument("--holdout-tags", default="",
                     help="Comma-separated take tags to route into the holdout set")
     ap.add_argument("--exclude-tags", default="skip,recover",
@@ -259,7 +277,8 @@ def main():
     holdout = [t for t in args.holdout_tags.split(",") if t]
     exclude = [t for t in args.exclude_tags.split(",") if t]
     build(args.dataset, args.out, args.pose_source, args.stride,
-          args.complexity, args.camera, args.purity, holdout, args.rack_normalize, exclude)
+          args.complexity, args.camera, args.purity, not args.no_upright,
+          holdout, args.rack_normalize, exclude)
 
 
 if __name__ == "__main__":
