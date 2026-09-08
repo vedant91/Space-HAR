@@ -20,6 +20,17 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, Subset
 from sklearn.model_selection import GroupShuffleSplit
 
+# Force UTF-8 on stdout/stderr. A stock Windows console is cp1252, and both
+# this file's progress banners and torch's own ONNX exporter emit non-ASCII
+# (the exporter prints a check mark). Without this the export step dies with
+# UnicodeEncodeError *after* a successful training run, so the .pt exists but
+# the .onnx the pipeline prefers never appears.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -294,7 +305,13 @@ def _export_lstm_onnx(model_pt_path: str):
         logger.error("Model not found at %s — cannot export ONNX.", model_pt_path)
         return
     try:
-        ckpt = torch.load(model_pt_path, map_location="cpu")
+        # weights_only=False is required: torch 2.6 flipped this default to
+        # True, and these checkpoints carry non-tensor metadata (label maps,
+        # val_acc) alongside the state dict. Without it the ONNX export dies
+        # with "Weights only load failed" immediately after a successful
+        # training run - so the .pt exists but the .onnx the pipeline prefers
+        # never appears, silently falling back to the slower PyTorch path.
+        ckpt = torch.load(model_pt_path, map_location="cpu", weights_only=False)
         model = HARLSTMClassifier(
             feature_dim=ckpt["feature_dim"],
             hidden_size=ckpt["hidden_size"],
