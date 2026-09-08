@@ -115,6 +115,31 @@ LSTM_USE_ONNX = True            # Use ONNX Runtime for LSTM (faster than PyTorch
 RACK_FRAME_NORMALIZE = False    # Enable after retraining data with --rack-normalize
 RACK_ANGLE_EMA = 0.85           # Rack roll smoothing (0=raw, 1=frozen)
 RACK_SCALE_EMA = 0.90           # Torso-scale smoothing
+# Stage 0 (runs BEFORE pose estimation): canonicalise the IMAGE, not just the
+# landmarks. MediaPipe is trained on upright people and does not degrade
+# gracefully when the subject is rolled - it stops detecting entirely.
+# Measured on dataset/blender (payload_a, 20 mid-protocol frames per take):
+#
+#     crew roll      pose detected        with UPRIGHT_POSE
+#     0 deg          19/20  (95%)         19/20  (95%)
+#     90 deg          7/20  (35%)         20/20 (100%)
+#     135 deg         5/20  (25%)         20/20 (100%)
+#     180 deg        12/20  (60%)         19/20  (95%)
+#
+# RACK_FRAME_NORMALIZE below cannot fix this on its own: it normalises the
+# landmarks MediaPipe returns, and at 90 degrees there are none to normalise.
+# pipeline/upright_pose.py rotates the frame upright (using the rack's own
+# roll from the HSV main-box rect, with a coarse search as backstop), runs
+# pose, and maps the landmarks back into original image coordinates - so the
+# 132-dim contract and everything downstream are unchanged.
+#
+# Default True: it strictly dominates in the measurement above (no regression
+# upright, large gain rolled), and orientation-agnostic operation is an
+# explicit requirement of the problem statement. The working angle latches, so
+# a stable orientation costs one extra inference and then nothing.
+UPRIGHT_POSE = True
+UPRIGHT_POSE_MIN_SCORE = 0.55   # mean visibility over torso+arms to accept an angle
+
 # Stage 2: optional true 3D Human Mesh Recovery backend (GPU, SMPL-based).
 # "none"/"mediapipe" = current 2D pose; "hmr2"/"wham" = attempt to load that
 # package (pip install hmr2 / wham) and fall back to MediaPipe if unavailable.

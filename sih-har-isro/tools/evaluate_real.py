@@ -102,7 +102,8 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
                   camera: Optional[str] = None,
                   complexity: int = 1,
                   rack_normalize: bool = False,
-                  max_frames: int = 0) -> Optional[dict]:
+                  max_frames: int = 0,
+                  upright: bool = True) -> Optional[dict]:
     import cv2
     from pipeline.pose_backend import PoseBackend
     from pipeline.hsv_detector import HSVBoxDetector
@@ -131,9 +132,15 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
     img0 = cv2.imread(str(frames[0]))
     h, w = img0.shape[:2]
 
-    backend = PoseBackend(complexity=complexity, min_det_conf=0.3,
-                          min_trk_conf=0.3, downscale=1,
-                          frame_width=w, frame_height=h)
+    if upright:
+        from pipeline.upright_pose import UprightPoseEstimator
+        backend = UprightPoseEstimator(complexity=complexity, min_det_conf=0.3,
+                                       min_trk_conf=0.3, downscale=1,
+                                       frame_width=w, frame_height=h)
+    else:
+        backend = PoseBackend(complexity=complexity, min_det_conf=0.3,
+                              min_trk_conf=0.3, downscale=1,
+                              frame_width=w, frame_height=h)
     detector = HSVBoxDetector(frame_width=w, frame_height=h)
     normalizer = RackFrameNormalizer() if rack_normalize else None
 
@@ -153,7 +160,10 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
         t_hsv = (time.perf_counter() - t0) * 1000.0
 
         t0 = time.perf_counter()
-        feats = backend.process(rgb, timestamp_ms=int(i * 1000 / 30))
+        if upright:
+            feats = backend.process(rgb, detections=dets)
+        else:
+            feats = backend.process(rgb, timestamp_ms=int(i * 1000 / 30))
         t_pose = (time.perf_counter() - t0) * 1000.0
 
         if np.any(feats):
@@ -193,6 +203,7 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
         "frames": n,
         "pose_detect_rate": round(detected / max(n, 1), 4),
         "pose_backend": backend.backend,
+        "upright_pose": bool(upright),
         "latency_ms": {
             k: {"mean": round(float(np.mean(v)), 2),
                 "p95": round(float(np.percentile(v, 95)), 2)}
@@ -359,6 +370,7 @@ def main():
     ap.add_argument("--camera", default=None)
     ap.add_argument("--complexity", type=int, default=1)
     ap.add_argument("--rack-normalize", action="store_true")
+    ap.add_argument("--no-upright", action="store_true")
     ap.add_argument("--max-frames", type=int, default=0)
     ap.add_argument("--tags", default="", help="Only evaluate takes with these tags")
     ap.add_argument("--label", default="", help="Free-text label for this run")
@@ -381,7 +393,8 @@ def main():
             if tag not in only:
                 continue
         row = evaluate_take(take_dir, runner, args.camera, args.complexity,
-                            args.rack_normalize, args.max_frames)
+                            args.rack_normalize, args.max_frames,
+                            upright=not args.no_upright)
         if row is None:
             continue
         rows.append(row)
@@ -396,6 +409,7 @@ def main():
         "model": args.model,
         "model_reported_val_acc": runner.train_val_acc if runner else None,
         "rack_normalize": args.rack_normalize,
+        "upright_pose": not args.no_upright,
         "pose_complexity": args.complexity,
         "takes": rows,
         "aggregate": _aggregate(rows),
