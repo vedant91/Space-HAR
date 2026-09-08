@@ -303,17 +303,28 @@ def _pose_error(mp_pose: np.ndarray, gt_pose: np.ndarray,
     }
 
 
-def _windows(poses: np.ndarray, labels: np.ndarray, stride: int = 3):
+def _windows(poses: np.ndarray, labels: np.ndarray, stride: int = 1,
+             purity: float = 0.6):
+    """Dominant-label windows, matching tools/build_sequences.py.
+
+    Strictly-pure windows at stride 3 yielded as few as ONE scorable window
+    for a whole take (a ~32-frame step against a 30-frame window admits 3
+    pure starts, and stride 3 keeps one of them). A per-take accuracy over
+    n=1 is not a measurement, and averaging such numbers across takes gives
+    a headline figure dominated by whichever take happened to have the most
+    windows.
+    """
     for start in range(0, len(poses) - SEQUENCE_WINDOW + 1, stride):
         lab = labels[start:start + SEQUENCE_WINDOW]
-        if len(np.unique(lab)) != 1:
+        values, counts = np.unique(lab, return_counts=True)
+        if counts.max() / float(SEQUENCE_WINDOW) < purity:
             continue
-        yield poses[start:start + SEQUENCE_WINDOW], int(lab[-1])
+        yield poses[start:start + SEQUENCE_WINDOW], int(values[int(np.argmax(counts))])
 
 
 def _step_accuracy(runner: LSTMRunner, mp_poses: np.ndarray,
                    gt_poses: np.ndarray, labels: np.ndarray,
-                   stride: int = 3) -> dict:
+                   stride: int = 1) -> dict:
     """The headline comparison: real perception vs oracle pose, same model,
     same windows, same labels. The difference is the perception cost."""
     res = {}
@@ -331,6 +342,7 @@ def _step_accuracy(runner: LSTMRunner, mp_poses: np.ndarray,
                 confusion[f"{truth}->{pred}"] += 1
         res[name] = {
             "accuracy": round(correct / max(total, 1), 4),
+            "correct": correct,
             "windows": total,
             "confident_frac": round(confident / max(total, 1), 4),
             "top_confusions": dict(sorted(confusion.items(),
@@ -452,12 +464,29 @@ def _aggregate(rows: List[dict]) -> dict:
         return round(float(np.mean(vals)), 4) if vals else default
 
     step_rows = [r for r in rows if "step" in r]
+
+    def _pooled(source):
+        """Sum correct / sum windows across takes.
+
+        Averaging per-take rates would weight a take with one scorable
+        window the same as one with two hundred.
+        """
+        c = sum(r.get("step", {}).get(source, {}).get("correct", 0) for r in step_rows)
+        n = sum(r.get("step", {}).get(source, {}).get("windows", 0) for r in step_rows)
+        return round(c / n, 4) if n else None
+
+    pooled_real, pooled_oracle = _pooled("real"), _pooled("oracle")
     return {
         "n_takes": len(rows),
         "total_frames": int(sum(r["frames"] for r in rows)),
-        "step_acc_real": _mean(["step", "real", "accuracy"]),
-        "step_acc_oracle": _mean(["step", "oracle", "accuracy"]),
-        "perception_cost": _mean(["step", "perception_cost"]),
+        "step_windows_scored": int(sum(
+            r.get("step", {}).get("real", {}).get("windows", 0) for r in step_rows)),
+        "step_acc_real": pooled_real,
+        "step_acc_oracle": pooled_oracle,
+        "step_acc_real_take_mean": _mean(["step", "real", "accuracy"]),
+        "perception_cost": (round(pooled_oracle - pooled_real, 4)
+                            if (pooled_real is not None and pooled_oracle is not None)
+                            else None),
         "pose_detect_rate": _mean(["pose_detect_rate"]),
         "key_landmark_mean_px": _mean(["pose_error", "key_landmarks", "mean_px"]),
         "key_landmark_pck5": _mean(["pose_error", "key_landmarks", "pck@5pct"]),
