@@ -45,6 +45,17 @@ except ImportError:  # torch < 2.3
 
 _NUM_WORKERS = 0 if platform.system() == "Windows" else 4
 
+# Force UTF-8 on stdout/stderr. A stock Windows console is cp1252, and both
+# this file's progress banners and torch's own ONNX exporter emit non-ASCII
+# (the exporter prints a check mark). Without this the export step dies with
+# UnicodeEncodeError *after* a successful training run, so the .pt exists but
+# the .onnx the pipeline prefers never appears.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -534,7 +545,7 @@ def _export_onnx(model_pt_path: str):
     """Export trained model to ONNX for CPU-optimized inference."""
     from config.experiment_config import CNN_ONNX_PATH
     try:
-        ckpt  = torch.load(model_pt_path, map_location="cpu")
+        ckpt  = torch.load(model_pt_path, map_location="cpu", weights_only=False)
         model = HARActivityCNN(
             in_channels=ckpt["in_channels"],
             num_classes=ckpt["num_classes"],
