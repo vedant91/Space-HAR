@@ -82,20 +82,32 @@ tools/retrain_and_evaluate.sh
 `perception_cost` — which tells you whether to fix the classifier or the pose
 stage.
 
-### Baseline
+### Measured results
 
-The shipped `models/lstm_classifier.pt`, measured this way:
+Full numbers and reproduction steps: [`sih-har-isro/logs/RESULTS.md`](sih-har-isro/logs/RESULTS.md).
+Chance accuracy is 0.125 (8 steps). Held-out takes are two unseen crew
+orientations plus an unseen lighting failure.
 
-| | Reported | Measured on rendered video |
+| Model | Train takes | **Held-out takes** |
 |---|---:|---:|
-| step accuracy (real) | 0.984 | **0.000** |
-| step accuracy (oracle pose) | 1.000 | **0.000** |
-| HSV red recall | 1.000 | 0.298 |
-| HSV yellow recall | 1.000 | 0.130 |
+| Shipped (`synthetic_pose`-trained) | 0.124 | 0.170 |
+| Retrained on rendered video, raw coords | 0.753 | 0.165 |
+| Retrained, rack-normalised | 0.561 | **0.201** |
 
-`oracle = 0.000` is the decisive row: handed *perfect* pose, the model still
-classifies nothing correctly. It did not learn the activity — it learned one
-generator's coordinate patterns.
+The shipped model is **at chance on every split** — its reported 0.984 does
+not survive contact with an image. The retrained models fit the takes they saw
+and do not yet generalise: with seven training takes they memorise
+performances. The binding constraint is dataset size, not architecture.
+
+Two things that did improve concretely and independently of the classifier:
+
+- **Pose detection under crew roll: 25–60% → 95–100%.** MediaPipe stops
+  detecting entirely when the subject is not upright;
+  `pipeline/upright_pose.py` rotates the frame upright first, using the
+  payload rack's own roll. `rack_frame.py` cannot fix this alone — it
+  normalises landmarks, and at 90° there were none to normalise.
+- **HSV recall measured honestly**: red 0.324, yellow 0.118, main 0.885, all
+  at precision 1.000 — against a reported 1.000.
 
 ---
 
