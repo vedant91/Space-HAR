@@ -51,7 +51,18 @@ blender --background --factory-startup --python blender/render_dataset.py -- \
 
 # On a machine with a flaky GPU driver, run it supervised instead:
 tools/render_dataset_resilient.sh dataset/blender study 900 506 16
+
+# Render a watchable showcase clip of the animated protocol (frames + encode)
+blender --background --factory-startup --python blender/render_video.py -- \
+    --out build/showcase/protocol.mp4 --frames-per-step 24 --samples 24
+python tools/frames_to_video.py build/showcase/protocol_frames build/showcase/protocol.mp4 --fps 30
 ```
+
+`render_video.py` renders from the cinematic `showcase` camera by default;
+pass `--camera payload_a` for the real fixed-payload-camera view, or
+`--sequence skip` / `recover` for the protocol-error takes. It writes an image
+sequence (this Blender build has no FFMPEG muxer) and prints the exact
+`frames_to_video.py` command to run next.
 
 ---
 
@@ -69,6 +80,7 @@ tools/render_dataset_resilient.sh dataset/blender study 900 506 16
 | `build_scene.py` | Entry point: assemble scene, preview, save `.blend` |
 | `validate_scene.py` | Entry point: numeric checks |
 | `render_dataset.py` | Entry point: render takes + ground truth |
+| `render_video.py` | Entry point: render the animated protocol to frames for a showcase clip |
 
 ---
 
