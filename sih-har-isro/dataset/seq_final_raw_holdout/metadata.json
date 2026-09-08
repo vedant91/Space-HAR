@@ -1,0 +1,19 @@
+{
+  "total_windows": 576,
+  "n_source_takes": 3,
+  "feature_dim": 132,
+  "window": 30,
+  "stride": 1,
+  "source": "blender_render/mediapipe",
+  "rack_normalized": false,
+  "class_counts": {
+    "1": 42,
+    "2": 81,
+    "3": 83,
+    "4": 82,
+    "5": 84,
+    "6": 78,
+    "7": 82,
+    "8": 44
+  }
+}
