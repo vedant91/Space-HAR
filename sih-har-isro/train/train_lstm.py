@@ -11,6 +11,7 @@ Colab-ready: Upload dataset/skeleton_sequences/ and run.
 
 import os
 import json
+import inspect
 import logging
 import numpy as np
 from pathlib import Path
@@ -294,7 +295,10 @@ def _export_lstm_onnx(model_pt_path: str):
         logger.error("Model not found at %s — cannot export ONNX.", model_pt_path)
         return
     try:
-        ckpt = torch.load(model_pt_path, map_location="cpu")
+        # weights_only=False: our checkpoints carry numpy-typed dict values
+        # (label maps) that PyTorch 2.6+'s default-True weights_only rejects.
+        # Self-produced checkpoint, not third-party weights — safe to trust.
+        ckpt = torch.load(model_pt_path, map_location="cpu", weights_only=False)
         model = HARLSTMClassifier(
             feature_dim=ckpt["feature_dim"],
             hidden_size=ckpt["hidden_size"],
@@ -308,8 +312,7 @@ def _export_lstm_onnx(model_pt_path: str):
         feature_dim = ckpt["feature_dim"]
         dummy = torch.randn(1, seq_len, feature_dim)
 
-        torch.onnx.export(
-            model, dummy, LSTM_ONNX_PATH,
+        export_kwargs = dict(
             export_params=True,
             opset_version=17,
             input_names=["skeleton_sequence"],
@@ -319,6 +322,13 @@ def _export_lstm_onnx(model_pt_path: str):
                 "logits": {0: "batch"},
             },
         )
+        # See train_cnn.py's _export_onnx for why: PyTorch 2.6+'s new
+        # dynamo-based exporter (default True) needs 'onnxscript' and
+        # doesn't take dynamic_axes. Force the legacy exporter this call is
+        # written for, only on torch versions that have the param at all.
+        if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+            export_kwargs["dynamo"] = False
+        torch.onnx.export(model, dummy, LSTM_ONNX_PATH, **export_kwargs)
         logger.info("LSTM ONNX saved: %s", LSTM_ONNX_PATH)
     except Exception as e:
         logger.error("LSTM ONNX export failed: %s", e)

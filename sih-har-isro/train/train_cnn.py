@@ -22,6 +22,7 @@ Usage:
 import sys
 import os
 import json
+import inspect
 import logging
 import numpy as np
 from pathlib import Path
@@ -35,7 +36,12 @@ import platform
 from torch.utils.data import Dataset, DataLoader
 from torch.cuda.amp import GradScaler, autocast
 
-_NUM_WORKERS = 0 if platform.system() == "Windows" else 4
+# Windows AND macOS both default multiprocessing to "spawn" (not Linux's
+# "fork"), which re-imports the main module in each worker — safe only if
+# that module's top-level code is guarded by `if __name__ == "__main__":`.
+# This project's own entry points aren't guaranteed to be, so multi-worker
+# DataLoaders are only safe on Linux here.
+_NUM_WORKERS = 0 if platform.system() in ("Windows", "Darwin") else 4
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -491,7 +497,10 @@ def _export_onnx(model_pt_path: str):
     """Export trained model to ONNX for CPU-optimized inference."""
     from config.experiment_config import CNN_ONNX_PATH
     try:
-        ckpt  = torch.load(model_pt_path, map_location="cpu")
+        # weights_only=False: our checkpoints carry a numpy-typed label_map
+        # dict that PyTorch 2.6+'s default-True weights_only rejects.
+        # Self-produced checkpoint, not third-party weights — safe to trust.
+        ckpt  = torch.load(model_pt_path, map_location="cpu", weights_only=False)
         model = HARActivityCNN(
             in_channels=ckpt["in_channels"],
             num_classes=ckpt["num_classes"],
@@ -500,14 +509,23 @@ def _export_onnx(model_pt_path: str):
         model.eval()
 
         dummy = torch.randn(1, ckpt["in_channels"], ckpt["img_size"], ckpt["img_size"])
-        torch.onnx.export(
-            model, dummy, CNN_ONNX_PATH,
+        export_kwargs = dict(
             export_params=True,
             opset_version=17,
             input_names=["frames"],
             output_names=["logits"],
             dynamic_axes={"frames": {0: "batch"}, "logits": {0: "batch"}},
         )
+        # PyTorch 2.6+ added a 'dynamo' param and defaults it to True, which
+        # needs the separate 'onnxscript' package and doesn't accept
+        # dynamic_axes (it wants dynamic_shapes instead). Force the legacy
+        # TorchScript-based exporter this call is actually written for — no
+        # new dependency needed. Older torch (this project's stated minimum
+        # is 2.1.0) doesn't have this param at all, so only pass it when
+        # export() actually accepts it.
+        if "dynamo" in inspect.signature(torch.onnx.export).parameters:
+            export_kwargs["dynamo"] = False
+        torch.onnx.export(model, dummy, CNN_ONNX_PATH, **export_kwargs)
         logger.info("ONNX saved: %s", CNN_ONNX_PATH)
     except Exception as e:
         logger.error("ONNX export failed: %s", e)

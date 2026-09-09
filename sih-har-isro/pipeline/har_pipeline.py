@@ -350,7 +350,15 @@ class HARPipeline:
 
         if self.lstm_ort_sess is None and Path(LSTM_PATH).exists():
             try:
-                ckpt = torch.load(LSTM_PATH, map_location="cpu")
+                # weights_only=False: PyTorch 2.6+ defaults this to True, which
+                # rejects our checkpoint's numpy-typed label-map values
+                # ("Unsupported global: numpy._core.multiarray.scalar") and
+                # silently falls through to logger.warning below — leaving
+                # self.lstm_model None, i.e. every LSTM prediction is (0, 0.0)
+                # forever. These are self-produced checkpoints (train_lstm.py),
+                # not third-party weights, so trusting them here is safe —
+                # matches the other torch.load call just above.
+                ckpt = torch.load(LSTM_PATH, map_location="cpu", weights_only=False)
                 from train.train_lstm import HARLSTMClassifier
                 self.lstm_model = HARLSTMClassifier(
                     feature_dim  = ckpt["feature_dim"],

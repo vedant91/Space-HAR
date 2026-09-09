@@ -1,0 +1,93 @@
+{
+  "metrics": {
+    "lstm_val_acc": 1.0,
+    "lstm_test_acc": 0.9947916666666666,
+    "hsv_red_recall": 1.0,
+    "hsv_yellow_recall": 1.0,
+    "mean_latency_ms": 25.47077771599474,
+    "p95_latency_ms": 28.02654969636933,
+    "oracle_step_acc": 0.9684065934065934,
+    "sequence_complete": true,
+    "skip_detected": true,
+    "recovery_hold_at_expected_step": true,
+    "recovery_confirmed": true,
+    "sequence_complete_after_correction": true,
+    "cnn_val_acc": 0.9632352941176471
+  },
+  "gates": [
+    {
+      "gate": "lstm_val_acc",
+      "threshold": 0.9,
+      "value": 1.0,
+      "passed": true
+    },
+    {
+      "gate": "lstm_test_acc",
+      "threshold": 0.88,
+      "value": 0.9947916666666666,
+      "passed": true
+    },
+    {
+      "gate": "hsv_red_recall",
+      "threshold": 0.85,
+      "value": 1.0,
+      "passed": true
+    },
+    {
+      "gate": "hsv_yellow_recall",
+      "threshold": 0.85,
+      "value": 1.0,
+      "passed": true
+    },
+    {
+      "gate": "mean_latency_ms",
+      "threshold": 80.0,
+      "value": 25.47077771599474,
+      "passed": true
+    },
+    {
+      "gate": "p95_latency_ms",
+      "threshold": 130.0,
+      "value": 28.02654969636933,
+      "passed": true
+    },
+    {
+      "gate": "oracle_step_acc",
+      "threshold": 0.85,
+      "value": 0.9684065934065934,
+      "passed": true
+    },
+    {
+      "gate": "sequence_complete",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "skip_detected",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "recovery_hold_at_expected_step",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "recovery_confirmed",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    },
+    {
+      "gate": "sequence_complete_after_correction",
+      "threshold": true,
+      "value": true,
+      "passed": true
+    }
+  ],
+  "all_ok": true,
+  "elapsed_sec": 1778.618392944336
+}

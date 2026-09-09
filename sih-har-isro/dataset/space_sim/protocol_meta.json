@@ -1,6 +1,6 @@
 {
-  "n_frames": 576,
-  "frames_per_step": 72,
+  "n_frames": 960,
+  "frames_per_step": 120,
   "steps": [
     1,
     2,

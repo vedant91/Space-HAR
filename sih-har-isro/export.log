@@ -1,0 +1,4 @@
+2026-09-06 00:05:54,510 [ERROR] ONNX export failed: Module onnx is not installed!
+/tmp/har_run_venv/lib/python3.12/site-packages/torch/onnx/_internal/torchscript_exporter/symbolic_opset9.py:4496: UserWarning: Exporting a model to ONNX with a batch_size other than 1, with a variable length with LSTM can cause an error when running the ONNX model with a different batch size. Make sure to save the model with a batch size of 1, or define the initial states (h0/c0) as inputs of the model. 
+  return _generic_rnn(
+2026-09-06 00:05:54,636 [ERROR] LSTM ONNX export failed: Module onnx is not installed!

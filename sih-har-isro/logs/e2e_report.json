@@ -1,27 +1,27 @@
 {
   "passed": true,
   "iterations": 1,
-  "finished_at": "2026-09-05T22:41:25",
+  "finished_at": "2026-09-06T00:15:18",
   "final_metrics": {
-    "lstm_val_acc": 0.9980732177263969,
-    "lstm_test_acc": 0.984375,
+    "lstm_val_acc": 0.9826839826839827,
+    "lstm_test_acc": 0.9296875,
     "hsv_red_recall": 1.0,
     "hsv_yellow_recall": 1.0,
-    "mean_latency_ms": 26.93797659589331,
-    "p95_latency_ms": 32.67049950227374,
-    "oracle_step_acc": 1.0,
+    "mean_latency_ms": 24.849338629831585,
+    "p95_latency_ms": 26.633739747921936,
+    "oracle_step_acc": 0.9476744186046512,
     "sequence_complete": true,
     "skip_detected": true,
     "recovery_hold_at_expected_step": true,
     "recovery_confirmed": true,
     "sequence_complete_after_correction": true,
-    "cnn_val_acc": 0.515625,
-    "fps_equivalent": 37.12231304531053,
+    "cnn_val_acc": null,
+    "fps_equivalent": 40.2425197264406,
     "breakdown_mean_ms": {
-      "hsv": 9.422618037624881,
-      "mediapipe": 12.46612403196745,
-      "lstm": 3.2800338708413697,
-      "total": 26.93797659589331
+      "hsv": 8.73638778965143,
+      "mediapipe": 12.040006294771159,
+      "lstm": 2.9160388494739578,
+      "total": 24.849338629831585
     },
     "train_windows": 1152
   },
@@ -29,13 +29,13 @@
     {
       "gate": "lstm_val_acc",
       "threshold": 0.9,
-      "value": 0.9980732177263969,
+      "value": 0.9826839826839827,
       "passed": true
     },
     {
       "gate": "lstm_test_acc",
       "threshold": 0.88,
-      "value": 0.984375,
+      "value": 0.9296875,
       "passed": true
     },
     {
@@ -53,19 +53,19 @@
     {
       "gate": "mean_latency_ms",
       "threshold": 80.0,
-      "value": 26.93797659589331,
+      "value": 24.849338629831585,
       "passed": true
     },
     {
       "gate": "p95_latency_ms",
       "threshold": 130.0,
-      "value": 32.67049950227374,
+      "value": 26.633739747921936,
       "passed": true
     },
     {
       "gate": "oracle_step_acc",
       "threshold": 0.85,
-      "value": 1.0,
+      "value": 0.9476744186046512,
       "passed": true
     },
     {
@@ -113,25 +113,25 @@
         "skip_lstm": true
       },
       "metrics": {
-        "lstm_val_acc": 0.9980732177263969,
-        "lstm_test_acc": 0.984375,
+        "lstm_val_acc": 0.9826839826839827,
+        "lstm_test_acc": 0.9296875,
         "hsv_red_recall": 1.0,
         "hsv_yellow_recall": 1.0,
-        "mean_latency_ms": 26.93797659589331,
-        "p95_latency_ms": 32.67049950227374,
-        "oracle_step_acc": 1.0,
+        "mean_latency_ms": 24.849338629831585,
+        "p95_latency_ms": 26.633739747921936,
+        "oracle_step_acc": 0.9476744186046512,
         "sequence_complete": true,
         "skip_detected": true,
         "recovery_hold_at_expected_step": true,
         "recovery_confirmed": true,
         "sequence_complete_after_correction": true,
-        "cnn_val_acc": 0.515625,
-        "fps_equivalent": 37.12231304531053,
+        "cnn_val_acc": null,
+        "fps_equivalent": 40.2425197264406,
         "breakdown_mean_ms": {
-          "hsv": 9.422618037624881,
-          "mediapipe": 12.46612403196745,
-          "lstm": 3.2800338708413697,
-          "total": 26.93797659589331
+          "hsv": 8.73638778965143,
+          "mediapipe": 12.040006294771159,
+          "lstm": 2.9160388494739578,
+          "total": 24.849338629831585
         },
         "train_windows": 1152
       },
@@ -139,13 +139,13 @@
         {
           "gate": "lstm_val_acc",
           "threshold": 0.9,
-          "value": 0.9980732177263969,
+          "value": 0.9826839826839827,
           "passed": true
         },
         {
           "gate": "lstm_test_acc",
           "threshold": 0.88,
-          "value": 0.984375,
+          "value": 0.9296875,
           "passed": true
         },
         {
@@ -163,19 +163,19 @@
         {
           "gate": "mean_latency_ms",
           "threshold": 80.0,
-          "value": 26.93797659589331,
+          "value": 24.849338629831585,
           "passed": true
         },
         {
           "gate": "p95_latency_ms",
           "threshold": 130.0,
-          "value": 32.67049950227374,
+          "value": 26.633739747921936,
           "passed": true
         },
         {
           "gate": "oracle_step_acc",
           "threshold": 0.85,
-          "value": 1.0,
+          "value": 0.9476744186046512,
           "passed": true
         },
         {
@@ -210,7 +210,7 @@
         }
       ],
       "passed": true,
-      "elapsed_sec": 664.07,
+      "elapsed_sec": 59.91,
       "fixes": []
     }
   ],

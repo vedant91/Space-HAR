@@ -1,42 +1,42 @@
 {
-  "total_windows": 1920,
-  "n_source_trials": 640,
+  "total_windows": 2304,
+  "n_source_trials": 768,
   "feature_dim": 132,
   "window": 30,
   "source": "synthetic_pose",
-  "seed": 12,
+  "seed": 7,
   "steps": [
     {
       "step_id": 1,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 2,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 3,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 4,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 5,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 6,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 7,
-      "windows": 240
+      "windows": 288
     },
     {
       "step_id": 8,
-      "windows": 240
+      "windows": 288
     }
   ]
 }
