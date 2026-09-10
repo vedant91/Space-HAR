@@ -1,0 +1,43 @@
+2026-09-10 02:39:10,621 [INFO] Backed up pre-finetune checkpoint to models/pose_net_pre_finetune.pt (val_pck=0.665)
+2026-09-10 02:39:10,631 [INFO] RealPseudoPoseDataset: 793 usable frames from dataset/real_pseudo
+2026-09-10 02:39:11,336 [INFO] Fine-tune trainable params: 4615 (of 1220519 total) — heatmap_head + aux_head final layer only
+2026-09-10 02:39:30,339 [INFO] Fine-tune epoch 01/25 | train_loss=0.3573 | val_loss=0.3410
+2026-09-10 02:39:48,820 [INFO] Fine-tune epoch 02/25 | train_loss=0.3424 | val_loss=0.3410
+2026-09-10 02:40:07,346 [INFO] Fine-tune epoch 03/25 | train_loss=0.3415 | val_loss=0.3390
+2026-09-10 02:40:25,861 [INFO] Fine-tune epoch 04/25 | train_loss=0.3403 | val_loss=0.3377
+2026-09-10 02:40:44,558 [INFO] Fine-tune epoch 05/25 | train_loss=0.3389 | val_loss=0.3368
+2026-09-10 02:41:03,210 [INFO] Fine-tune epoch 06/25 | train_loss=0.3379 | val_loss=0.3360
+2026-09-10 02:41:21,731 [INFO] Fine-tune epoch 07/25 | train_loss=0.3374 | val_loss=0.3352
+2026-09-10 02:41:40,357 [INFO] Fine-tune epoch 08/25 | train_loss=0.3362 | val_loss=0.3343
+2026-09-10 02:41:58,808 [INFO] Fine-tune epoch 09/25 | train_loss=0.3357 | val_loss=0.3339
+2026-09-10 02:42:17,533 [INFO] Fine-tune epoch 10/25 | train_loss=0.3350 | val_loss=0.3329
+2026-09-10 02:42:36,187 [INFO] Fine-tune epoch 11/25 | train_loss=0.3343 | val_loss=0.3322
+2026-09-10 02:42:54,968 [INFO] Fine-tune epoch 12/25 | train_loss=0.3336 | val_loss=0.3318
+2026-09-10 02:43:13,655 [INFO] Fine-tune epoch 13/25 | train_loss=0.3334 | val_loss=0.3313
+2026-09-10 02:43:32,318 [INFO] Fine-tune epoch 14/25 | train_loss=0.3331 | val_loss=0.3311
+2026-09-10 02:43:50,918 [INFO] Fine-tune epoch 15/25 | train_loss=0.3324 | val_loss=0.3304
+2026-09-10 02:44:09,551 [INFO] Fine-tune epoch 16/25 | train_loss=0.3320 | val_loss=0.3301
+2026-09-10 02:44:28,158 [INFO] Fine-tune epoch 17/25 | train_loss=0.3319 | val_loss=0.3299
+2026-09-10 02:44:46,831 [INFO] Fine-tune epoch 18/25 | train_loss=0.3311 | val_loss=0.3295
+2026-09-10 02:45:05,489 [INFO] Fine-tune epoch 19/25 | train_loss=0.3309 | val_loss=0.3295
+2026-09-10 02:45:24,154 [INFO] Fine-tune epoch 20/25 | train_loss=0.3309 | val_loss=0.3291
+2026-09-10 02:45:42,801 [INFO] Fine-tune epoch 21/25 | train_loss=0.3305 | val_loss=0.3287
+2026-09-10 02:46:01,572 [INFO] Fine-tune epoch 22/25 | train_loss=0.3301 | val_loss=0.3286
+2026-09-10 02:46:20,369 [INFO] Fine-tune epoch 23/25 | train_loss=0.3300 | val_loss=0.3284
+2026-09-10 02:46:39,034 [INFO] Fine-tune epoch 24/25 | train_loss=0.3296 | val_loss=0.3289
+2026-09-10 02:46:57,637 [INFO] Fine-tune epoch 25/25 | train_loss=0.3293 | val_loss=0.3280
+2026-09-10 02:47:01,576 [INFO] Rendered 296 synthetic pose samples in 3.9s
+2026-09-10 02:47:06,298 [INFO] Stage-2 (real fine-tune) complete and ACCEPTED. Best val_loss=0.3280, n_real=793, synthetic PCK 0.665 -> 0.649
+/Users/punyasurana/Space-HAR/sih-har-isro/train/train_posenet.py:754: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter has become the default. Learn more about the new export logic: https://docs.pytorch.org/docs/stable/onnx_export.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html
+  torch.onnx.export(model, dummy, POSENET_ONNX_PATH, **export_kwargs)
+2026-09-10 02:47:06,484 [INFO] PoseNet ONNX saved: models/pose_net.onnx
+{
+  "stage2": {
+    "best_val_loss": 0.3279559500515461,
+    "n_real_samples": 793,
+    "n_train": 675,
+    "n_val": 118,
+    "pre_finetune_pck": 0.6652564102564102,
+    "post_finetune_pck": 0.6494282744282744
+  }
+}

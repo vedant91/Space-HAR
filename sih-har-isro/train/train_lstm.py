@@ -152,7 +152,7 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     if not X_path.exists() or not y_path.exists():
         raise FileNotFoundError(
             f"Training data not found at {data_dir}.\n"
-            "Run mediapipe_labeler.py first to generate sequences."
+            "Run data_generation/synthetic_pose.py (generate_dataset) first."
         )
 
     X = np.load(str(X_path))

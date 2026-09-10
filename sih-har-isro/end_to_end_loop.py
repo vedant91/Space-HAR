@@ -12,6 +12,15 @@ Usage (from repo root or this folder):
     python end_to_end_loop.py
     python end_to_end_loop.py --max-iters 6 --skip-cnn
     python main.py --mode e2e
+
+IMPORTANT — this loop's LSTM is NOT the same training path as `main.py --mode train`'s:
+for iteration speed, this loop trains its LSTM on data_generation/synthetic_pose.py's pure
+ground-truth pose vectors (fast to regenerate every iteration), not on PoseNet's own
+(noisier, realistic) predictions. That's fine for what this loop actually verifies — FSM/
+temporal-model logic and latency, see PoseNetWrapper/oracle_step_acc's own docs — but it
+means running this AFTER `--mode train` overwrites the honestly-trained production LSTM
+checkpoint with an easier-task one. Run `--mode train` last if you want the model that
+ships. See README.md's "Current results" section for the measured gap between the two.
 """
 
 from __future__ import annotations
@@ -40,6 +49,7 @@ else:
 from data_generation.synthetic_pose import generate_dataset
 from simulation.gates import DEFAULT_GATES, evaluate_gates
 from simulation.space_sim import run_full_space_sim, save_step_frames
+from config.experiment_config import POSENET_PATH, REAL_SEQUENCES_DIR, COMBINED_SEQUENCES_DIR
 
 logging.basicConfig(
     level=logging.INFO,
@@ -127,6 +137,15 @@ def _apply_fixes(failed: List[dict], hyper: Dict) -> tuple[List[str], bool]:
             f"more pose data (n_seq={hyper['n_seq']}), "
             f"epochs={hyper['epochs']}, dropout={hyper['dropout']:.2f}"
         )
+
+    if "posenet_pck" in names:
+        # PoseNet is trained once, outside this loop's per-iteration cost
+        # (a from-scratch CPU heatmap-net training run is much heavier than
+        # an LSTM/CNN epoch) — this loop can't cheaply retrain it each
+        # iteration. Diagnostic note only; see train/train_posenet.py.
+        actions.append("posenet_pck below gate: retrain with more epochs/samples via "
+                       "`python main.py --mode posenet` (or --finetune-real if real "
+                       "pseudo-labels exist) — not auto-adjusted by this loop")
 
     if names & {"hsv_red_recall", "hsv_yellow_recall"}:
         # The synthetic renderer draws saturated red/yellow by construction
@@ -218,6 +237,30 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
                 include_orientations=True,
             )
 
+            # ── 1b. PoseNet — trained once (heavy CPU cost), read its own
+            # checkpoint metric here rather than retraining every iteration.
+            # See train/train_posenet.py; `python main.py --mode posenet` (or
+            # --mode train) trains/fine-tunes it.
+            posenet_ckpt = Path(POSENET_PATH)
+            posenet_pck = 0.0
+            posenet_stage = "untrained"
+            if posenet_ckpt.exists():
+                import torch as _torch
+                _ckpt = _torch.load(str(posenet_ckpt), map_location="cpu", weights_only=False)
+                posenet_pck = float(_ckpt.get("val_pck") or 0.0)
+                posenet_stage = _ckpt.get("stage", "unknown")
+
+            # ── 1c. Merge in real-video sequences for the LSTM, if built ──
+            # (data_generation/build_real_dataset.py — real_pseudo/ + the
+            # current PoseNet checkpoint; independent of this loop's own
+            # synthetic-only regeneration below.)
+            lstm_data_dir = "dataset/skeleton_sequences"
+            if (Path(REAL_SEQUENCES_DIR) / "X_sequences.npy").exists():
+                from data_generation.build_real_dataset import merge_with_synthetic
+                merge_with_synthetic("dataset/skeleton_sequences", REAL_SEQUENCES_DIR,
+                                     COMBINED_SEQUENCES_DIR)
+                lstm_data_dir = COMBINED_SEQUENCES_DIR
+
             # ── 2. LSTM train ─────────────────────────────────
             lstm_val = None
             ckpt_path = Path("models/lstm_classifier.pt")
@@ -227,10 +270,10 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
                 lstm_val = float(ckpt.get("val_acc") or 0.0)
                 logger.info("[2/5] Reusing LSTM checkpoint (val_acc=%.3f)", lstm_val)
             if lstm_val is None or lstm_val < 0.90:
-                logger.info("[2/5] Training LSTM (%d epochs)...", hyper["epochs"])
+                logger.info("[2/5] Training LSTM (%d epochs, data=%s)...", hyper["epochs"], lstm_data_dir)
                 from train.train_lstm import train_model
                 lstm_val = train_model(
-                    data_dir="dataset/skeleton_sequences",
+                    data_dir=lstm_data_dir,
                     epochs=hyper["epochs"],
                     dropout=hyper["dropout"],
                 )
@@ -268,6 +311,9 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
             )
 
             metrics = {
+                "posenet_pck": posenet_pck,
+                "posenet_stage": posenet_stage,
+                "lstm_data_dir": lstm_data_dir,
                 "lstm_val_acc": float(lstm_val or 0.0),
                 "lstm_test_acc": float(sim.get("lstm_test_acc") or 0.0),
                 "hsv_red_recall": float(sim.get("hsv_red_recall") or 0.0),
@@ -301,9 +347,9 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
                 "fixes": [],
             }
             logger.info(
-                "iter %d metrics: val=%.3f test=%.3f oracle=%.3f hsv_r=%.3f hsv_y=%.3f "
+                "iter %d metrics: posenet_pck=%.3f val=%.3f test=%.3f oracle=%.3f hsv_r=%.3f hsv_y=%.3f "
                 "mean=%.1fms p95=%.1fms seq=%s skip=%s",
-                iteration,
+                iteration, metrics["posenet_pck"],
                 metrics["lstm_val_acc"], metrics["lstm_test_acc"], metrics["oracle_step_acc"],
                 metrics["hsv_red_recall"], metrics["hsv_yellow_recall"],
                 metrics["mean_latency_ms"], metrics["p95_latency_ms"],

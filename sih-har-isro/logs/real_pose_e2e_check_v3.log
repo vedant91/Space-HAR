@@ -1,0 +1,93 @@
+2026-09-10 11:14:32,858 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:14:32,884 [WARNING] No TTS backend found. Voice alerts disabled.
+2026-09-10 11:14:32,884 [INFO] Voice system initialized. Backend: none
+2026-09-10 11:14:32,885 [INFO] Experiment logger initialized: logs/experiment_log_20260910_111432_fe1300.txt
+2026-09-10 11:14:32,886 [INFO] HSVBoxDetector initialized (frame=1280x720)
+2026-09-10 11:14:32,942 [INFO] PoseNet ONNX session loaded: models/pose_net.onnx
+2026-09-10 11:14:32,962 [INFO] LSTM ONNX session loaded: models/lstm_classifier.onnx
+2026-09-10 11:14:32,973 [INFO] HARPipeline ready (headless=True, voice=False).
+2026-09-10 11:14:32,973 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:14:32,973 [INFO] State machine reset.
+2026-09-10 11:14:33,697 [INFO] Experiment started.
+2026-09-10 11:14:34,061 [INFO] LOG: [00:00:01.176] [START]     Step 01 | Approach Main Box              | conf=1.000
+2026-09-10 11:14:34,061 [INFO] Step 1 'Approach Main Box' IN PROGRESS (conf=1.00)
+2026-09-10 11:14:34,455 [INFO] LOG: [00:00:01.571] [COMPLETE]  Step 01 | Approach Main Box              | conf=1.000 | dur=0.4s | STATUS=OK
+2026-09-10 11:14:34,455 [INFO] [VOICE SUPPRESSED] Step 1 complete. Well done.
+2026-09-10 11:14:34,455 [INFO] [VOICE SUPPRESSED] Step 2: Open Main Box. Please proceed.
+2026-09-10 11:14:34,455 [INFO] Step 1 'Approach Main Box' COMPLETED in 0.4s
+2026-09-10 11:14:35,556 [WARNING] SEQUENCE HOLD: Expected 2, got 3. Awaiting correction.
+2026-09-10 11:14:35,557 [WARNING] LOG: [00:00:02.672] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=3
+2026-09-10 11:14:35,557 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:36,086 [WARNING] SEQUENCE HOLD: Expected 2, got 8. Awaiting correction.
+2026-09-10 11:14:36,086 [WARNING] LOG: [00:00:03.202] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=8
+2026-09-10 11:14:36,086 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:37,278 [WARNING] SEQUENCE HOLD: Expected 2, got 5. Awaiting correction.
+2026-09-10 11:14:37,279 [WARNING] LOG: [00:00:04.394] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:14:37,279 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:38,173 [WARNING] SEQUENCE HOLD: Expected 2, got 3. Awaiting correction.
+2026-09-10 11:14:38,174 [WARNING] LOG: [00:00:05.289] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=3
+2026-09-10 11:14:38,174 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:39,585 [INFO] LOG: [00:00:06.700] [START]     Step 02 | Open Main Box                  | conf=0.972
+2026-09-10 11:14:39,585 [INFO] Step 2 'Open Main Box' IN PROGRESS (conf=0.97)
+2026-09-10 11:14:39,999 [INFO] [VOICE SUPPRESSED] Step 2 is now correct. Next, step 3: Pick Red Box.
+2026-09-10 11:14:39,999 [INFO] LOG: [00:00:07.115] [COMPLETE]  Step 02 | Open Main Box                  | conf=0.930 | dur=0.4s | STATUS=RECOVERED
+2026-09-10 11:14:39,999 [INFO] Step 2 'Open Main Box' COMPLETED in 0.4s
+2026-09-10 11:14:40,541 [WARNING] SEQUENCE HOLD: Expected 3, got 4. Awaiting correction.
+2026-09-10 11:14:40,542 [WARNING] LOG: [00:00:07.657] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=4
+2026-09-10 11:14:40,542 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:41,605 [WARNING] SEQUENCE HOLD: Expected 3, got 5. Awaiting correction.
+2026-09-10 11:14:41,606 [WARNING] LOG: [00:00:08.721] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:14:41,606 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:43,012 [WARNING] SEQUENCE HOLD: Expected 3, got 6. Awaiting correction.
+2026-09-10 11:14:43,012 [WARNING] LOG: [00:00:10.127] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=6
+2026-09-10 11:14:43,012 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:43,512 [WARNING] SEQUENCE HOLD: Expected 3, got 8. Awaiting correction.
+2026-09-10 11:14:43,512 [WARNING] LOG: [00:00:10.628] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=8
+2026-09-10 11:14:43,513 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:45,082 [WARNING] SEQUENCE HOLD: Expected 3, got 7. Awaiting correction.
+2026-09-10 11:14:45,083 [WARNING] LOG: [00:00:12.198] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=7
+2026-09-10 11:14:45,083 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:45,545 [WARNING] SEQUENCE HOLD: Expected 3, got 6. Awaiting correction.
+2026-09-10 11:14:45,545 [WARNING] LOG: [00:00:12.661] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=6
+2026-09-10 11:14:45,545 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:46,888 [WARNING] SEQUENCE HOLD: Expected 3, got 8. Awaiting correction.
+2026-09-10 11:14:46,888 [WARNING] LOG: [00:00:14.003] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=8
+2026-09-10 11:14:46,888 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:14:47,536 [WARNING] SEQUENCE HOLD: Expected 3, got 6. Awaiting correction.
+2026-09-10 11:14:47,536 [WARNING] LOG: [00:00:14.652] [HOLD ⚠️ ]  Step 03 | Pick Red Box                   | STATUS=RECOVERY_REQUIRED → observed_step=6
+2026-09-10 11:14:47,536 [INFO] [VOICE SUPPRESSED] Warning. Step 3 was skipped. Please complete the missed step before continuing.
+REAL_POSE_RESULT_V3
+{
+  "n_frames": 576,
+  "mean_latency_ms": 25.960304643507595,
+  "p50_latency_ms": 25.67393749632174,
+  "p95_latency_ms": 28.200010499858763,
+  "p99_latency_ms": 29.60620190278861,
+  "fps_equivalent": 38.52034919205348,
+  "breakdown_mean_ms": {
+    "hsv": 11.569062413622854,
+    "pose": 10.022569655015916,
+    "lstm": 2.8424548507232985,
+    "total": 25.960304643507595
+  },
+  "oracle_step_acc": 0.45058139534883723,
+  "oracle_n": 344,
+  "sm_completed_ids": [
+    1,
+    2
+  ],
+  "experiment_complete": false,
+  "recovery_state": {
+    "active": true,
+    "expected_step_id": 3,
+    "observed_step_id": 6,
+    "events": 12
+  },
+  "oracle_pose_injected": false
+}
+HELDOUT_TEST_RESULT_V3
+{
+  "lstm_test_acc": 0.9375,
+  "n": 192,
+  "correct": 180
+}

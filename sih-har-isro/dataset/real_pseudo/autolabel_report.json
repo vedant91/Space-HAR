@@ -1,0 +1,73 @@
+{
+  "source_dir": "/Users/punyasurana/Space-HAR/new video data",
+  "output_dir": "dataset/real_pseudo",
+  "n_videos": 4,
+  "videos": [
+    {
+      "video": "/Users/punyasurana/Space-HAR/new video data/WhatsApp Video 2026-09-09 at 17.28.39.mp4",
+      "fps": 24.0,
+      "n_frames_source": 193,
+      "n_frames_saved": 193,
+      "stride": 1,
+      "step_label_histogram": {
+        "Unknown/idle": 49,
+        "Pick Red Box": 3,
+        "Examine Red Box": 76,
+        "Place Red Box": 42,
+        "Examine Yellow Box": 23
+      },
+      "frac_unknown": 0.2538860103626943,
+      "wrist_detections_total": 386,
+      "wrist_detection_rate": 1.0
+    },
+    {
+      "video": "/Users/punyasurana/Space-HAR/new video data/WhatsApp Video 2026-09-09 at 17.42.26.mp4",
+      "fps": 31.999027266924035,
+      "n_frames_source": 257,
+      "n_frames_saved": 257,
+      "stride": 1,
+      "step_label_histogram": {
+        "Unknown/idle": 135,
+        "Place Red Box": 49,
+        "Place Yellow Box": 73
+      },
+      "frac_unknown": 0.5252918287937743,
+      "wrist_detections_total": 514,
+      "wrist_detection_rate": 1.0
+    },
+    {
+      "video": "/Users/punyasurana/Space-HAR/new video data/WhatsApp Video 2026-09-09 at 17.51.28.mp4",
+      "fps": 30.0,
+      "n_frames_source": 151,
+      "n_frames_saved": 151,
+      "stride": 1,
+      "step_label_histogram": {
+        "Examine Red Box": 51,
+        "Place Red Box": 18,
+        "Pick Yellow Box": 5,
+        "Examine Yellow Box": 14,
+        "Place Yellow Box": 63
+      },
+      "frac_unknown": 0.0,
+      "wrist_detections_total": 261,
+      "wrist_detection_rate": 0.8642384105960265
+    },
+    {
+      "video": "/Users/punyasurana/Space-HAR/new video data/WhatsApp Video 2026-09-09 at 18.09.43.mp4",
+      "fps": 24.0,
+      "n_frames_source": 192,
+      "n_frames_saved": 192,
+      "stride": 1,
+      "step_label_histogram": {
+        "Unknown/idle": 82,
+        "Examine Red Box": 60,
+        "Place Red Box": 24,
+        "Examine Yellow Box": 26
+      },
+      "frac_unknown": 0.4270833333333333,
+      "wrist_detections_total": 384,
+      "wrist_detection_rate": 1.0
+    }
+  ],
+  "note": "Pseudo-labels are heuristic (classical CV rule engine + skin/motion hand tracking), not human ground truth. Pose labels only ever claim the two wrist joints \u2014 see this module's docstring for why. Review step_label_histogram / frac_unknown per video before trusting a video's labels heavily in training."
+}

@@ -1,14 +1,17 @@
 """
-HSV Color-Based Box Detector
-==============================
-Replaces YOLO for object detection. Uses HSV color segmentation to detect:
+HSV Color-Based Box + Hand Detector
+=====================================
+Replaces YOLO (or any other pretrained/open-source detector) for object
+detection. Uses HSV color segmentation to detect:
   - red_box    → HSV dual-range mask (red wraps hue wheel)
   - yellow_box → HSV single-range mask
   - main_box   → Largest white/light region near experiment area
+  - hand       → Skin-tone HSV band, confidence-boosted (not gated) by
+                 frame-differencing motion — see _detect_hand()
 
-Zero training. Deterministic. Works on CPU at 60+ FPS.
-This is actually superior to a trained detector for this use-case
-because the colored boxes are THE definition of distinct hue targets.
+Zero training, zero pretrained weights. Deterministic. Works on CPU at 60+
+FPS. For the colored boxes this is actually superior to a trained detector
+for this use-case because the colors ARE the definition of the targets.
 """
 
 import cv2
@@ -28,6 +31,8 @@ from config.experiment_config import (
     HSV_YELLOW_LOWER, HSV_YELLOW_UPPER,
     HSV_WHITE_LOWER, HSV_WHITE_UPPER,
     MIN_BOX_AREA_PX,
+    HSV_SKIN_LOWER, HSV_SKIN_UPPER, MIN_HAND_AREA_PX,
+    HAND_MOTION_THRESHOLD, HAND_TOP_EXCLUDE_FRAC,
 )
 
 
@@ -50,10 +55,11 @@ class HSVBoxDetector:
       - red_box    → Dual HSV range (hue wraps 170-180 + 0-10)
       - yellow_box → Single HSV range
       - main_box   → Largest white region in frame
+      - hand       → Skin-tone HSV band + motion confidence boost
 
     Also provides:
-      - Hand proximity to box (are hands near a box?)
-      - Box visibility flags (is each box visible in frame?)
+      - Box/hand visibility flags (get_feature_dict)
+      - Live HSV recalibration from a user-drawn ROI (calibrate_from_roi)
     """
 
     def __init__(self,
@@ -80,6 +86,12 @@ class HSVBoxDetector:
         self._yellow_hi = np.array(HSV_YELLOW_UPPER, dtype=np.float64)
         self._white_lo = np.array(HSV_WHITE_LOWER, dtype=np.float64)
         self._white_hi = np.array(HSV_WHITE_UPPER, dtype=np.float64)
+        self._skin_lo = np.array(HSV_SKIN_LOWER, dtype=np.float64)
+        self._skin_hi = np.array(HSV_SKIN_UPPER, dtype=np.float64)
+
+        # Motion state for hand detection (frame-differencing) — None until
+        # the first frame has been seen.
+        self._prev_gray: Optional[np.ndarray] = None
 
         # Calibration state (updated by calibrate_from_roi())
         self._cal_offsets: Dict[str, Dict[str, Tuple[float, float]]] = {}
@@ -105,6 +117,9 @@ class HSVBoxDetector:
         white  = self._detect_main_box(hsv, frame_bgr)
         if white:  detections.extend(white)
 
+        hand  = self._detect_hand(hsv, frame_bgr)
+        if hand:  detections.extend(hand)
+
         return detections
 
     def get_feature_dict(self, frame_bgr: np.ndarray) -> dict:
@@ -113,12 +128,22 @@ class HSVBoxDetector:
         Keys: red_visible, yellow_visible, main_open_visible,
               red_centroid, yellow_centroid, red_area_ratio, yellow_area_ratio
         """
-        dets = self.detect(frame_bgr)
+        return self.dets_to_feature_dict(self.detect(frame_bgr))
+
+    def dets_to_feature_dict(self, dets: List[Detection]) -> dict:
+        """Pure aggregation of an already-computed detection list into the
+        same structured dict get_feature_dict() returns. Split out so callers
+        that already have `dets` (e.g. data_generation/real_video_autolabel.py)
+        don't have to call detect() a second time on the same frame — doing so
+        would also double-advance HSVBoxDetector's internal motion baseline
+        (see _detect_hand's self._prev_gray) for no benefit."""
         result = {
             "red_visible": False, "yellow_visible": False, "main_visible": False,
+            "hand_visible": False,
             "red_centroid": None, "yellow_centroid": None, "main_centroid": None,
             "red_bbox": None, "yellow_bbox": None,
             "red_area_ratio": 0.0, "yellow_area_ratio": 0.0,
+            "hand_centroids": [], "hand_count": 0,
         }
         for d in dets:
             if d.label == "red_box":
@@ -134,6 +159,10 @@ class HSVBoxDetector:
             elif d.label == "main_box":
                 result["main_visible"] = True
                 result["main_centroid"] = d.centroid
+            elif d.label == "hand":
+                result["hand_visible"] = True
+                result["hand_centroids"].append(d.centroid)
+                result["hand_count"] += 1
         return result
 
     def draw(self, frame_bgr: np.ndarray,
@@ -147,6 +176,7 @@ class HSVBoxDetector:
             "red_box":    (0, 0, 220),
             "yellow_box": (0, 215, 255),
             "main_box":   (200, 200, 200),
+            "hand":       (60, 220, 60),
         }
 
         for det in detections:
@@ -165,7 +195,7 @@ class HSVBoxDetector:
         """
         Sample HSV from a user-drawn ROI and actually shift the live detection
         bounds for `label` to `mean +/- k*std` (clipped to the valid HSV
-        range). `label` must be one of "red_box"/"yellow_box"/"main_box".
+        range). `label` must be one of "red_box"/"yellow_box"/"main_box"/"hand".
 
         Hue is circular (OpenCV's 0-180 range wraps): a plain arithmetic mean
         would be wrong for red, whose true samples straddle the 0/180 seam
@@ -218,6 +248,11 @@ class HSVBoxDetector:
             # hue — keep hue span wide, recenter S/V only.
             self._white_lo = np.array([0.0, 0.0, v_lo])
             self._white_hi = np.array([180.0, max(10.0, s_hi), 255.0])
+        elif label == "hand":
+            # Skin tone: single hue band (doesn't wrap the seam the way the
+            # dual-range red box does).
+            self._skin_lo = np.array([max(0.0, mean_h - h_half), s_lo, v_lo])
+            self._skin_hi = np.array([min(179.0, mean_h + h_half), s_hi, v_hi])
         else:
             logger.warning("calibrate_from_roi: unknown label '%s', ignoring", label)
             return
@@ -317,6 +352,65 @@ class HSVBoxDetector:
                     rect=cv2.minAreaRect(cnt),
                 )]
         return []
+
+    def _detect_hand(self, hsv: np.ndarray, bgr: np.ndarray) -> List[Detection]:
+        """
+        Detect hands/gloves via skin-tone HSV, boosted (not gated) by motion.
+
+        Classical CV, no training: fills DETECTION_CLASSES' "hand" slot, which
+        HSVBoxDetector previously never actually produced. Two deliberate
+        design choices:
+          - A spatial prior excludes the top HAND_TOP_EXCLUDE_FRAC of the
+            frame (typically head/helmet) instead of requiring motion to
+            disambiguate — hands routinely pause (e.g. during an "examine"
+            step) and would otherwise disappear from detection while still.
+          - Motion still *boosts* confidence (a moving skin blob is more
+            likely a hand than a stationary one) without ever fully zeroing
+            it out, so a paused hand stays detected at reduced confidence
+            rather than vanishing.
+        """
+        h, w = hsv.shape[:2]
+        skin_mask = cv2.inRange(hsv, self._skin_lo, self._skin_hi)
+        top_cut = int(h * HAND_TOP_EXCLUDE_FRAC)
+        skin_mask[:top_cut, :] = 0
+        skin_mask = self._apply_mask_pipeline(skin_mask)
+
+        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        if self._prev_gray is not None and self._prev_gray.shape == gray.shape:
+            diff = cv2.absdiff(gray, self._prev_gray)
+            motion_mask = (diff >= HAND_MOTION_THRESHOLD).astype(np.uint8) * 255
+        else:
+            motion_mask = np.zeros_like(gray)  # unknown on the very first frame
+        self._prev_gray = gray
+
+        contours, _ = cv2.findContours(skin_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return []
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
+
+        detections = []
+        for cnt in contours:
+            area = int(cv2.contourArea(cnt))
+            if area < MIN_HAND_AREA_PX:
+                continue
+            x, y, cw, ch = cv2.boundingRect(cnt)
+            aspect = cw / max(ch, 1)
+            if aspect < 0.3 or aspect > 3.0:  # hands are less regular than boxes
+                continue
+
+            motion_frac = float(np.mean(motion_mask[y:y + ch, x:x + cw]) / 255.0)
+            base_conf = min(area / (self.frame_area * 0.03), 1.0)
+            confidence = float(np.clip(base_conf * (0.6 + 0.4 * motion_frac), 0.0, 1.0))
+
+            detections.append(Detection(
+                label="hand",
+                bbox=(x, y, x + cw, y + ch),
+                confidence=confidence,
+                centroid=(x + cw // 2, y + ch // 2),
+                area=area,
+                rect=cv2.minAreaRect(cnt),
+            ))
+        return detections
 
 
 def run_hsv_tuner(camera_index: int = 0):

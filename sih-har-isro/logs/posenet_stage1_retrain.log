@@ -1,0 +1,184 @@
+2026-09-10 01:29:33,105 [INFO] Rendered 4000 synthetic pose samples in 53.2s
+2026-09-10 01:29:41,070 [INFO] Rendered 600 synthetic pose samples in 8.0s
+2026-09-10 01:29:41,093 [INFO] HARPoseNet params: 1,220,519 | device=cpu
+2026-09-10 01:32:08,829 [INFO] Epoch 01/24 | loss=0.3004 (hm=0.1856 z=0.0114 vis=0.2272) | val_PCK@0.10=0.031 | 146.9s
+2026-09-10 01:32:08,846 [INFO]   best checkpoint saved (val_PCK=0.031)
+2026-09-10 01:34:43,281 [INFO] Epoch 02/24 | loss=0.1040 (hm=0.0037 z=0.0002 vis=0.2006) | val_PCK@0.10=0.038 | 154.4s
+2026-09-10 01:34:43,292 [INFO]   best checkpoint saved (val_PCK=0.038)
+2026-09-10 01:37:13,929 [INFO] Epoch 03/24 | loss=0.1036 (hm=0.0033 z=0.0002 vis=0.2006) | val_PCK@0.10=0.047 | 150.6s
+2026-09-10 01:37:13,940 [INFO]   best checkpoint saved (val_PCK=0.047)
+2026-09-10 01:39:43,882 [INFO] Epoch 04/24 | loss=0.1034 (hm=0.0031 z=0.0002 vis=0.2006) | val_PCK@0.10=0.058 | 149.9s
+2026-09-10 01:39:43,898 [INFO]   best checkpoint saved (val_PCK=0.058)
+2026-09-10 01:42:14,032 [INFO] Epoch 05/24 | loss=0.1033 (hm=0.0030 z=0.0002 vis=0.2006) | val_PCK@0.10=0.097 | 150.1s
+2026-09-10 01:42:14,049 [INFO]   best checkpoint saved (val_PCK=0.097)
+2026-09-10 01:44:41,085 [INFO] Epoch 06/24 | loss=0.1033 (hm=0.0029 z=0.0002 vis=0.2006) | val_PCK@0.10=0.111 | 147.0s
+2026-09-10 01:44:41,106 [INFO]   best checkpoint saved (val_PCK=0.111)
+2026-09-10 01:47:14,852 [INFO] Epoch 07/24 | loss=0.1032 (hm=0.0028 z=0.0002 vis=0.2006) | val_PCK@0.10=0.145 | 153.7s
+2026-09-10 01:47:14,865 [INFO]   best checkpoint saved (val_PCK=0.145)
+2026-09-10 01:49:48,600 [INFO] Epoch 08/24 | loss=0.1031 (hm=0.0028 z=0.0002 vis=0.2006) | val_PCK@0.10=0.171 | 153.7s
+2026-09-10 01:49:48,608 [INFO]   best checkpoint saved (val_PCK=0.171)
+2026-09-10 01:52:22,583 [INFO] Epoch 09/24 | loss=0.1030 (hm=0.0027 z=0.0002 vis=0.2006) | val_PCK@0.10=0.200 | 154.0s
+2026-09-10 01:52:22,601 [INFO]   best checkpoint saved (val_PCK=0.200)
+2026-09-10 01:54:53,282 [INFO] Epoch 10/24 | loss=0.1028 (hm=0.0025 z=0.0001 vis=0.2005) | val_PCK@0.10=0.286 | 150.7s
+2026-09-10 01:54:53,303 [INFO]   best checkpoint saved (val_PCK=0.286)
+2026-09-10 01:57:23,128 [INFO] Epoch 11/24 | loss=0.1027 (hm=0.0024 z=0.0002 vis=0.2005) | val_PCK@0.10=0.351 | 149.8s
+2026-09-10 01:57:23,148 [INFO]   best checkpoint saved (val_PCK=0.351)
+2026-09-10 01:59:49,181 [INFO] Epoch 12/24 | loss=0.1026 (hm=0.0024 z=0.0002 vis=0.2005) | val_PCK@0.10=0.395 | 146.0s
+2026-09-10 01:59:49,195 [INFO]   best checkpoint saved (val_PCK=0.395)
+2026-09-10 02:02:20,177 [INFO] Epoch 13/24 | loss=0.1026 (hm=0.0023 z=0.0002 vis=0.2005) | val_PCK@0.10=0.436 | 151.0s
+2026-09-10 02:02:20,187 [INFO]   best checkpoint saved (val_PCK=0.436)
+2026-09-10 02:04:51,707 [INFO] Epoch 14/24 | loss=0.1024 (hm=0.0022 z=0.0001 vis=0.2005) | val_PCK@0.10=0.484 | 151.5s
+2026-09-10 02:04:51,715 [INFO]   best checkpoint saved (val_PCK=0.484)
+2026-09-10 02:07:19,181 [INFO] Epoch 15/24 | loss=0.1024 (hm=0.0021 z=0.0001 vis=0.2005) | val_PCK@0.10=0.518 | 147.5s
+2026-09-10 02:07:19,189 [INFO]   best checkpoint saved (val_PCK=0.518)
+2026-09-10 02:09:49,009 [INFO] Epoch 16/24 | loss=0.1023 (hm=0.0020 z=0.0001 vis=0.2005) | val_PCK@0.10=0.556 | 149.8s
+2026-09-10 02:09:49,022 [INFO]   best checkpoint saved (val_PCK=0.556)
+2026-09-10 02:12:21,919 [INFO] Epoch 17/24 | loss=0.1022 (hm=0.0019 z=0.0001 vis=0.2005) | val_PCK@0.10=0.592 | 152.9s
+2026-09-10 02:12:21,932 [INFO]   best checkpoint saved (val_PCK=0.592)
+2026-09-10 02:14:55,276 [INFO] Epoch 18/24 | loss=0.1021 (hm=0.0019 z=0.0001 vis=0.2005) | val_PCK@0.10=0.610 | 153.3s
+2026-09-10 02:14:55,288 [INFO]   best checkpoint saved (val_PCK=0.610)
+2026-09-10 02:17:26,008 [INFO] Epoch 19/24 | loss=0.1020 (hm=0.0018 z=0.0001 vis=0.2005) | val_PCK@0.10=0.626 | 150.7s
+2026-09-10 02:17:26,021 [INFO]   best checkpoint saved (val_PCK=0.626)
+2026-09-10 02:19:52,437 [INFO] Epoch 20/24 | loss=0.1020 (hm=0.0017 z=0.0001 vis=0.2004) | val_PCK@0.10=0.646 | 146.4s
+2026-09-10 02:19:52,450 [INFO]   best checkpoint saved (val_PCK=0.646)
+2026-09-10 02:22:21,094 [INFO] Epoch 21/24 | loss=0.1019 (hm=0.0017 z=0.0001 vis=0.2004) | val_PCK@0.10=0.653 | 148.6s
+2026-09-10 02:22:21,107 [INFO]   best checkpoint saved (val_PCK=0.653)
+2026-09-10 02:24:50,892 [INFO] Epoch 22/24 | loss=0.1019 (hm=0.0017 z=0.0001 vis=0.2004) | val_PCK@0.10=0.656 | 149.8s
+2026-09-10 02:24:50,905 [INFO]   best checkpoint saved (val_PCK=0.656)
+2026-09-10 02:27:22,922 [INFO] Epoch 23/24 | loss=0.1019 (hm=0.0016 z=0.0001 vis=0.2004) | val_PCK@0.10=0.663 | 152.0s
+2026-09-10 02:27:22,932 [INFO]   best checkpoint saved (val_PCK=0.663)
+2026-09-10 02:29:54,373 [INFO] Epoch 24/24 | loss=0.1018 (hm=0.0016 z=0.0001 vis=0.2004) | val_PCK@0.10=0.665 | 151.4s
+2026-09-10 02:29:54,386 [INFO]   best checkpoint saved (val_PCK=0.665)
+2026-09-10 02:29:54,386 [INFO] Stage-1 (synthetic) training complete. Best val PCK=0.665
+/Users/punyasurana/Space-HAR/sih-har-isro/train/train_posenet.py:719: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter has become the default. Learn more about the new export logic: https://docs.pytorch.org/docs/stable/onnx_export.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html
+  torch.onnx.export(model, dummy, POSENET_ONNX_PATH, **export_kwargs)
+2026-09-10 02:29:54,633 [INFO] PoseNet ONNX saved: models/pose_net.onnx
+{
+  "stage1": {
+    "val_pck": 0.6652564102564102,
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 0.30035209077596664,
+        "val_pck": 0.03051282051282051
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.10402076214551925,
+        "val_pck": 0.03769230769230769
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.10361609572172165,
+        "val_pck": 0.047435897435897434
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.10343832194805146,
+        "val_pck": 0.058333333333333334
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.10333982402086259,
+        "val_pck": 0.09666666666666666
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.10327953839302063,
+        "val_pck": 0.11064102564102564
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.10315852880477905,
+        "val_pck": 0.1453846153846154
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.1030590254664421,
+        "val_pck": 0.17051282051282052
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.10295662713050842,
+        "val_pck": 0.2
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.1028277342915535,
+        "val_pck": 0.2855128205128205
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.10273422920703888,
+        "val_pck": 0.35115384615384615
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.10263589024543762,
+        "val_pck": 0.3951282051282051
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.10255179935693741,
+        "val_pck": 0.43615384615384617
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.10244914311170578,
+        "val_pck": 0.48423076923076924
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.10235566812753677,
+        "val_pck": 0.517948717948718
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.10225753337144852,
+        "val_pck": 0.5558974358974359
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.10217166918516159,
+        "val_pck": 0.5919230769230769
+      },
+      {
+        "epoch": 18,
+        "train_loss": 0.10209616464376449,
+        "val_pck": 0.6102564102564103
+      },
+      {
+        "epoch": 19,
+        "train_loss": 0.10203300178050995,
+        "val_pck": 0.6258974358974358
+      },
+      {
+        "epoch": 20,
+        "train_loss": 0.10197407829761505,
+        "val_pck": 0.6464102564102564
+      },
+      {
+        "epoch": 21,
+        "train_loss": 0.10191503739356994,
+        "val_pck": 0.6529487179487179
+      },
+      {
+        "epoch": 22,
+        "train_loss": 0.10187760251760483,
+        "val_pck": 0.6557692307692308
+      },
+      {
+        "epoch": 23,
+        "train_loss": 0.10185253548622131,
+        "val_pck": 0.6633333333333333
+      },
+      {
+        "epoch": 24,
+        "train_loss": 0.10183437979221344,
+        "val_pck": 0.6652564102564102
+      }
+    ],
+    "n_train": 4000,
+    "n_val": 600
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "total_windows": 576,
+  "n_source_trials": 192,
+  "feature_dim": 132,
+  "window": 30,
+  "source": "synthetic_via_trained_posenet",
+  "posenet_backend": "onnx",
+  "seed": 17,
+  "steps": [
+    {
+      "step_id": 1,
+      "windows": 72
+    },
+    {
+      "step_id": 2,
+      "windows": 72
+    },
+    {
+      "step_id": 3,
+      "windows": 72
+    },
+    {
+      "step_id": 4,
+      "windows": 72
+    },
+    {
+      "step_id": 5,
+      "windows": 72
+    },
+    {
+      "step_id": 6,
+      "windows": 72
+    },
+    {
+      "step_id": 7,
+      "windows": 72
+    },
+    {
+      "step_id": 8,
+      "windows": 72
+    }
+  ],
+  "elapsed_sec": 194.4
+}

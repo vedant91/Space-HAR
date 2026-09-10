@@ -1,0 +1,55 @@
+2026-09-10 11:08:08,457 [INFO] PoseNet ONNX session loaded: models/pose_net.onnx
+2026-09-10 11:08:08,458 [INFO] Using PoseNet backend: onnx
+2026-09-10 11:08:32,717 [INFO] Step 1: 72 PoseNet-realistic windows (24s elapsed)
+2026-09-10 11:08:57,415 [INFO] Step 2: 72 PoseNet-realistic windows (49s elapsed)
+2026-09-10 11:09:21,944 [INFO] Step 3: 72 PoseNet-realistic windows (73s elapsed)
+2026-09-10 11:09:46,241 [INFO] Step 4: 72 PoseNet-realistic windows (98s elapsed)
+2026-09-10 11:10:10,219 [INFO] Step 5: 72 PoseNet-realistic windows (122s elapsed)
+2026-09-10 11:10:34,516 [INFO] Step 6: 72 PoseNet-realistic windows (146s elapsed)
+2026-09-10 11:10:58,606 [INFO] Step 7: 72 PoseNet-realistic windows (170s elapsed)
+2026-09-10 11:11:22,843 [INFO] Step 8: 72 PoseNet-realistic windows (194s elapsed)
+2026-09-10 11:11:22,852 [INFO] Wrote dataset/skeleton_sequences_posenet  X=(576, 30, 132) y=(576,) groups=(576,) (194s)
+{
+  "total_windows": 576,
+  "n_source_trials": 192,
+  "feature_dim": 132,
+  "window": 30,
+  "source": "synthetic_via_trained_posenet",
+  "posenet_backend": "onnx",
+  "seed": 17,
+  "steps": [
+    {
+      "step_id": 1,
+      "windows": 72
+    },
+    {
+      "step_id": 2,
+      "windows": 72
+    },
+    {
+      "step_id": 3,
+      "windows": 72
+    },
+    {
+      "step_id": 4,
+      "windows": 72
+    },
+    {
+      "step_id": 5,
+      "windows": 72
+    },
+    {
+      "step_id": 6,
+      "windows": 72
+    },
+    {
+      "step_id": 7,
+      "windows": 72
+    },
+    {
+      "step_id": 8,
+      "windows": 72
+    }
+  ],
+  "elapsed_sec": 194.4
+}

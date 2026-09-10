@@ -24,8 +24,8 @@ same canonical representation regardless of camera/body roll relative to the
 rack, while genuine rack-relative inversion is preserved.
 
 IMPORTANT — train/inference consistency: use --rack-normalize on
-mediapipe_labeler.py (it runs the same HSV rect extraction) and retrain the
-LSTM before enabling RACK_FRAME_NORMALIZE here.
+data_generation/build_real_dataset.py (it runs the same HSV rect extraction)
+and retrain the LSTM before enabling RACK_FRAME_NORMALIZE here.
 
 True 3D HMR (SMPL mesh) is Stage 2 — see pipeline/hmr_backend.py.
 """

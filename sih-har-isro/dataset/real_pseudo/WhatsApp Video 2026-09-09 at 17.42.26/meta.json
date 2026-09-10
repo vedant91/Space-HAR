@@ -1,0 +1,15 @@
+{
+  "video": "/Users/punyasurana/Space-HAR/new video data/WhatsApp Video 2026-09-09 at 17.42.26.mp4",
+  "fps": 31.999027266924035,
+  "n_frames_source": 257,
+  "n_frames_saved": 257,
+  "stride": 1,
+  "step_label_histogram": {
+    "Unknown/idle": 135,
+    "Place Red Box": 49,
+    "Place Yellow Box": 73
+  },
+  "frac_unknown": 0.5252918287937743,
+  "wrist_detections_total": 514,
+  "wrist_detection_rate": 1.0
+}

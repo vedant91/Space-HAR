@@ -1,12 +1,13 @@
 # ISRO SIH 2026 — HAR Pipeline
-# RTX 3050 6GB | Offline | No YOLO | Custom CNN + LSTM from scratch
+# Offline | No YOLO, no MediaPipe, no pretrained/open-source model anywhere —
+# custom PoseNet + CNN + LSTM, all trained from scratch on this project's own
+# synthetic renderer + real "gravitational mimic" footage (see train/).
 
 # ── Core computer vision ──────────────────────────────────────
 opencv-python>=4.8.0
-mediapipe>=0.10.0
 numpy>=1.24.0
 
-# ── Deep learning (custom CNN + LSTM, trained from scratch) ───
+# ── Deep learning (custom PoseNet + CNN + LSTM, trained from scratch) ─
 torch>=2.1.0
 torchvision>=0.16.0
 

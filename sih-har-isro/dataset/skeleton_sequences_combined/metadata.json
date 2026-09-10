@@ -1,0 +1,7 @@
+{
+  "total_windows": 596,
+  "n_synthetic_windows": 576,
+  "n_real_windows": 20,
+  "feature_dim": 132,
+  "source": "synthetic+real_gravitational_mimic"
+}

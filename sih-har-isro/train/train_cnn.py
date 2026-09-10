@@ -26,7 +26,7 @@ import inspect
 import logging
 import numpy as np
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Union
 
 import torch
 import torch.nn as nn
@@ -224,17 +224,30 @@ class FrameStackDataset(Dataset):
     Each sample = N consecutive frames stacked as (C*N, H, W)
     Label = step_id (0-indexed class)
 
-    Expects directory structure:
+    Expects directory structure (one or more roots — see `data_dir`):
         dataset/annotated/
           step_01/ frame0001.jpg, frame0002.jpg, ...
           step_02/ ...
           ...
+
+    A step's class index is always `step_id - 1` (from the EXPERIMENT_STEPS
+    numbering), never derived from folder enumeration order. That matters
+    once more than one root is possible: two roots don't necessarily contain
+    the same set of step folders (e.g. dataset/annotated/ has all 8 synthetic
+    steps, dataset/annotated_real/ only has whichever steps the real videos'
+    pseudo-labels actually covered — see data_generation/build_real_dataset.py)
+    and enumerate()-based indices would silently assign different class
+    indices to the same step_id depending on which steps happen to be present.
     """
 
-    def __init__(self, data_dir: str, img_size: int = CNN_IMG_SIZE,
+    def __init__(self, data_dir: "str | List[str]", img_size: int = CNN_IMG_SIZE,
                  n_frames: int = CNN_NUM_FRAMES_IN, augment: bool = True,
                  split: str = "all", train_frac: float = TRAIN_VAL_SPLIT):
         """
+        data_dir: a single root, or a list of roots (e.g. synthetic +
+        real-video frames) — each root's step_XX/ folders are windowed
+        independently (see below), then pooled into one sample list.
+
         split: "all" (every window), "train" (windows built only from the
         first `train_frac` of each step folder's frames), or "val" (the
         remaining tail). Splitting the underlying FRAMES first — before
@@ -243,28 +256,41 @@ class FrameStackDataset(Dataset):
         this class built one flat, stride-1 (87.5% frame overlap between
         adjacent samples) window list and let torch's random_split divide
         individual windows, which routinely put near-duplicate windows on
-        both sides of the split.
+        both sides of the split. Splitting per-root-per-step (not just
+        per-step) also matters once there are multiple roots: it stops a
+        window from straddling the boundary between two DIFFERENT roots'
+        frame sequences (e.g. the last few synthetic frames of a step next to
+        the first few real-video frames of the same step, which aren't a
+        real temporal sequence at all).
         """
         self.img_size = img_size
         self.n_frames = n_frames
         self.augment  = augment
         self.samples  = []   # [(frame_paths_list, label_idx)]
-        self.label_map = {}  # {step_id: class_idx}
+        self.label_map = {}  # {step_id: class_idx}, class_idx == step_id - 1 always
 
-        self._load_samples(data_dir, split=split, train_frac=train_frac)
-        logger.info("FrameStackDataset(split=%s): %d samples, %d classes",
-                   split, len(self.samples), len(self.label_map))
+        roots = [data_dir] if isinstance(data_dir, (str, Path)) else list(data_dir)
+        for root in roots:
+            self._load_samples(root, split=split, train_frac=train_frac)
+        logger.info("FrameStackDataset(split=%s, roots=%s): %d samples, %d classes",
+                   split, roots, len(self.samples), len(self.label_map))
 
     def _load_samples(self, data_dir: str, split: str = "all", train_frac: float = 0.8):
         data_path = Path(data_dir)
+        if not data_path.exists():
+            logger.warning("FrameStackDataset root does not exist, skipping: %s", data_dir)
+            return
         step_dirs = sorted([d for d in data_path.iterdir() if d.is_dir()])
 
-        for class_idx, step_dir in enumerate(step_dirs):
+        for step_dir in step_dirs:
             # Extract step_id from folder name (step_01, step_02, ...)
             try:
                 step_id = int(step_dir.name.split("_")[1])
             except (IndexError, ValueError):
-                step_id = class_idx + 1
+                logger.warning("Can't infer a step id from folder name %s — skipping "
+                               "rather than mis-assigning a class.", step_dir)
+                continue
+            class_idx = step_id - 1  # stable across every root, not enumeration order
             self.label_map[step_id] = class_idx
 
             frames = sorted(
@@ -283,7 +309,7 @@ class FrameStackDataset(Dataset):
             if len(usable) < self.n_frames:
                 continue
 
-            # Create sliding window samples within this split's frame range only
+            # Create sliding window samples within this root+split's frame range only
             for i in range(len(usable) - self.n_frames + 1):
                 window = usable[i: i + self.n_frames]
                 self.samples.append((window, class_idx))
@@ -342,10 +368,14 @@ class FrameStackDataset(Dataset):
 # Training Loop
 # ═══════════════════════════════════════════════════════════════
 
-def train_cnn(data_dir: str = "dataset/annotated",
+def train_cnn(data_dir: Union[str, List[str]] = "dataset/annotated",
               output_path: Optional[str] = None,
               epochs: Optional[int] = None,
               batch_size: Optional[int] = None):
+    """data_dir may be a single root or a list of roots (e.g.
+    ["dataset/annotated", "dataset/annotated_real"] to include the real
+    'gravitational mimic' frames alongside the synthetic ones) — see
+    FrameStackDataset's docstring."""
     if output_path is None:
         output_path = CNN_MODEL_PATH
     epochs = CNN_EPOCHS if epochs is None else epochs
@@ -362,7 +392,8 @@ def train_cnn(data_dir: str = "dataset/annotated",
     if len(train_ds) == 0 or len(val_ds) == 0:
         raise RuntimeError(
             f"No samples found in {data_dir} for one or both splits. "
-            "Run mediapipe_labeler first, or check TRAIN_VAL_SPLIT against clip length."
+            "Run simulation/space_sim.py (save_step_frames) first, or check "
+            "TRAIN_VAL_SPLIT against clip length."
         )
     train_n, val_n = len(train_ds), len(val_ds)
     full_label_map = train_ds.label_map  # identical to val_ds.label_map (same folders)

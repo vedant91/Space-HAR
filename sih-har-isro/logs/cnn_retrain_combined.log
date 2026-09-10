@@ -1,0 +1,32 @@
+2026-09-10 02:47:40,855 [INFO] FrameStackDataset(split=train, roots=['dataset/annotated', 'dataset/annotated_real']): 1097 samples, 8 classes
+2026-09-10 02:47:40,863 [INFO] FrameStackDataset(split=val, roots=['dataset/annotated', 'dataset/annotated_real']): 214 samples, 8 classes
+2026-09-10 02:47:40,863 [INFO] Device: cpu | AMP: False
+2026-09-10 02:47:41,014 [INFO] Model parameters: 5,485,513
+2026-09-10 02:47:41,014 [INFO] Train: 1097 | Val: 214 | Classes: 9
+/Users/punyasurana/Space-HAR/sih-har-isro/train/train_cnn.py:444: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler    = GradScaler(enabled=USE_AMP and device.type == "cuda")
+/tmp/har_run_venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:759: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+/Users/punyasurana/Space-HAR/sih-har-isro/train/train_cnn.py:460: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=USE_AMP and device.type == "cuda"):
+/Users/punyasurana/Space-HAR/sih-har-isro/train/train_cnn.py:480: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=USE_AMP and device.type == "cuda"):
+2026-09-10 02:49:44,678 [INFO] Ep 001/025 | TrainLoss=2.4278 | ValLoss=3.0765 | ValAcc=0.131 | LR=9.96e-04
+2026-09-10 02:49:44,718 [INFO]   ✓ Best model saved (val_acc=0.131)
+2026-09-10 02:51:47,002 [INFO]   ✓ Best model saved (val_acc=0.322)
+2026-09-10 02:55:49,862 [INFO]   ✓ Best model saved (val_acc=0.481)
+2026-09-10 02:57:52,027 [INFO] Ep 005/025 | TrainLoss=1.7014 | ValLoss=1.5846 | ValAcc=0.383 | LR=9.05e-04
+2026-09-10 10:11:59,219 [INFO]   ✓ Best model saved (val_acc=0.542)
+2026-09-10 10:18:39,239 [INFO] Ep 010/025 | TrainLoss=1.1953 | ValLoss=2.6909 | ValAcc=0.509 | LR=6.58e-04
+2026-09-10 10:26:57,239 [INFO]   ✓ Best model saved (val_acc=0.636)
+2026-09-10 10:29:09,805 [INFO] Ep 015/025 | TrainLoss=0.9336 | ValLoss=1.3385 | ValAcc=0.668 | LR=3.52e-04
+2026-09-10 10:29:09,836 [INFO]   ✓ Best model saved (val_acc=0.668)
+2026-09-10 10:31:12,693 [INFO]   ✓ Best model saved (val_acc=0.734)
+2026-09-10 10:40:17,167 [INFO] Ep 020/025 | TrainLoss=0.7795 | ValLoss=1.5468 | ValAcc=0.533 | LR=1.05e-04
+2026-09-10 10:44:35,539 [INFO]   ✓ Best model saved (val_acc=0.743)
+2026-09-10 10:46:44,585 [INFO]   ✓ Best model saved (val_acc=0.757)
+2026-09-10 10:51:17,829 [INFO] Ep 025/025 | TrainLoss=0.7129 | ValLoss=1.2889 | ValAcc=0.701 | LR=1.00e-05
+2026-09-10 10:51:17,830 [INFO] Exporting to ONNX...
+2026-09-10 10:51:18,453 [INFO] ONNX saved: models/activity_cnn.onnx
+2026-09-10 10:51:18,464 [INFO] Training complete. Best Val Acc: 0.757
+CNN_DONE val_acc= 0.7570093457943925

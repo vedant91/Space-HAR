@@ -1,0 +1,119 @@
+SEQUENCE HOLD: Expected 2, got 3. Awaiting correction.
+2026-09-10 11:20:00,978 [INFO] Running headless pipeline on 576 sim frames...
+2026-09-10 11:20:01,071 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:20:01,094 [WARNING] No TTS backend found. Voice alerts disabled.
+2026-09-10 11:20:01,094 [INFO] Voice system initialized. Backend: none
+2026-09-10 11:20:01,095 [INFO] Experiment logger initialized: logs/experiment_log_20260910_112001_66c68c.txt
+2026-09-10 11:20:01,095 [INFO] HSVBoxDetector initialized (frame=1280x720)
+2026-09-10 11:20:01,143 [INFO] PoseNet ONNX session loaded: models/pose_net.onnx
+2026-09-10 11:20:01,165 [INFO] LSTM ONNX session loaded: models/lstm_classifier.onnx
+2026-09-10 11:20:01,170 [INFO] HARPipeline ready (headless=True, voice=False).
+2026-09-10 11:20:01,170 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:20:01,170 [INFO] State machine reset.
+2026-09-10 11:20:01,860 [INFO] Experiment started.
+2026-09-10 11:20:02,216 [WARNING] SEQUENCE HOLD: Expected 1, got 4. Awaiting correction.
+2026-09-10 11:20:02,216 [WARNING] LOG: [00:00:01.122] [HOLD ⚠️ ]  Step 01 | Approach Main Box              | STATUS=RECOVERY_REQUIRED → observed_step=4
+2026-09-10 11:20:02,216 [INFO] [VOICE SUPPRESSED] Warning. Step 1 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:11,292 [WARNING] SEQUENCE HOLD: Expected 1, got 3. Awaiting correction.
+2026-09-10 11:20:11,293 [WARNING] LOG: [00:00:10.198] [HOLD ⚠️ ]  Step 01 | Approach Main Box              | STATUS=RECOVERY_REQUIRED → observed_step=3
+2026-09-10 11:20:11,293 [INFO] [VOICE SUPPRESSED] Warning. Step 1 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:12,767 [WARNING] SEQUENCE HOLD: Expected 1, got 5. Awaiting correction.
+2026-09-10 11:20:12,767 [WARNING] LOG: [00:00:11.673] [HOLD ⚠️ ]  Step 01 | Approach Main Box              | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:20:12,767 [INFO] [VOICE SUPPRESSED] Warning. Step 1 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:14,777 [INFO] LOG: [00:00:13.680] [START]     Step 01 | Approach Main Box              | conf=0.794
+2026-09-10 11:20:14,777 [INFO] Step 1 'Approach Main Box' IN PROGRESS (conf=0.79)
+2026-09-10 11:20:15,155 [INFO] [VOICE SUPPRESSED] Step 1 is now correct. Next, step 2: Open Main Box.
+2026-09-10 11:20:15,156 [INFO] LOG: [00:00:14.061] [COMPLETE]  Step 01 | Approach Main Box              | conf=0.818 | dur=0.4s | STATUS=RECOVERED
+2026-09-10 11:20:15,156 [INFO] Step 1 'Approach Main Box' COMPLETED in 0.4s
+2026-09-10 11:20:15,787 [WARNING] SEQUENCE HOLD: Expected 2, got 5. Awaiting correction.
+2026-09-10 11:20:15,787 [WARNING] LOG: [00:00:14.693] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:20:15,788 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:15,789 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:20:15,806 [WARNING] No TTS backend found. Voice alerts disabled.
+2026-09-10 11:20:15,806 [INFO] Voice system initialized. Backend: none
+2026-09-10 11:20:15,807 [INFO] Experiment logger initialized: logs/experiment_log_20260910_112015_d79e47.txt
+2026-09-10 11:20:15,808 [INFO] HSVBoxDetector initialized (frame=1280x720)
+2026-09-10 11:20:15,815 [INFO] PoseNet ONNX session loaded: models/pose_net.onnx
+2026-09-10 11:20:15,832 [INFO] LSTM ONNX session loaded: models/lstm_classifier.onnx
+2026-09-10 11:20:15,840 [INFO] HARPipeline ready (headless=True, voice=False).
+2026-09-10 11:20:15,840 [INFO] State machine initialized with 8 steps.
+2026-09-10 11:20:15,840 [INFO] State machine reset.
+2026-09-10 11:20:16,539 [INFO] Experiment started.
+2026-09-10 11:20:16,901 [WARNING] SEQUENCE HOLD: Expected 1, got 4. Awaiting correction.
+2026-09-10 11:20:16,901 [WARNING] LOG: [00:00:01.095] [HOLD ⚠️ ]  Step 01 | Approach Main Box              | STATUS=RECOVERY_REQUIRED → observed_step=4
+2026-09-10 11:20:16,902 [INFO] [VOICE SUPPRESSED] Warning. Step 1 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:27,922 [WARNING] SEQUENCE HOLD: Expected 1, got 5. Awaiting correction.
+2026-09-10 11:20:27,923 [WARNING] LOG: [00:00:12.116] [HOLD ⚠️ ]  Step 01 | Approach Main Box              | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:20:27,923 [INFO] [VOICE SUPPRESSED] Warning. Step 1 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:28,781 [INFO] LOG: [00:00:12.974] [START]     Step 01 | Approach Main Box              | conf=0.852
+2026-09-10 11:20:28,781 [INFO] Step 1 'Approach Main Box' IN PROGRESS (conf=0.85)
+2026-09-10 11:20:29,167 [INFO] [VOICE SUPPRESSED] Step 1 is now correct. Next, step 2: Open Main Box.
+2026-09-10 11:20:29,167 [INFO] LOG: [00:00:13.360] [COMPLETE]  Step 01 | Approach Main Box              | conf=0.655 | dur=0.4s | STATUS=RECOVERED
+2026-09-10 11:20:29,167 [INFO] Step 1 'Approach Main Box' COMPLETED in 0.4s
+2026-09-10 11:20:31,318 [WARNING] SEQUENCE HOLD: Expected 2, got 5. Awaiting correction.
+2026-09-10 11:20:31,319 [WARNING] LOG: [00:00:15.512] [HOLD ⚠️ ]  Step 02 | Open Main Box                  | STATUS=RECOVERY_REQUIRED → observed_step=5
+2026-09-10 11:20:31,319 [INFO] [VOICE SUPPRESSED] Warning. Step 2 was skipped. Please complete the missed step before continuing.
+2026-09-10 11:20:32,533 [INFO] Space sim report: dataset/space_sim/sim_report.json
+SIM_DONE
+{
+  "hsv_main_recall": 1.0,
+  "hsv_main_precision": 1.0,
+  "hsv_main_tp": 192,
+  "hsv_main_fn": 0,
+  "hsv_red_recall": 1.0,
+  "hsv_red_precision": 1.0,
+  "hsv_red_tp": 168,
+  "hsv_red_fn": 0,
+  "hsv_yellow_recall": 1.0,
+  "hsv_yellow_precision": 1.0,
+  "hsv_yellow_tp": 168,
+  "hsv_yellow_fn": 0,
+  "sequence_complete": true,
+  "sequence_completed_steps": 8,
+  "skip_detected": true,
+  "skip_count": 0,
+  "recovery_hold_at_expected_step": true,
+  "recovery_expected_step": 2,
+  "recovery_observed_step": 3,
+  "recovery_confirmed": true,
+  "sequence_complete_after_correction": true,
+  "corrected_statuses": {
+    "1": "COMPLETED",
+    "2": "COMPLETED",
+    "3": "COMPLETED",
+    "4": "COMPLETED",
+    "5": "COMPLETED",
+    "6": "COMPLETED",
+    "7": "COMPLETED",
+    "8": "COMPLETED"
+  },
+  "lstm_test_acc": 0.9375,
+  "n": 192,
+  "correct": 180,
+  "n_frames": 576,
+  "mean_latency_ms": 25.455427731692176,
+  "p50_latency_ms": 25.327938004920725,
+  "p95_latency_ms": 27.680561994202435,
+  "p99_latency_ms": 29.276906243467238,
+  "fps_equivalent": 39.28435265517041,
+  "breakdown_mean_ms": {
+    "hsv": 11.493241015872783,
+    "pose": 10.08856300527997,
+    "lstm": 2.8395516872858266,
+    "total": 25.455427731692176
+  },
+  "oracle_step_acc": 0.10755813953488372,
+  "oracle_n": 344,
+  "experiment_complete": false,
+  "recovery_state": {
+    "active": true,
+    "expected_step_id": 2,
+    "observed_step_id": 5,
+    "events": 4
+  },
+  "oracle_pose_injected": true,
+  "accuracy_interpretation": "oracle_step_acc uses injected synthetic pose. It verifies temporal-model and protocol integration only, not end-to-end camera-to-pose accuracy. sequence_complete / skip_detected / recovery_hold_at_expected_step / recovery_confirmed / sequence_complete_after_correction come from evaluate_state_machine()'s scripted, perfect-confidence, directly-injected predictions (see feed()) \u2014 they verify state_machine.py's own hold/recovery logic is correct, not that the deployed camera->pose->LSTM pipeline reliably produces a clean, confident prediction stream from real inference.",
+  "elapsed_sec": 51.43,
+  "assets_dir": "dataset/space_sim",
+  "n_sim_frames": 576
+}

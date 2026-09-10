@@ -1,0 +1,45 @@
+{
+  "total_windows": 20,
+  "n_source_trials": 6,
+  "feature_dim": 132,
+  "window": 30,
+  "source": "real_gravitational_mimic",
+  "posenet_backend": "onnx",
+  "rack_normalized": false,
+  "steps": [
+    {
+      "step_id": 4,
+      "windows": 11
+    },
+    {
+      "step_id": 5,
+      "windows": 2
+    },
+    {
+      "step_id": 8,
+      "windows": 7
+    }
+  ],
+  "per_video": [
+    {
+      "video": "WhatsApp Video 2026-09-09 at 17.28.39",
+      "n_frames": 193,
+      "windows": 5
+    },
+    {
+      "video": "WhatsApp Video 2026-09-09 at 17.42.26",
+      "n_frames": 257,
+      "windows": 5
+    },
+    {
+      "video": "WhatsApp Video 2026-09-09 at 17.51.28",
+      "n_frames": 151,
+      "windows": 7
+    },
+    {
+      "video": "WhatsApp Video 2026-09-09 at 18.09.43",
+      "n_frames": 192,
+      "windows": 3
+    }
+  ]
+}

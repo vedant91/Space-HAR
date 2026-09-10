@@ -2,14 +2,21 @@
 Main HAR Pipeline — Optimized Inference Engine (Tier 1)
 ========================================================
 Integrates all components into a single real-time processing loop:
-  HSVDetector + MediaPipe Pose + LSTM + StateMachine + VoiceAlert + Logger
+  HSVDetector + custom PoseNet + LSTM + StateMachine + VoiceAlert + Logger
+
+No open-source/pretrained model is used anywhere in this pipeline: object
+detection is classical-CV HSV segmentation (pipeline/hsv_detector.py) and
+pose/movement tracking is HARPoseNet (pipeline/pose_net.py, train/
+train_posenet.py) — a small CNN trained entirely from scratch on this
+project's own synthetic renderer ground truth plus classical-CV pseudo-
+labels on the real "gravitational mimic" footage. Both classifiers (LSTM,
+CNN) are likewise trained from scratch.
 
 Latency optimizations applied:
-  1. MediaPipe model_complexity=0 (fastest mode)
-  2. Frame downscaling for MediaPipe & HSV (640×360)
-  3. Threaded parallel execution (HSV + MediaPipe run simultaneously)
-  4. Pre-allocated numpy buffers (no hot-loop allocations)
-  5. LSTM ONNX Runtime inference (faster than PyTorch)
+  1. Small (~1.2M param) pose CNN, ONNX Runtime inference
+  2. Threaded parallel execution (HSV + pose net run simultaneously)
+  3. Pre-allocated numpy buffers (no hot-loop allocations)
+  4. LSTM ONNX Runtime inference (faster than PyTorch)
 
 Target: <15ms per frame processing (60+ FPS)
 
@@ -38,9 +45,7 @@ from config.experiment_config import (
     PROCESS_EVERY_N_FRAMES, SEQUENCE_WINDOW,
     LSTM_PATH, CNN_MODEL_PATH, CNN_ONNX_PATH, LSTM_ONNX_PATH, LSTM_USE_ONNX,
     VOICE_ENABLED, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
-    STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES,
-    MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
-    MEDIAPIPE_DOWNSCALE, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
+    STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
 )
@@ -50,18 +55,12 @@ from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
 from pipeline.stream_sender import NetworkStreamer
+from pipeline.pose_net import PoseNetWrapper
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # ── Import optional dependencies ──────────────────────────────────────────────
-try:
-    import mediapipe as mp
-    MP_AVAILABLE = True
-except ImportError:
-    MP_AVAILABLE = False
-    logger.warning("mediapipe not installed. Skeleton features disabled.")
-
 try:
     import onnxruntime as ort
     ORT_AVAILABLE = True
@@ -70,54 +69,62 @@ except ImportError:
     logger.warning("onnxruntime not installed. Using PyTorch for CNN inference.")
 
 
-# Feature dimension: MediaPipe Pose only (faster than Holistic)
-# Pose: 33 landmarks × 4 (x, y, z, visibility) = 132
-# Hands removed for speed — pose alone captures the key motion
+# Feature dimension: custom PoseNet only tracks 13 of the 33 MediaPipe-style
+# slots (see config.POSE_JOINT_SLOTS) but the vector stays 33 x 4 = 132 so
+# every downstream module (rack_frame, LSTM, CNN ensemble) is unaffected.
 # Single source of truth is config.SKELETON_FEATURES.
 POSE_FEATURE_DIM = SKELETON_FEATURES
 
 
 class ThreadedInference:
     """
-    Runs MediaPipe and HSV detection in parallel threads.
+    Runs pose-net inference and HSV detection in parallel threads.
     The main thread waits for both to complete before combining results.
     """
 
     def __init__(self):
-        self._mp_result = None
+        self._pose_result = None
         self._hsv_result = None
+        # Per-branch wall time (each thread times only its own work). These
+        # overlap in real wall-clock time (that's the point of threading them)
+        # but still tell the GUI/Pipeline-Internals view which branch is the
+        # more expensive one to optimize.
+        self.last_hsv_ms = 0.0
+        self.last_pose_ms = 0.0
 
     def run_parallel(self, frame_bgr: np.ndarray, frame_rgb_full: np.ndarray,
-                     hsv_detector, mp_wrapper):
+                     hsv_detector, pose_wrapper):
         """
-        Run HSV detection and MediaPipe Pose in parallel threads.
-        mp_wrapper is an OptimizedMPWrapper instance.
+        Run HSV detection and the custom PoseNet in parallel threads.
+        pose_wrapper is a pipeline.pose_net.PoseNetWrapper instance.
         Returns: (detections, skeleton_features)
         """
-        self._mp_result = None
+        self._pose_result = None
         self._hsv_result = None
 
         def _run_hsv():
+            t0 = time.perf_counter()
             try:
                 self._hsv_result = hsv_detector.detect(frame_bgr)
             except Exception as e:
                 logger.warning("HSV thread error: %s", e)
                 self._hsv_result = []
+            self.last_hsv_ms = (time.perf_counter() - t0) * 1000.0
 
-        def _run_mediapipe():
+        def _run_pose():
+            t0 = time.perf_counter()
             try:
-                if mp_wrapper is not None:
-                    results = mp_wrapper.process(frame_rgb_full)
-                    features = self._extract_pose_features(results)
-                    self._mp_result = features
+                if pose_wrapper is not None:
+                    self._pose_result = pose_wrapper.process(frame_rgb_full)
                 else:
-                    self._mp_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
+                    self._pose_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
             except Exception as e:
-                logger.warning("MediaPipe thread error: %s", e)
-                self._mp_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
+                logger.warning("PoseNet thread error: %s", e)
+                self._pose_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
+            self.last_pose_ms = (time.perf_counter() - t0) * 1000.0
 
         t1 = threading.Thread(target=_run_hsv, daemon=True)
-        t2 = threading.Thread(target=_run_mediapipe, daemon=True)
+        t2 = threading.Thread(target=_run_pose, daemon=True)
         t1.start()
         t2.start()
         t1.join()
@@ -126,77 +133,10 @@ class ThreadedInference:
         # Fallback if either thread failed
         if self._hsv_result is None:
             self._hsv_result = []
-        if self._mp_result is None:
-            self._mp_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
+        if self._pose_result is None:
+            self._pose_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
 
-        return self._hsv_result, self._mp_result
-
-    @staticmethod
-    def _extract_pose_features(results) -> np.ndarray:
-        """Extract pose-only features (132-dim). Much faster than Holistic."""
-        features = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        if results and results.pose_landmarks:
-            idx = 0
-            for lm in results.pose_landmarks.landmark:
-                features[idx] = lm.x
-                features[idx + 1] = lm.y
-                features[idx + 2] = lm.z
-                features[idx + 3] = lm.visibility
-                idx += 4
-        return features
-
-
-class OptimizedMPWrapper:
-    """
-    Wrapper around MediaPipe Pose with pre-allocated buffers
-    and configurable downscaling.
-    """
-
-    def __init__(self, complexity: int = 0,
-                 min_det_conf: float = 0.3,
-                 min_trk_conf: float = 0.3,
-                 downscale: int = 2):
-        self.downscale = downscale
-        self.small_w = FRAME_WIDTH // downscale
-        self.small_h = FRAME_HEIGHT // downscale
-
-        # Pre-allocate the small RGB buffer
-        self.frame_rgb_small = np.zeros((self.small_h, self.small_w, 3), dtype=np.uint8)
-        self.frame_flags = self.frame_rgb_small  # alias for writeable flag access
-
-        if MP_AVAILABLE:
-            mp_pose = mp.solutions.pose
-            self.holistic = mp_pose.Pose(
-                static_image_mode=False,
-                model_complexity=complexity,       # 0 = fastest
-                smooth_landmarks=True,
-                enable_segmentation=False,
-                min_detection_confidence=min_det_conf,
-                min_tracking_confidence=min_trk_conf,
-            )
-            logger.info(
-                "MediaPipe Pose loaded (complexity=%d, det=%.1f, trk=%.1f, downscale=%d)",
-                complexity, min_det_conf, min_trk_conf, downscale
-            )
-        else:
-            self.holistic = None
-
-    def process(self, frame_rgb_full: np.ndarray):
-        """Downscale + process. Returns pose landmarks result."""
-        if self.holistic is None:
-            return None
-
-        # Downscale for speed
-        cv2.resize(frame_rgb_full, (self.small_w, self.small_h),
-                   dst=self.frame_rgb_small, interpolation=cv2.INTER_LINEAR)
-        self.frame_rgb_small.flags.writeable = False
-        results = self.holistic.process(self.frame_rgb_small)
-        self.frame_rgb_small.flags.writeable = True
-        return results
-
-    def close(self):
-        if self.holistic:
-            self.holistic.close()
+        return self._hsv_result, self._pose_result
 
 
 class HARPipeline:
@@ -204,17 +144,15 @@ class HARPipeline:
     Optimized real-time HAR pipeline for ISRO experiment monitoring.
 
     Processing per frame:
-      1. HSV color detection  → box visibility flags
-      2. MediaPipe Pose       → skeleton feature vector (132-dim, pose only)
+      1. HSV color detection  → box + hand visibility flags
+      2. Custom PoseNet       → skeleton feature vector (132-dim, 13 joints tracked)
       3. Append to LSTM buffer → classify step when buffer full
       4. Feed prediction to State Machine
       5. State Machine fires callbacks → Voice + Log + GUI
 
     Optimizations:
-      - MediaPipe Pose (not Holistic) — 2-3× faster
-      - model_complexity=0 — fastest mode
-      - Frame downscaling for MediaPipe — 4× fewer pixels
-      - Threaded parallel execution — HSV + MediaPipe run simultaneously
+      - HARPoseNet: ~1.2M params, ONNX Runtime — fast on CPU
+      - Threaded parallel execution — HSV + PoseNet run simultaneously
       - Pre-allocated numpy buffers — zero hot-loop allocations
       - ONNX LSTM inference — faster than PyTorch
     """
@@ -267,14 +205,15 @@ class HARPipeline:
                 scale_ema=RACK_SCALE_EMA,
             )
             logger.info("Rack-frame normalization ENABLED (pose is rack-relative).")
-        # Stage 2: optional 3D HMR backend; silently falls back to MediaPipe.
+        # Stage 2: retired — see pipeline/hmr_backend.py's module docstring.
+        # Always reports unavailable; kept only so old configs/imports don't break.
         self.hmr = None
-        if HMR_BACKEND not in ("none", "mediapipe", ""):
+        if HMR_BACKEND not in ("none", "posenet", "mediapipe", ""):
             from pipeline.hmr_backend import HMRBackend
             self.hmr = HMRBackend(backend=HMR_BACKEND)
 
         # ── Models ────────────────────────────────────────────
-        self.mp_wrapper     = None
+        self.pose_wrapper   = None
         self.lstm_model     = None
         self.lstm_ort_sess  = None  # ONNX Runtime session for LSTM
         self.cnn_session    = None  # ONNX Runtime session for CNN
@@ -285,6 +224,24 @@ class HARPipeline:
         if headless and use_threaded is None:
             threaded_flag = False
         self.threaded = ThreadedInference() if threaded_flag else None
+
+        # One-time model/backend summary for the GUI's Pipeline Internals tab
+        # (pushed here, before the dashboard's event loop even starts —
+        # queue.Queue buffers it until _drain_queue picks it up).
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("model_info", {
+                    "pose_backend": self.pose_wrapper.backend if self.pose_wrapper else "none",
+                    "pose_available": bool(self.pose_wrapper and self.pose_wrapper.available),
+                    "lstm_backend": ("onnx" if self.lstm_ort_sess is not None
+                                    else "pytorch" if self.lstm_model is not None else "none"),
+                    "cnn_backend": "onnx" if self.cnn_session is not None else "disabled",
+                    "cnn_ensemble_enabled": self.enable_cnn_ensemble,
+                    "rack_normalize": self.rack_normalizer is not None,
+                    "threaded": self.threaded is not None,
+                }))
+            except queue.Full:
+                pass
 
         # ── Sequence buffer (for LSTM) ─────────────────────────
         self.skeleton_buffer: Deque[np.ndarray] = deque(maxlen=SEQUENCE_WINDOW)
@@ -313,15 +270,12 @@ class HARPipeline:
     # ── Model Loading ──────────────────────────────────────────────────────────
 
     def _load_models(self):
-        """Load LSTM and CNN models. Gracefully skip if not trained yet."""
-        # MediaPipe Pose (optimized)
-        if MP_AVAILABLE:
-            self.mp_wrapper = OptimizedMPWrapper(
-                complexity=MEDIAPIPE_MODEL_COMPLEXITY,
-                min_det_conf=MEDIAPIPE_MIN_DET_CONF,
-                min_trk_conf=MEDIAPIPE_MIN_TRK_CONF,
-                downscale=MEDIAPIPE_DOWNSCALE,
-            )
+        """Load pose/LSTM/CNN models. Gracefully skip if not trained yet."""
+        # Custom pose net (trained from scratch — see pipeline/pose_net.py)
+        self.pose_wrapper = PoseNetWrapper()
+        if not self.pose_wrapper.available:
+            logger.warning("PoseNet not trained yet (models/pose_net.onnx|.pt missing) — "
+                           "pose features will be all-zero until train/train_posenet.py is run.")
 
         # LSTM — prefer ONNX, fallback to PyTorch
         if LSTM_USE_ONNX and ORT_AVAILABLE and Path(LSTM_ONNX_PATH).exists():
@@ -484,26 +438,10 @@ class HARPipeline:
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
     def _extract_skeleton_features_optimized(self, frame_rgb: np.ndarray) -> np.ndarray:
-        """
-        Run optimized MediaPipe Pose and return 132-dim feature vector.
-        Uses pre-allocated buffers and downscaled frames.
-        """
-        if self.mp_wrapper is None:
+        """Run the custom PoseNet and return the 132-dim feature vector."""
+        if self.pose_wrapper is None:
             return np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-
-        results = self.mp_wrapper.process(frame_rgb)
-
-        features = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        if results and results.pose_landmarks:
-            idx = 0
-            for lm in results.pose_landmarks.landmark:
-                features[idx] = lm.x
-                features[idx + 1] = lm.y
-                features[idx + 2] = lm.z
-                features[idx + 3] = lm.visibility
-                idx += 4
-
-        return features
+        return self.pose_wrapper.process(frame_rgb)
 
     def _run_lstm_inference(self) -> tuple[int, float]:
         """
@@ -736,16 +674,16 @@ class HARPipeline:
                       injected_skel: Optional[np.ndarray] = None,
                       annotate: bool = False) -> dict:
         """
-        Process a single BGR frame. Always runs HSV + MediaPipe for real latency.
+        Process a single BGR frame. Always runs HSV + PoseNet for real latency.
         If injected_skel is provided it is used for LSTM (oracle pose) so accuracy
-        can be measured independently of MediaPipe on synthetic figures.
+        can be measured independently of the pose net on synthetic figures.
         """
         t0 = time.perf_counter()
 
         if frame is None or frame.size == 0:
             return {
                 "pred_step": 0, "confidence": 0.0, "detections": [], "vis": None,
-                "timings_ms": {"hsv": 0.0, "mediapipe": 0.0, "lstm": 0.0, "total": 0.0},
+                "timings_ms": {"hsv": 0.0, "pose": 0.0, "lstm": 0.0, "total": 0.0},
             }
 
         if frame.shape[1] != FRAME_WIDTH or frame.shape[0] != FRAME_HEIGHT:
@@ -758,15 +696,15 @@ class HARPipeline:
         detections = self.hsv_detector.detect(frame)
         hsv_ms = (time.perf_counter() - t_hsv) * 1000.0
 
-        t_mp = time.perf_counter()
+        t_pose = time.perf_counter()
         if self.hmr is not None and self.hmr.available:
             # Stage 2: root-relative 3D from the HMR mesh (same 132-dim contract).
-            skel_mp, _ = self.hmr.get_pose_features(self._frame_rgb_full)
+            skel_pose, _ = self.hmr.get_pose_features(self._frame_rgb_full)
         else:
-            skel_mp = self._extract_skeleton_features_optimized(self._frame_rgb_full)
-        mp_ms = (time.perf_counter() - t_mp) * 1000.0
+            skel_pose = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+        pose_ms = (time.perf_counter() - t_pose) * 1000.0
 
-        skel = injected_skel if injected_skel is not None else skel_mp
+        skel = injected_skel if injected_skel is not None else skel_pose
         if self.rack_normalizer is not None:
             skel = self.rack_normalizer.normalize(
                 skel, rack_rect=pick_rack_rect(detections)
@@ -793,7 +731,7 @@ class HARPipeline:
             "vis": vis,
             "timings_ms": {
                 "hsv": float(hsv_ms),
-                "mediapipe": float(mp_ms),
+                "pose": float(pose_ms),
                 "lstm": float(lstm_ms),
                 "total": float(total_ms),
             },
@@ -841,9 +779,9 @@ class HARPipeline:
         if self.streamer is not None:
             self.streamer.close()
             self.streamer = None
-        if self.mp_wrapper is not None:
-            self.mp_wrapper.close()
-            self.mp_wrapper = None
+        if self.pose_wrapper is not None:
+            self.pose_wrapper.close()
+            self.pose_wrapper = None
 
     # ── Main Loop ─────────────────────────────────────────────────────────────
 
@@ -936,11 +874,16 @@ class HARPipeline:
             if self.threaded:
                 detections, skel = self.threaded.run_parallel(
                     frame, self._frame_rgb_full,
-                    self.hsv_detector, self.mp_wrapper,
+                    self.hsv_detector, self.pose_wrapper,
                 )
+                hsv_ms, pose_ms = self.threaded.last_hsv_ms, self.threaded.last_pose_ms
             else:
+                t_hsv = time.perf_counter()
                 detections = self.hsv_detector.detect(frame)
+                hsv_ms = (time.perf_counter() - t_hsv) * 1000.0
+                t_pose = time.perf_counter()
                 skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+                pose_ms = (time.perf_counter() - t_pose) * 1000.0
 
             if self.rack_normalizer is not None:
                 skel = self.rack_normalizer.normalize(
@@ -951,15 +894,29 @@ class HARPipeline:
                 self._append_cnn_frame(self._frame_rgb_full)
 
             # ── LSTM (+ optional CNN ensemble) inference ─────
+            t_lstm = time.perf_counter()
             if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
                 pred_step, pred_conf = self._predict_and_feed_state_machine()
+            lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
             # ── Build annotated frame & push to GUI ──────────
             vis = self._annotate_frame(frame, detections, pred_step, pred_conf)
+            total_ms = (time.time() - t_start) * 1000.0
 
             if self.gui_queue:
                 try:
                     self.gui_queue.put_nowait(("frame", vis))
+                except queue.Full:
+                    pass
+                try:
+                    self.gui_queue.put_nowait(("timings", {
+                        "hsv": hsv_ms, "pose": pose_ms, "lstm": lstm_ms, "total": total_ms,
+                    }))
+                    self.gui_queue.put_nowait(("detections", [
+                        {"label": d.label, "confidence": round(float(d.confidence), 3),
+                         "bbox": d.bbox, "centroid": d.centroid}
+                        for d in detections
+                    ]))
                 except queue.Full:
                     pass
                 self._push_gui_status()
@@ -982,8 +939,8 @@ class HARPipeline:
         if self.streamer:
             self.streamer.close()
             self.streamer = None
-        if self.mp_wrapper:
-            self.mp_wrapper.close()
+        if self.pose_wrapper:
+            self.pose_wrapper.close()
         if not self.headless and self.gui_queue is None:
             cv2.destroyAllWindows()
         logger.info("Pipeline stopped. Log: %s", self.exp_logger.get_log_path())
