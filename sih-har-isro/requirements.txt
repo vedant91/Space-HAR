@@ -30,6 +30,7 @@ PyQt6>=6.5.0
 
 # ── Utilities ─────────────────────────────────────────────────
 Pillow>=9.0.0
+PyYAML>=6.0               # Procedure pack loader (config/procedure_pack.py)
 
 # ── Development / annotation (optional) ──────────────────────
 # roboflow             # Dataset management

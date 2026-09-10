@@ -1,0 +1,74 @@
+# Default procedure pack — the red/yellow box-sorting protocol this whole
+# project has always run, exported 1:1 from what used to be
+# config/experiment_config.py's hardcoded EXPERIMENT_STEPS literal. Loading
+# this pack must reproduce today's behavior bit-for-bit (see
+# config/procedure_pack.py's docstring and README.md's G2 acceptance notes).
+pack_version: 1
+experiment_id: box_sort_v1
+name: "Red/Yellow Box Sorting Protocol"
+camera_hints:
+  expected_objects: [main_box, red_box, yellow_box, hand]
+
+steps:
+  - id: 1
+    name: "Approach Main Box"
+    description: "Astronaut approaches and positions hands near the main container"
+    duration_hint_sec: 5
+    required_objects: [main_box]
+    voice_cue: "Step 1: Approach the main box."
+
+  - id: 2
+    name: "Open Main Box"
+    description: "Astronaut opens the lid of the main container"
+    duration_hint_sec: 4
+    required_objects: [main_box]
+    voice_cue: "Step 2: Open the main box."
+
+  - id: 3
+    name: "Pick Red Box"
+    description: "Astronaut picks up the red inner box with both hands"
+    duration_hint_sec: 5
+    required_objects: [red_box, hand]
+    voice_cue: "Step 3: Pick up the red box."
+
+  - id: 4
+    name: "Examine Red Box"
+    description: "Astronaut examines and verifies the red box"
+    duration_hint_sec: 6
+    required_objects: [red_box, hand]
+    voice_cue: "Step 4: Examine the red box."
+
+  - id: 5
+    name: "Place Red Box"
+    description: "Astronaut places the red box in the designated zone"
+    duration_hint_sec: 4
+    required_objects: [red_box]
+    voice_cue: "Step 5: Place the red box in the designated zone."
+
+  - id: 6
+    name: "Pick Yellow Box"
+    description: "Astronaut picks up the yellow inner box"
+    duration_hint_sec: 5
+    required_objects: [yellow_box, hand]
+    voice_cue: "Step 6: Pick up the yellow box."
+
+  - id: 7
+    name: "Examine Yellow Box"
+    description: "Astronaut examines and verifies the yellow box"
+    duration_hint_sec: 6
+    required_objects: [yellow_box, hand]
+    voice_cue: "Step 7: Examine the yellow box."
+
+  - id: 8
+    name: "Place Yellow Box"
+    description: "Astronaut places the yellow box in the designated zone"
+    duration_hint_sec: 4
+    required_objects: [yellow_box]
+    voice_cue: "Step 8: Place the yellow box in the designated zone."
+
+fsm:
+  on_skip: hold_and_correct
+  on_low_confidence: confirm
+
+alerts:
+  voice: true

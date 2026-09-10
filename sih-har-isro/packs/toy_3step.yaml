@@ -1,0 +1,39 @@
+# Minimal second pack — proves the FSM/pipeline needs zero code changes to
+# run a different protocol. Not a real experiment; just enough steps
+# (3, using only "hand" as a required object so it runs against any camera
+# without needing red/yellow boxes in frame) to demonstrate pack-swapping.
+# Run with: python main.py --pack packs/toy_3step.yaml --mode pipeline ...
+pack_version: 1
+experiment_id: toy_3step
+name: "Toy 3-Step Demo Protocol"
+camera_hints:
+  expected_objects: [hand]
+
+steps:
+  - id: 1
+    name: "Raise Hand"
+    description: "Raise one hand into frame"
+    duration_hint_sec: 3
+    required_objects: [hand]
+    voice_cue: "Step 1: Raise your hand."
+
+  - id: 2
+    name: "Hold Steady"
+    description: "Hold the hand steady in frame"
+    duration_hint_sec: 3
+    required_objects: [hand]
+    voice_cue: "Step 2: Hold steady."
+
+  - id: 3
+    name: "Lower Hand"
+    description: "Lower the hand out of frame"
+    duration_hint_sec: 3
+    required_objects: []
+    voice_cue: "Step 3: Lower your hand."
+
+fsm:
+  on_skip: hold_and_correct
+  on_low_confidence: confirm
+
+alerts:
+  voice: true

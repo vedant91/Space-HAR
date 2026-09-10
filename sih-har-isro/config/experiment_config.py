@@ -11,72 +11,28 @@ import os
 from pathlib import Path
 
 # ── Experiment Step Definitions ──────────────────────────────
-EXPERIMENT_STEPS = [
-    {
-        "id": 1,
-        "name": "Approach Main Box",
-        "description": "Astronaut approaches and positions hands near the main container",
-        "duration_hint_sec": 5,
-        "required_objects": ["main_box"],
-        "voice_cue": "Step 1: Approach the main box.",
-    },
-    {
-        "id": 2,
-        "name": "Open Main Box",
-        "description": "Astronaut opens the lid of the main container",
-        "duration_hint_sec": 4,
-        "required_objects": ["main_box"],
-        "voice_cue": "Step 2: Open the main box.",
-    },
-    {
-        "id": 3,
-        "name": "Pick Red Box",
-        "description": "Astronaut picks up the red inner box with both hands",
-        "duration_hint_sec": 5,
-        "required_objects": ["red_box", "hand"],
-        "voice_cue": "Step 3: Pick up the red box.",
-    },
-    {
-        "id": 4,
-        "name": "Examine Red Box",
-        "description": "Astronaut examines and verifies the red box",
-        "duration_hint_sec": 6,
-        "required_objects": ["red_box", "hand"],
-        "voice_cue": "Step 4: Examine the red box.",
-    },
-    {
-        "id": 5,
-        "name": "Place Red Box",
-        "description": "Astronaut places the red box in the designated zone",
-        "duration_hint_sec": 4,
-        "required_objects": ["red_box"],
-        "voice_cue": "Step 5: Place the red box in the designated zone.",
-    },
-    {
-        "id": 6,
-        "name": "Pick Yellow Box",
-        "description": "Astronaut picks up the yellow inner box",
-        "duration_hint_sec": 5,
-        "required_objects": ["yellow_box", "hand"],
-        "voice_cue": "Step 6: Pick up the yellow box.",
-    },
-    {
-        "id": 7,
-        "name": "Examine Yellow Box",
-        "description": "Astronaut examines and verifies the yellow box",
-        "duration_hint_sec": 6,
-        "required_objects": ["yellow_box", "hand"],
-        "voice_cue": "Step 7: Examine the yellow box.",
-    },
-    {
-        "id": 8,
-        "name": "Place Yellow Box",
-        "description": "Astronaut places the yellow box in the designated zone",
-        "duration_hint_sec": 4,
-        "required_objects": ["yellow_box"],
-        "voice_cue": "Step 8: Place the yellow box in the designated zone.",
-    },
-]
+# Loaded from a procedure pack (YAML), not hardcoded — see
+# config/procedure_pack.py and packs/box_sort_v1.yaml. This makes swapping
+# the whole protocol a file swap, not a code change. Override with the
+# HAR_PROCEDURE_PACK env var (main.py's --pack flag sets this before any
+# config-dependent module is imported) — defaults to the box-sort protocol
+# this project has always run. Fails loud (raises, no silent fallback) on a
+# missing/malformed pack, deliberately: running the wrong protocol
+# unnoticed is worse than crashing at startup.
+from config.procedure_pack import load_pack, ProcedurePackError  # noqa: E402
+
+_PACKS_DIR = Path(__file__).resolve().parent.parent / "packs"
+_DEFAULT_PACK_PATH = _PACKS_DIR / "box_sort_v1.yaml"
+_PACK_PATH = Path(os.environ.get("HAR_PROCEDURE_PACK", str(_DEFAULT_PACK_PATH)))
+try:
+    _ACTIVE_PACK = load_pack(str(_PACK_PATH))
+except ProcedurePackError as _e:
+    raise RuntimeError(f"Failed to load procedure pack '{_PACK_PATH}': {_e}") from _e
+
+EXPERIMENT_STEPS = _ACTIVE_PACK.experiment_steps
+PROCEDURE_PACK_ID = _ACTIVE_PACK.experiment_id
+PROCEDURE_PACK_NAME = _ACTIVE_PACK.name
+PROCEDURE_PACK_PATH = str(_PACK_PATH)
 # ── YOLO Detection Classes ────────────────────────────────────
 DETECTION_CLASSES = {
     0: "hand",

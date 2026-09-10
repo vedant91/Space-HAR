@@ -106,10 +106,13 @@ class Dashboard(QMainWindow):
         self._training_proc: Optional[QProcess] = None
         self._log_file_pos = 0
 
+        self._race_events: list = []  # [{"kind","local_t","earth_t","delay_s","message"}]
+
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_live_tab(), "Live Monitor")
         self.tabs.addTab(self._build_internals_tab(), "Pipeline Internals")
         self.tabs.addTab(self._build_detections_tab(), "Detections")
+        self.tabs.addTab(self._build_race_tab(), "Latency Race")
         self.tabs.addTab(self._build_model_tab(), "Model && Dataset")
         self.tabs.addTab(self._build_training_tab(), "Training Console")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
@@ -295,6 +298,73 @@ class Dashboard(QMainWindow):
             self.detection_table.setItem(row, 3, QTableWidgetItem(str(d["centroid"])))
 
     # ══════════════════════════════════════════════════════════════════════
+    # Tab — Latency Race
+    # ══════════════════════════════════════════════════════════════════════
+
+    def _build_race_tab(self) -> QWidget:
+        root = QVBoxLayout()
+        root.addWidget(QLabel(
+            "<b>Onboard alert vs. simulated delayed-Earth alert</b> — same anomaly, two "
+            "channels. The Earth column is a display-only replay (see pipeline/"
+            "earth_delay_channel.py); it never affects what the onboard system does."))
+
+        self.race_banner = QLabel("Waiting for a race run (python main.py --mode race)...")
+        self.race_banner.setStyleSheet(
+            "font-size:15px; font-weight:bold; padding:8px; border-radius:4px; "
+            "background:#1f3a1f; color:#9be89b;")
+        root.addWidget(self.race_banner)
+
+        cols = QHBoxLayout()
+        local_box = QVBoxLayout()
+        local_box.addWidget(QLabel("<b>LOCAL (onboard) — fires immediately</b>"))
+        self.race_local_list = QListWidget()
+        local_box.addWidget(self.race_local_list, 1)
+        local_w = QWidget(); local_w.setLayout(local_box)
+
+        earth_box = QVBoxLayout()
+        earth_box.addWidget(QLabel("<b>EARTH (simulated delay) — arrives late</b>"))
+        self.race_earth_list = QListWidget()
+        earth_box.addWidget(self.race_earth_list, 1)
+        earth_w = QWidget(); earth_w.setLayout(earth_box)
+
+        cols.addWidget(local_w)
+        cols.addWidget(earth_w)
+        cols_w = QWidget(); cols_w.setLayout(cols)
+        root.addWidget(cols_w, 1)
+
+        w = QWidget(); w.setLayout(root)
+        return w
+
+    def _on_race_local(self, payload: dict):
+        t = time.time()
+        msg = payload.get("message", payload.get("kind", "anomaly"))
+        item = QListWidgetItem(f"[{time.strftime('%H:%M:%S', time.localtime(t))}] {msg}")
+        item.setForeground(QColor("#9be89b"))
+        self.race_local_list.addItem(item)
+        self.race_local_list.scrollToBottom()
+        self._race_events.append({"kind": payload.get("kind"), "message": msg,
+                                  "local_wall_time": t, "earth_wall_time": None})
+        self.race_banner.setText(f"LOCAL has fired {self.race_local_list.count()} alert(s) — "
+                                 f"Earth has {self.race_earth_list.count()} pending/delivered so far.")
+
+    def _on_race_earth(self, payload: dict):
+        t = time.time()
+        msg = payload.get("message", payload.get("kind", "anomaly"))
+        delay = payload.get("delay_s")
+        item = QListWidgetItem(f"[{time.strftime('%H:%M:%S', time.localtime(t))}] "
+                               f"(+{delay:.1f}s late) {msg}" if delay is not None else msg)
+        item.setForeground(QColor("#e89b9b"))
+        self.race_earth_list.addItem(item)
+        self.race_earth_list.scrollToBottom()
+        for ev in reversed(self._race_events):
+            if ev["kind"] == payload.get("kind") and ev["earth_wall_time"] is None:
+                ev["earth_wall_time"] = t
+                break
+        self.race_banner.setText(
+            f"LOCAL WINS by {delay:.1f}s on the last event — onboard already handled it while "
+            f"Earth was still finding out." if delay is not None else self.race_banner.text())
+
+    # ══════════════════════════════════════════════════════════════════════
     # Tab 4 — Model & Dataset info
     # ══════════════════════════════════════════════════════════════════════
 
@@ -313,7 +383,18 @@ class Dashboard(QMainWindow):
         return w
 
     def _refresh_model_dataset_info(self):
-        lines = ["=== Models (all trained from scratch — no pretrained/open-source weights) ===", ""]
+        try:
+            from config.experiment_config import (
+                PROCEDURE_PACK_ID, PROCEDURE_PACK_NAME, PROCEDURE_PACK_PATH, EXPERIMENT_STEPS,
+            )
+            lines = [f"=== Procedure pack: {PROCEDURE_PACK_ID} — \"{PROCEDURE_PACK_NAME}\" ===", ""]
+            lines.append(f"Source: {PROCEDURE_PACK_PATH}")
+            for s in EXPERIMENT_STEPS:
+                lines.append(f"  {s['id']}. {s['name']}  (needs: {', '.join(s['required_objects']) or '—'})")
+            lines += ["", "=== Models (all trained from scratch — no pretrained/open-source weights) ===", ""]
+        except Exception as e:
+            lines = [f"(failed to read active procedure pack: {e})", "",
+                    "=== Models (all trained from scratch — no pretrained/open-source weights) ===", ""]
 
         def _ckpt_line(name, path, fields):
             p = _PROJECT_ROOT / path
@@ -541,6 +622,10 @@ class Dashboard(QMainWindow):
                     self._on_detections(payload)
                 elif kind == "model_info":
                     self._on_model_info(payload)
+                elif kind == "race_local":
+                    self._on_race_local(payload)
+                elif kind == "race_earth":
+                    self._on_race_earth(payload)
                 elif kind == "step_skipped":
                     self._show_alert(f"⚠ Step {payload} skipped — awaiting correction", "#a83232")
                 elif kind == "out_of_sequence":

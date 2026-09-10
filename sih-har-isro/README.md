@@ -131,12 +131,18 @@ loss** — only joints the pseudo-labeler actually found contribute gradient.
 ## Directory guide
 
 ```
-config/experiment_config.py     Single source of truth for every constant/threshold
+config/
+  experiment_config.py           Single source of truth for every constant/threshold
+  procedure_pack.py               Procedure-pack YAML loader (fails loud, no silent fallback)
+packs/
+  box_sort_v1.yaml                 Default pack — this project's protocol, exported 1:1
+  toy_3step.yaml                   Minimal second pack proving packs swap freely
 pipeline/
   hsv_detector.py                Classical-CV box + hand detector
   pose_net.py                    HARPoseNet runtime wrapper (ONNX/PyTorch)
   rack_frame.py                  Orientation-agnostic (microgravity) pose normalization
   state_machine.py               Protocol sequence validation, hold-and-correct
+  earth_delay_channel.py          Latency-race demo channel (display-only, never feeds the FSM)
   har_pipeline.py                Wires it all together, real-time loop
   hmr_backend.py                 Retired 3D-mesh stage (would need a pretrained model — inert shim)
 train/
@@ -150,7 +156,8 @@ data_generation/
   build_real_dataset.py          Turns pseudo-labels into LSTM/CNN training data
 simulation/
   renderer.py, space_sim.py      Synthetic ISS-module renderer + full pipeline test harness
-gui/qt_dashboard.py              6-tab PyQt6 dashboard (see below)
+  race_demo.py                    Latency-race demo driver (scripted fault, --mode race)
+gui/qt_dashboard.py              7-tab PyQt6 dashboard (see below)
 main.py                          Entry point — see `--mode` below
 end_to_end_loop.py               Auto-fix loop: data → train → sim → diagnose → retry
 ```
@@ -167,21 +174,61 @@ python main.py --mode e2e                     # full auto-fix loop until gates p
 
 Other useful modes: `posenet` (pose model only, `--finetune-real` to also run
 Stage 2), `autolabel` (pseudo-label the real videos only), `tuner` (interactive
-HSV calibration), `sim` (space-sim latency/accuracy report only).
+HSV calibration), `sim` (space-sim latency/accuracy report only), `race` (see below).
+Any mode accepts `--pack path/to/pack.yaml` to swap the experiment protocol.
+
+## Latency-race demo — the core thesis, made undeniable
+
+```bash
+python main.py --mode race --earth-delay 4          # GUI, live
+python main.py --mode race --earth-delay 8 --headless   # prints + saves JSON
+```
+
+Runs the same deterministic scripted fault (skip step 2, then correct it) through
+the real pipeline twice at once: the **local** channel fires the instant an
+anomaly happens (as it always does); a simulated **Earth** channel replays the
+same event only after the configured delay (2/4/8s — the "practical ops/video"
+range, not raw speed-of-light — see `pipeline/earth_delay_channel.py`'s
+docstring). The GUI's **Latency Race** tab shows both feeds side by side with a
+live "LOCAL WINS by Ns" banner. `--headless` prints a table and writes
+`dataset/race_demo/race_report.json`. The Earth channel is display/logging-only
+by construction — it is fed a *copy* of an already-fired local alert and can
+never reach `ExperimentStateMachine`, so this demo cannot change what the
+onboard system actually does.
+
+## Procedure packs — swap the experiment without touching code
+
+`config/experiment_config.py`'s `EXPERIMENT_STEPS` loads from a YAML pack
+(`config/procedure_pack.py`), not a hardcoded table. `packs/box_sort_v1.yaml` is
+the default (this project's protocol, exported 1:1); `packs/toy_3step.yaml` is a
+minimal second pack proving the swap needs zero FSM/pipeline code changes:
+
+```bash
+python main.py --pack packs/toy_3step.yaml --mode pipeline --video some.mp4
+```
+
+Set via the `HAR_PROCEDURE_PACK` env var (which `--pack` sets before any
+config-dependent module imports) — read once at `config/experiment_config.py`'s
+own import time. A missing or malformed pack raises immediately at startup
+(`ProcedurePackError`, no silent fallback to the wrong protocol) — see
+`config/procedure_pack.py`'s validation (contiguous 1..N step ids, required
+fields, non-empty steps list).
 
 ## The dashboard (`gui/qt_dashboard.py`)
 
-Six tabs, all live:
+Seven tabs, all live:
 
 1. **Live Monitor** — video feed, step checklist, alerts, recording/stream status
 2. **Pipeline Internals** — per-stage latency bar chart, rolling FPS line chart,
    model backend info (ONNX vs PyTorch, threaded inference, rack-frame on/off)
 3. **Detections** — live table of every HSV/hand detection this frame
-4. **Model & Dataset** — checkpoint metrics (val accuracy/PCK), dataset sizes
-   (synthetic vs real), the real pseudo-label quality report, one click "Refresh"
-5. **Training Console** — launches `train` / `posenet` / `autolabel` / `e2e` as a
+4. **Latency Race** — onboard vs. simulated delayed-Earth alert feeds, side by side
+5. **Model & Dataset** — checkpoint metrics (val accuracy/PCK), dataset sizes
+   (synthetic vs real), active procedure pack, the real pseudo-label quality
+   report, one click "Refresh"
+6. **Training Console** — launches `train` / `posenet` / `autolabel` / `e2e` as a
    live subprocess with streamed output, right from the GUI
-6. **Logs** — tails the newest structured experiment log
+7. **Logs** — tails the newest structured experiment log
 
 ## Known limitations (stated, not hidden)
 

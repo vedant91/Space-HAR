@@ -167,7 +167,9 @@ class HARPipeline:
                  enable_voice: Optional[bool] = None,
                  enable_recording: bool = True,
                  enable_cnn_ensemble: Optional[bool] = None,
-                 use_threaded: Optional[bool] = None):
+                 use_threaded: Optional[bool] = None,
+                 enable_race: bool = False,
+                 earth_delay_s: Optional[float] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -182,6 +184,15 @@ class HARPipeline:
         self.frame_idx      = 0
         self._running       = False
         self._last_pred     = (0, 0.0)
+
+        # ── Latency-race demo (display/logging only — see its module
+        # docstring for the "cannot affect FSM authority" guarantee) ──
+        self.enable_race = enable_race
+        self.earth_channel: Optional["EarthDelayChannel"] = None
+        if enable_race:
+            from pipeline.earth_delay_channel import EarthDelayChannel, DEFAULT_EARTH_DELAY_S
+            delay = DEFAULT_EARTH_DELAY_S if earth_delay_s is None else earth_delay_s
+            self.earth_channel = EarthDelayChannel(delay_s=delay, on_deliver=self._on_earth_delivered)
 
         voice_on = VOICE_ENABLED if enable_voice is None else enable_voice
         if headless and enable_voice is None:
@@ -397,12 +408,17 @@ class HARPipeline:
             self.voice.alert_skip(expected_id)
             if self.gui_queue:
                 self.gui_queue.put_nowait(("step_skipped", expected_id))
+            self._fire_race("step_skipped", {"expected_id": expected_id, "observed_id": observed_id,
+                                             "message": f"Step {expected_id} skipped (observed {observed_id})"})
 
         def on_out_of_sequence(expected_id: int, observed_id: int):
             self.exp_logger.log_out_of_sequence(expected_id, observed_id)
             self.voice.alert_out_of_sequence(expected_id)
             if self.gui_queue:
                 self.gui_queue.put_nowait(("out_of_sequence", expected_id))
+            self._fire_race("out_of_sequence", {"expected_id": expected_id, "observed_id": observed_id,
+                                                "message": f"Out of sequence: expected {expected_id}, "
+                                                          f"observed {observed_id}"})
 
         def on_step_recovered(rec: StepRecord, observed_id: int | None):
             self.exp_logger.log_alert(
@@ -434,6 +450,36 @@ class HARPipeline:
         sm.on_out_of_sequence     = on_out_of_sequence
         sm.on_step_recovered      = on_step_recovered
         sm.on_experiment_complete = on_experiment_complete
+
+    # ── Latency-race demo (display/logging only) ────────────────────────────
+
+    def _fire_race(self, kind: str, payload: dict):
+        """Record that the LOCAL system just alerted on `kind`, and (only
+        when race mode is on) schedule the delayed 'Earth found out' replay.
+        Pushing the local event to the GUI happens unconditionally so the
+        Latency Race tab can show it even before the Earth copy arrives."""
+        if not self.enable_race:
+            return
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("race_local", {"kind": kind, **payload}))
+            except queue.Full:
+                pass
+        if self.earth_channel is not None:
+            self.earth_channel.fire(kind, payload)
+
+    def _on_earth_delivered(self, ev):
+        """EarthDelayChannel's on_deliver callback — fires on a background
+        Timer thread after `earth_delay_s`. Display/logging only; never
+        touches state_machine."""
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("race_earth", {
+                    "kind": ev.kind, **ev.payload,
+                    "delay_s": round(ev.earth_deliver_time - ev.local_fire_time, 2),
+                }))
+            except queue.Full:
+                pass
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
@@ -570,6 +616,10 @@ class HARPipeline:
                 }))
             except queue.Full:
                 pass
+        self._fire_race("uncertain", {"expected_id": expected, "lstm_step": lstm_step,
+                                      "cnn_step": cnn_step,
+                                      "message": f"Model disagreement near step {expected} "
+                                                f"(LSTM={lstm_step}, CNN={cnn_step})"})
 
     def _predict_and_feed_state_machine(self) -> tuple[int, float]:
         """

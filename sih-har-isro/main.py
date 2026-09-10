@@ -264,7 +264,12 @@ def print_status():
 
     from config.experiment_config import (
         ENABLE_STREAMING, CNN_ENSEMBLE_ENABLED, RACK_FRAME_NORMALIZE,
+        PROCEDURE_PACK_ID, PROCEDURE_PACK_NAME, PROCEDURE_PACK_PATH, EXPERIMENT_STEPS,
     )
+    print(f"\nProcedure pack: {PROCEDURE_PACK_ID} — \"{PROCEDURE_PACK_NAME}\" "
+         f"({len(EXPERIMENT_STEPS)} steps, {PROCEDURE_PACK_PATH})")
+    print("  Override with --pack path/to/other.yaml (see packs/toy_3step.yaml)")
+
     print("\nOptional features (config defaults, all off until explicitly enabled):")
     print(f"  streaming={ENABLE_STREAMING}  cnn_ensemble={CNN_ENSEMBLE_ENABLED}  "
          f"rack_frame_normalize={RACK_FRAME_NORMALIZE}")
@@ -287,12 +292,18 @@ Modes:
   status     → Show system status and model availability
   e2e        → End-to-end loop: data → train → space sim until gates pass
   sim        → Space simulation latency/accuracy test only
+  race       → Latency-race demo: onboard alert vs. simulated delayed-Earth alert
         """
     )
     parser.add_argument("--mode",
                         choices=["pipeline", "train", "posenet", "autolabel", "datagen",
-                                "tuner", "status", "e2e", "sim"],
+                                "tuner", "status", "e2e", "sim", "race"],
                         default="pipeline")
+    parser.add_argument("--earth-delay", type=float, default=4.0, choices=[2.0, 4.0, 8.0],
+                        help="--mode race: simulated Earth round-trip delay in seconds")
+    parser.add_argument("--pack", type=str, default=None,
+                        help="Procedure pack YAML to load instead of the built-in protocol "
+                            "(see packs/box_sort_v1.yaml)")
     parser.add_argument("--camera",   type=int,  default=0)
     parser.add_argument("--video",    type=str,  default=None)
     parser.add_argument("--headless", action="store_true")
@@ -314,6 +325,13 @@ Modes:
     parser.add_argument("--finetune-real", action="store_true",
                         help="--mode posenet: also run the Stage-2 real-video fine-tune")
     args = parser.parse_args()
+
+    # Must happen before ANY config-dependent module is imported below —
+    # config/experiment_config.py reads this env var exactly once, at its
+    # own import time, to pick which procedure pack to load.
+    if args.pack:
+        import os as _os
+        _os.environ["HAR_PROCEDURE_PACK"] = args.pack
 
     if args.mode == "status":
         print_status()
@@ -362,3 +380,20 @@ Modes:
         report = run_full_space_sim(test_sequences_dir="dataset/skeleton_sequences_test")
         print(json.dumps({k: v for k, v in report.items() if k != "sm_statuses"},
                          indent=2, default=str))
+
+    elif args.mode == "race":
+        from simulation.race_demo import run_race_demo, print_report
+        if args.headless:
+            report = run_race_demo(delay_s=args.earth_delay)
+            print_report(report)
+        else:
+            import queue
+            import threading
+            gui_queue = queue.Queue(maxsize=60)
+            t = threading.Thread(target=run_race_demo,
+                                 kwargs=dict(delay_s=args.earth_delay, gui_queue=gui_queue),
+                                 daemon=True)
+            t.start()
+            from gui.qt_dashboard import launch_qt_dashboard
+            launch_qt_dashboard(gui_queue)
+            t.join(timeout=1.0)

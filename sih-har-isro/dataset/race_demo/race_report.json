@@ -1,0 +1,53 @@
+{
+  "delay_s": 2.0,
+  "fault_scenario": "skip_step_2_then_correct",
+  "n_frames": 648,
+  "wall_clock_sec": 17.71,
+  "events": [
+    {
+      "kind": "step_skipped",
+      "payload": {
+        "expected_id": 1,
+        "observed_id": 4,
+        "message": "Step 1 skipped (observed 4)"
+      },
+      "local_fire_time": 162217.525751333,
+      "earth_deliver_time": 162219.525751333,
+      "delay_s": 2.0,
+      "delivered": true
+    },
+    {
+      "kind": "step_skipped",
+      "payload": {
+        "expected_id": 1,
+        "observed_id": 5,
+        "message": "Step 1 skipped (observed 5)"
+      },
+      "local_fire_time": 162228.881898625,
+      "earth_deliver_time": 162230.881898625,
+      "delay_s": 2.0,
+      "delivered": true
+    },
+    {
+      "kind": "step_skipped",
+      "payload": {
+        "expected_id": 2,
+        "observed_id": 5,
+        "message": "Step 2 skipped (observed 5)"
+      },
+      "local_fire_time": 162232.135837958,
+      "earth_deliver_time": 162234.135837958,
+      "delay_s": 2.0,
+      "delivered": true
+    }
+  ],
+  "n_events": 3,
+  "local_always_first": true,
+  "voice_history": [
+    "Warning. Step 1 was skipped. Please complete the missed step before continuing.",
+    "Warning. Step 1 was skipped. Please complete the missed step before continuing.",
+    "Step 1 is now correct. Next, step 2: Open Main Box.",
+    "Warning. Step 2 was skipped. Please complete the missed step before continuing."
+  ],
+  "narrative": "Onboard alerted on every anomaly the instant it happened. If the same alert had to reach a human on Earth and come back, the crew would have learned about it 2s later \u2014 long enough, on a real timeline, for an irreversible step to already be committed."
+}
