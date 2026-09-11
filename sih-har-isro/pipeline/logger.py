@@ -162,6 +162,22 @@ class ExperimentLogger:
         self._write(text, entry)
         logger.warning("LOG: %s", text)
 
+    def log_clip_saved(self, code: str, path: str, frames: int, duration_s: float,
+                       size_bytes: int):
+        """Smart clip uplink (pipeline/clip_uplink.py) flushed a clip to disk —
+        `code` is the triggering event kind (an anomaly code, or "step_skipped"/
+        "out_of_sequence"/"uncertain")."""
+        ts = self._elapsed()
+        text = (f"[{ts}] [CLIP]      code={code} frames={frames} duration={duration_s}s "
+               f"size={size_bytes}B path={path}")
+        entry = {
+            "event": "clip_saved", "timestamp": ts, "wall_time": datetime.now().isoformat(),
+            "code": code, "path": path, "frames": frames, "duration_s": duration_s,
+            "size_bytes": size_bytes,
+        }
+        self._write(text, entry)
+        logger.info("LOG: %s", text)
+
     def log_alert(self, alert_text: str):
         ts = self._elapsed()
         text = f"[{ts}] [ALERT]     {alert_text}"

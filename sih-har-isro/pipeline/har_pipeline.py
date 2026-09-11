@@ -48,6 +48,7 @@ from config.experiment_config import (
     STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
+    UPLINK_MODE, CLIP_PRE_ROLL_S, CLIP_POST_ROLL_S, CLIP_OUTPUT_DIR,
 )
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
@@ -55,6 +56,7 @@ from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
 from pipeline.anomaly_monitor import AnomalyMonitor
+from pipeline.clip_uplink import ClipUplinkManager
 from pipeline.stream_sender import NetworkStreamer
 from pipeline.pose_net import PoseNetWrapper
 
@@ -170,7 +172,8 @@ class HARPipeline:
                  enable_cnn_ensemble: Optional[bool] = None,
                  use_threaded: Optional[bool] = None,
                  enable_race: bool = False,
-                 earth_delay_s: Optional[float] = None):
+                 earth_delay_s: Optional[float] = None,
+                 uplink_mode: Optional[str] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -194,6 +197,23 @@ class HARPipeline:
             from pipeline.earth_delay_channel import EarthDelayChannel, DEFAULT_EARTH_DELAY_S
             delay = DEFAULT_EARTH_DELAY_S if earth_delay_s is None else earth_delay_s
             self.earth_channel = EarthDelayChannel(delay_s=delay, on_deliver=self._on_earth_delivered)
+
+        # ── Smart clip uplink (Brief §12 — ring-buffer + anomaly-clip mode,
+        # additive to the full IP stream, not a replacement — see
+        # pipeline/clip_uplink.py's module docstring) ──
+        self.uplink_mode = (UPLINK_MODE if uplink_mode is None else uplink_mode).lower()
+        self.clip_uplink: Optional[ClipUplinkManager] = None
+        if self.uplink_mode in ("clip", "both"):
+            self.clip_uplink = ClipUplinkManager(
+                frame_width=FRAME_WIDTH, frame_height=FRAME_HEIGHT, fps=FPS,
+                pre_roll_s=CLIP_PRE_ROLL_S, post_roll_s=CLIP_POST_ROLL_S,
+                output_dir=CLIP_OUTPUT_DIR,
+            )
+        if self.uplink_mode == "clip":
+            # Clip-only mode means no continuous stream — the whole point of
+            # the bandwidth thesis. Full local recording is untouched (never
+            # lose the raw video for post-mission review).
+            self.enable_streaming = False
 
         voice_on = VOICE_ENABLED if enable_voice is None else enable_voice
         if headless and enable_voice is None:
@@ -460,7 +480,13 @@ class HARPipeline:
         """Record that the LOCAL system just alerted on `kind`, and (only
         when race mode is on) schedule the delayed 'Earth found out' replay.
         Pushing the local event to the GUI happens unconditionally so the
-        Latency Race tab can show it even before the Earth copy arrives."""
+        Latency Race tab can show it even before the Earth copy arrives.
+
+        Also the single choke point for every anomaly-ish event in this
+        pipeline (step_skipped, out_of_sequence, uncertain, typed A4/A5/A7 —
+        see the four call sites), so it's the natural place to trigger the
+        smart clip uplink too, independent of whether race mode is on."""
+        self._maybe_clip_trigger(kind, payload.get("message", kind))
         if not self.enable_race:
             return
         if self.gui_queue:
@@ -538,6 +564,39 @@ class HARPipeline:
         cleared = self.anomaly_monitor.clear_dwell_hold(step_id)
         if cleared:
             self._sync_anomaly_event(*cleared)
+
+    # ── Smart clip uplink (Brief §12) ────────────────────────────────────────
+
+    def _feed_clip_uplink(self, frame: np.ndarray) -> None:
+        """Call once per processed frame (both run() and process_frame()).
+        No-op when uplink_mode is plain "stream" (self.clip_uplink is None —
+        zero cost)."""
+        if self.clip_uplink is None:
+            return
+        finished = self.clip_uplink.feed(frame)
+        if finished is not None:
+            self._on_clip_saved(finished)
+
+    def _maybe_clip_trigger(self, kind: str, message: str) -> None:
+        """Called from _fire_race — the same choke point every anomaly-ish
+        event in this pipeline already flows through (step_skipped,
+        out_of_sequence, uncertain, typed A4/A5/A7). No-op in "stream" mode."""
+        if self.clip_uplink is None:
+            return
+        self.clip_uplink.trigger(kind, message)
+
+    def _on_clip_saved(self, rec) -> None:
+        self.exp_logger.log_clip_saved(rec.code, rec.path, rec.frames, rec.duration_s,
+                                       rec.size_bytes)
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("clip_saved", {
+                    "code": rec.code, "message": rec.message, "path": rec.path,
+                    "frames": rec.frames, "duration_s": rec.duration_s,
+                    "size_bytes": rec.size_bytes,
+                }))
+            except queue.Full:
+                pass
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
@@ -822,6 +881,7 @@ class HARPipeline:
             self._append_cnn_frame(self._frame_rgb_full)
 
         self._run_anomaly_checks(detections)
+        self._feed_clip_uplink(frame)
 
         t_lstm = time.perf_counter()
         pred_step, pred_conf = self._last_pred
@@ -857,6 +917,8 @@ class HARPipeline:
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.anomaly_monitor.reset()
+        if self.clip_uplink is not None:
+            self.clip_uplink.reset()
         self.state_machine.reset()
         self._bind_callbacks()
 
@@ -877,6 +939,9 @@ class HARPipeline:
         summary["streaming_active"] = self.streamer is not None and self.streamer.available
         summary["stream_target"] = (f"{self.stream_host}:{self.stream_port}"
                                     if self.enable_streaming else None)
+        summary["uplink_mode"] = self.uplink_mode
+        if self.clip_uplink is not None:
+            summary["clip_uplink"] = self.clip_uplink.summary()
         try:
             self.gui_queue.put_nowait(("status", summary))
         except queue.Full:
@@ -884,6 +949,10 @@ class HARPipeline:
 
     def close(self):
         self._running = False
+        if self.clip_uplink is not None:
+            finished = self.clip_uplink.close()  # flush a still-pending clip
+            if finished is not None:
+                self._on_clip_saved(finished)
         if self.video_writer is not None:
             self.video_writer.release()
             self.video_writer = None
@@ -1005,6 +1074,7 @@ class HARPipeline:
                 self._append_cnn_frame(self._frame_rgb_full)
 
             self._run_anomaly_checks(detections)
+            self._feed_clip_uplink(frame)
 
             # ── LSTM (+ optional CNN ensemble) inference ─────
             t_lstm = time.perf_counter()
@@ -1046,6 +1116,10 @@ class HARPipeline:
         # Cleanup
         self._running = False
         cap.release()
+        if self.clip_uplink is not None:
+            finished = self.clip_uplink.close()  # flush a still-pending clip
+            if finished is not None:
+                self._on_clip_saved(finished)
         if self.video_writer:
             self.video_writer.release()
             self.video_writer = None

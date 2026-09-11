@@ -113,6 +113,7 @@ class Dashboard(QMainWindow):
         self.tabs.addTab(self._build_internals_tab(), "Pipeline Internals")
         self.tabs.addTab(self._build_detections_tab(), "Detections")
         self.tabs.addTab(self._build_race_tab(), "Latency Race")
+        self.tabs.addTab(self._build_uplink_tab(), "Clip Uplink")
         self.tabs.addTab(self._build_model_tab(), "Model && Dataset")
         self.tabs.addTab(self._build_training_tab(), "Training Console")
         self.tabs.addTab(self._build_logs_tab(), "Logs")
@@ -363,6 +364,52 @@ class Dashboard(QMainWindow):
         self.race_banner.setText(
             f"LOCAL WINS by {delay:.1f}s on the last event — onboard already handled it while "
             f"Earth was still finding out." if delay is not None else self.race_banner.text())
+
+    # ══════════════════════════════════════════════════════════════════════
+    # Tab — Smart clip uplink (Brief §12 bandwidth thesis)
+    # ══════════════════════════════════════════════════════════════════════
+
+    def _build_uplink_tab(self) -> QWidget:
+        root = QVBoxLayout()
+        root.addWidget(QLabel(
+            "<b>Smart clip uplink</b> — pre-roll + post-roll clips saved only on an "
+            "anomaly event, instead of (or alongside) the full continuous IP stream. "
+            "Off by default (mode 'stream'); enable with "
+            "<code>--uplink-mode clip</code> or <code>both</code> "
+            "(see pipeline/clip_uplink.py)."))
+
+        self.uplink_banner = QLabel("uplink mode: stream (no clips this mode)")
+        self.uplink_banner.setStyleSheet(
+            "font-size:14px; font-weight:bold; padding:8px; border-radius:4px; "
+            "background:#1f2a3a; color:#9bbde8;")
+        root.addWidget(self.uplink_banner)
+
+        self.clip_list = QListWidget()
+        root.addWidget(self.clip_list, 1)
+
+        w = QWidget(); w.setLayout(root)
+        return w
+
+    def _on_clip_saved(self, payload: dict):
+        t = time.time()
+        item = QListWidgetItem(
+            f"[{time.strftime('%H:%M:%S', time.localtime(t))}] "
+            f"[{payload.get('code')}] {payload.get('duration_s')}s, "
+            f"{payload.get('frames')} frames, {payload.get('size_bytes', 0)/1024:.0f}KB "
+            f"— {payload.get('path')}")
+        self.clip_list.addItem(item)
+        self.clip_list.scrollToBottom()
+
+    def _on_uplink_status(self, uplink_mode: str, clip_uplink: Optional[dict]):
+        if clip_uplink is None:
+            self.uplink_banner.setText(f"uplink mode: {uplink_mode} (no clips this mode)")
+            return
+        bw = clip_uplink.get("bandwidth", {})
+        self.uplink_banner.setText(
+            f"uplink mode: {uplink_mode} — {bw.get('num_clips', 0)} clip(s) saved, "
+            f"{bw.get('clip_bytes_actual', 0)/1024:.0f}KB actual vs. "
+            f"{bw.get('stream_bytes_estimate', 0)/1024/1024:.1f}MB a continuous stream "
+            f"would have sent this session ({bw.get('savings_pct', 0)}% smaller).")
 
     # ══════════════════════════════════════════════════════════════════════
     # Tab 4 — Model & Dataset info
@@ -643,6 +690,8 @@ class Dashboard(QMainWindow):
                     self._on_anomaly(payload)
                 elif kind == "anomaly_cleared":
                     self._on_anomaly_cleared(payload)
+                elif kind == "clip_saved":
+                    self._on_clip_saved(payload)
             except queue.Empty:
                 return
             except Exception:
@@ -707,6 +756,9 @@ class Dashboard(QMainWindow):
         else:
             stream_text = "Network stream: disabled"
         self.footer_label.setText(f"{rec_text}   |   {stream_text}")
+
+        if "uplink_mode" in summary:
+            self._on_uplink_status(summary["uplink_mode"], summary.get("clip_uplink"))
 
     def _recolor_steps(self, status_by_id: dict):
         for step_id, item in self.step_items.items():

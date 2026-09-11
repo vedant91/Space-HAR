@@ -250,21 +250,58 @@ Measured: A4 detect-to-hold latency 0.32ms (well under any real-time budget).
 A5/A7 verified end-to-end through the full `HARPipeline`, including
 simultaneous multi-code holds and independent per-code clearing.
 
+## Smart clip uplink — bandwidth thesis, made concrete
+
+```bash
+python main.py --uplink-mode clip   --mode pipeline --video some.mp4   # clips only, no stream
+python main.py --uplink-mode both   --mode pipeline --video some.mp4   # stream + clips, compare
+```
+
+`pipeline/clip_uplink.py`'s `ClipUplinkManager` keeps a rolling `CLIP_PRE_ROLL_S`
+(default 3s) ring buffer of raw frames at near-zero cost, and on any
+anomaly-ish event (A4/A5/A7, step_skipped, out_of_sequence, uncertain — the
+same choke point the latency-race demo already fires on) writes a clip
+containing that pre-roll plus `CLIP_POST_ROLL_S` (default 3s) more frames to
+`dataset/clips/`. Three modes, set via `--uplink-mode` / `HAR_UPLINK_MODE` /
+`config.UPLINK_MODE` (default **`stream`**, today's behavior unchanged — zero
+cost, `ClipUplinkManager` isn't even constructed):
+
+- **`stream`** — continuous full IP stream (SIH requirement), no clips.
+- **`clip`** — no continuous stream; only event-triggered clips. Full local
+  recording is untouched either way (never lose the raw video for review).
+- **`both`** — stream + clips, so a run can report the actual bandwidth
+  difference on itself rather than a theoretical estimate.
+
+`ClipUplinkManager.bandwidth_summary()` is the actual number behind the
+brief's "don't ship 25 Mbps continuously, ship the 4 seconds that matter"
+argument: raw-frame bytes a continuous stream would have sent this session vs.
+bytes the clip files actually came to. The dashboard's **Clip Uplink** tab
+shows the live savings percentage and every clip saved so far; each clip is
+also written to the structured JSONL log via `ExperimentLogger.log_clip_saved()`.
+
+Verified end-to-end through a real `HARPipeline`: `clip` mode disables the
+continuous stream, a triggered clip flushes to a valid non-empty `.mp4` with
+the expected pre-roll+post-roll frame count, re-triggering while a clip is
+already pending is a no-op (matches `AnomalyMonitor`'s own "don't flood"
+edge-triggering), and `close()` flushes any still-pending clip at shutdown.
+
 ## The dashboard (`gui/qt_dashboard.py`)
 
-Seven tabs, all live:
+Eight tabs, all live:
 
 1. **Live Monitor** — video feed, step checklist, alerts, recording/stream status
 2. **Pipeline Internals** — per-stage latency bar chart, rolling FPS line chart,
    model backend info (ONNX vs PyTorch, threaded inference, rack-frame on/off)
 3. **Detections** — live table of every HSV/hand detection this frame
 4. **Latency Race** — onboard vs. simulated delayed-Earth alert feeds, side by side
-5. **Model & Dataset** — checkpoint metrics (val accuracy/PCK), dataset sizes
+5. **Clip Uplink** — active uplink mode, live bandwidth-savings %, every
+   anomaly-triggered clip saved so far
+6. **Model & Dataset** — checkpoint metrics (val accuracy/PCK), dataset sizes
    (synthetic vs real), active procedure pack, the real pseudo-label quality
    report, one click "Refresh"
-6. **Training Console** — launches `train` / `posenet` / `autolabel` / `e2e` as a
+7. **Training Console** — launches `train` / `posenet` / `autolabel` / `e2e` as a
    live subprocess with streamed output, right from the GUI
-7. **Logs** — tails the newest structured experiment log
+8. **Logs** — tails the newest structured experiment log
 
 ## Known limitations (stated, not hidden)
 

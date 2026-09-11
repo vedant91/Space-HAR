@@ -130,6 +130,21 @@ STREAM_PORT = 8554
 ENABLE_STREAMING = False   # Push video over UDP to STREAM_HOST:STREAM_PORT (needs ffmpeg on PATH)
 LOCAL_RECORDING_DIR = "recordings"
 
+# ── Smart clip uplink (Brief §12 bandwidth thesis) ──────────────
+# "stream"  — today's behavior unchanged: continuous full IP stream (SIH
+#             requirement) + full local recording, no clip files.
+# "clip"    — no continuous stream; only anomaly-triggered clips (pre-roll +
+#             post-roll) are saved/would-be-uplinked. Full local recording
+#             still runs (never lose the raw video for review).
+# "both"    — full stream AND clips, for comparing actual vs. clip-only
+#             bandwidth on the same run (what UplinkManager.bandwidth_summary
+#             reports).
+# Override with HAR_UPLINK_MODE or `main.py --uplink-mode`.
+UPLINK_MODE = os.environ.get("HAR_UPLINK_MODE", "stream")
+CLIP_PRE_ROLL_S = 3.0     # seconds of ring-buffered video kept before a trigger
+CLIP_POST_ROLL_S = 3.0    # seconds captured after a trigger before the clip is flushed
+CLIP_OUTPUT_DIR = "dataset/clips"
+
 # ── Model Paths ───────────────────────────────────────────────
 MODEL_DIR = "models"
 # Custom CNN activity classifier (trained from scratch)

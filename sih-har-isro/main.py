@@ -29,7 +29,8 @@ logger = logging.getLogger("main")
 def run_pipeline(source, headless: bool = False,
                  enable_streaming: bool | None = None,
                  stream_host: str | None = None, stream_port: int | None = None,
-                 enable_cnn_ensemble: bool | None = None):
+                 enable_cnn_ensemble: bool | None = None,
+                 uplink_mode: str | None = None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -51,7 +52,8 @@ def run_pipeline(source, headless: bool = False,
     pipeline = HARPipeline(source=source, headless=headless, gui_queue=gui_queue,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
-                           enable_cnn_ensemble=enable_cnn_ensemble)
+                           enable_cnn_ensemble=enable_cnn_ensemble,
+                           uplink_mode=uplink_mode)
 
     if not use_qt:
         pipeline.run()
@@ -304,6 +306,12 @@ Modes:
     parser.add_argument("--pack", type=str, default=None,
                         help="Procedure pack YAML to load instead of the built-in protocol "
                             "(see packs/box_sort_v1.yaml)")
+    parser.add_argument("--uplink-mode", type=str, default=None,
+                        choices=["stream", "clip", "both"],
+                        help="--mode pipeline: 'stream' (default, full IP stream, SIH "
+                            "requirement), 'clip' (anomaly-triggered clips only, no "
+                            "continuous stream — see pipeline/clip_uplink.py), 'both' "
+                            "(stream + clips, for comparing actual bandwidth)")
     parser.add_argument("--camera",   type=int,  default=0)
     parser.add_argument("--video",    type=str,  default=None)
     parser.add_argument("--headless", action="store_true")
@@ -346,7 +354,8 @@ Modes:
         run_pipeline(source, headless=args.headless,
                     enable_streaming=True if args.stream else None,
                     stream_host=args.stream_host, stream_port=args.stream_port,
-                    enable_cnn_ensemble=True if args.cnn_ensemble else None)
+                    enable_cnn_ensemble=True if args.cnn_ensemble else None,
+                    uplink_mode=args.uplink_mode)
 
     elif args.mode == "train":
         run_training(use_real_data=not args.no_real_data)
