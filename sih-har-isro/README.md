@@ -214,6 +214,42 @@ own import time. A missing or malformed pack raises immediately at startup
 `config/procedure_pack.py`'s validation (contiguous 1..N step ids, required
 fields, non-empty steps list).
 
+## Typed anomalies — A4 forbidden zone, A5 dwell/timeout, A7 occlusion
+
+`pipeline/anomaly_monitor.py`'s `AnomalyMonitor` runs three checks every frame
+(A1 skipped-step and A2 out-of-sequence already existed via
+`state_machine.py`'s own logic; A8 model-disagreement already existed via the
+CNN/LSTM ensemble — see `BAS_Onboard_Edge_Vision_LLM_Context.md` section 7 for
+the full taxonomy; A3/A6/A9 are future work):
+
+- **A4 forbidden zone** — a hand centroid enters a per-step rectangle from the
+  active pack's `forbidden_zones` (normalized `[x1,y1,x2,y2]`). Edge-triggered
+  HOLD on entry, clears when every hand leaves every active zone.
+- **A5 dwell/timeout** — a step stays "current" too long with no FSM progress.
+  Soft voice/log prompt at 70% of the pack's `timeout_s`; a hard HOLD at 100%.
+  Clears when the FSM actually advances past that step.
+- **A7 occlusion/abstain** — 10 consecutive frames with zero detections at all
+  (covered lens, rack out of frame) HOLDs rather than letting a stale
+  prediction stream sneak a wrong step through. Clears the instant detections
+  resume.
+
+Same authority rule as everywhere else in this project: **models/heuristics
+propose, the FSM decides.** The monitor never advances or confirms a step — it
+only calls `ExperimentStateMachine.force_hold(code, message)` /
+`clear_hold(code)`. While `external_holds` is non-empty, `feed_prediction()`
+no-ops entirely (inference keeps running every frame; nothing acts on it).
+Multiple codes can hold at once (e.g. A5 + A7 simultaneously — verified in
+testing); the FSM only unblocks once every held code clears. Each event is
+voice-alerted (soft prompts are non-priority; holds/abstains interrupt) and
+written to the structured JSONL log via `ExperimentLogger.log_anomaly()`
+(`anomaly_code`, `severity`, `message`, plus per-type extras). The dashboard's
+**Live Monitor** tab shows a sticky red/amber banner for as long as any typed
+anomaly is active.
+
+Measured: A4 detect-to-hold latency 0.32ms (well under any real-time budget).
+A5/A7 verified end-to-end through the full `HARPipeline`, including
+simultaneous multi-code holds and independent per-code clearing.
+
 ## The dashboard (`gui/qt_dashboard.py`)
 
 Seven tabs, all live:

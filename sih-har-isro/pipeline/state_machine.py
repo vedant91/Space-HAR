@@ -8,7 +8,7 @@ detects skips, and triggers voice alerts.
 import time
 import logging
 from enum import Enum, auto
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Dict
 from dataclasses import dataclass, field
 
 from config.experiment_config import EXPERIMENT_STEPS, STEP_CONFIRM_FRAMES, STEP_CONFIDENCE_THRESHOLD
@@ -87,6 +87,17 @@ class ExperimentStateMachine:
         # har_pipeline.py's on_experiment_complete.
         self.recovery_events: int = 0
 
+        # External holds (typed anomalies — see pipeline/anomaly_monitor.py):
+        # {code: message}, e.g. {"A4": "Hand entered forbidden zone 'sterile'"}.
+        # While non-empty, feed_prediction() no-ops entirely — models still
+        # propose (the pipeline keeps running inference), but nothing here
+        # advances or confirms a step, regardless of confidence. This is
+        # additive to recovery_required (the FSM's own skip/out-of-sequence
+        # hold): an anomaly monitor can hold the FSM for reasons the FSM's
+        # own sequence logic has no way to know about (a hand in a sterile
+        # zone, a stalled step, an occluded camera).
+        self.external_holds: Dict[str, str] = {}
+
         # Callbacks
         self.on_step_completed: Optional[Callable] = None
         self.on_step_skipped: Optional[Callable] = None
@@ -116,12 +127,29 @@ class ExperimentStateMachine:
             return self.current_step["id"]
         return -1
 
+    def force_hold(self, code: str, message: str) -> None:
+        """An external anomaly monitor is asking the FSM to hold, for a
+        reason outside the FSM's own sequence logic. Idempotent per code."""
+        self.external_holds[code] = message
+
+    def clear_hold(self, code: str) -> None:
+        self.external_holds.pop(code, None)
+
+    @property
+    def is_externally_held(self) -> bool:
+        return bool(self.external_holds)
+
     def feed_prediction(self, predicted_step_id: int, confidence: float):
         """
         Feed a raw model prediction (step id, confidence).
         Uses a confirmation buffer to debounce noisy predictions.
         """
         if self.experiment_complete:
+            return
+        if self.external_holds:
+            # Models still propose (the caller keeps running inference every
+            # frame) — this FSM just refuses to act on any of it while an
+            # anomaly monitor has an active hold. See force_hold()'s docstring.
             return
 
         if confidence < STEP_CONFIDENCE_THRESHOLD:
@@ -276,6 +304,7 @@ class ExperimentStateMachine:
                 "observed_step_id": self.recovery_observed_id,
                 "events": self.recovery_events,
             },
+            "external_holds": dict(self.external_holds),
             "elapsed_sec": round(time.time() - self.experiment_start_time, 1)
                            if self.experiment_start_time else 0,
             "steps": [

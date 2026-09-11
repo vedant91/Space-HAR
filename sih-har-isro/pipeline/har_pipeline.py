@@ -54,6 +54,7 @@ from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
+from pipeline.anomaly_monitor import AnomalyMonitor
 from pipeline.stream_sender import NetworkStreamer
 from pipeline.pose_net import PoseNetWrapper
 
@@ -206,6 +207,7 @@ class HARPipeline:
             frame_width=FRAME_WIDTH,
             frame_height=FRAME_HEIGHT,
         )
+        self.anomaly_monitor = AnomalyMonitor(FRAME_WIDTH, FRAME_HEIGHT)
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
@@ -391,6 +393,7 @@ class HARPipeline:
                 rec.step_id, rec.name, rec.confidence, rec.duration_sec or 0.0,
                 recovered=rec.recovered,
             )
+            self._clear_dwell_hold_if_any(rec.step_id)
             if not rec.recovered:
                 self.voice.alert_step_complete(rec.step_id)
             # current_step advances only after completion, so it is the
@@ -480,6 +483,61 @@ class HARPipeline:
                 }))
             except queue.Full:
                 pass
+
+    # ── Typed anomalies (A4 forbidden zone / A5 dwell / A7 occlusion) ────────
+
+    def _run_anomaly_checks(self, detections: list) -> None:
+        """Run pipeline.anomaly_monitor's per-frame checks and reconcile the
+        results with the state machine's external_holds. See
+        AnomalyMonitor.step()'s docstring for the (code, active, severity,
+        message, extra) tuple shape."""
+        sm = self.state_machine
+        events = self.anomaly_monitor.step(detections, sm.current_step,
+                                           self._current_step_status())
+        for code, active, severity, message, extra in events:
+            self._sync_anomaly_event(code, active, severity, message, extra)
+
+    def _current_step_status(self) -> Optional[str]:
+        sm = self.state_machine
+        if sm.current_step is None:
+            return None
+        step_id = sm.current_step["id"]
+        for rec in sm.step_records:
+            if rec.step_id == step_id:
+                return rec.status.name
+        return None
+
+    def _sync_anomaly_event(self, code: str, active: bool, severity: str,
+                            message: str, extra: dict) -> None:
+        if severity == "cleared":
+            self.state_machine.clear_hold(code)
+            self.exp_logger.log_anomaly(code, "cleared", message, **extra)
+            if self.gui_queue:
+                try:
+                    self.gui_queue.put_nowait(("anomaly_cleared", {"code": code, "message": message}))
+                except queue.Full:
+                    pass
+            return
+
+        # "hold" and "abstain" both stop the FSM from acting (see
+        # ExperimentStateMachine.force_hold's docstring); "soft" is an
+        # alert-only warning shot before that.
+        self.exp_logger.log_anomaly(code, severity, message, **extra)
+        self.voice.alert_anomaly(code, message, priority=(severity != "soft"))
+        if active and severity in ("hold", "abstain"):
+            self.state_machine.force_hold(code, message)
+        if self.gui_queue:
+            try:
+                self.gui_queue.put_nowait(("anomaly", {
+                    "code": code, "severity": severity, "message": message, **extra}))
+            except queue.Full:
+                pass
+        self._fire_race(f"anomaly_{code}", {"code": code, "severity": severity, "message": message})
+
+    def _clear_dwell_hold_if_any(self, step_id: int) -> None:
+        cleared = self.anomaly_monitor.clear_dwell_hold(step_id)
+        if cleared:
+            self._sync_anomaly_event(*cleared)
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
@@ -763,6 +821,8 @@ class HARPipeline:
         if self.enable_cnn_ensemble:
             self._append_cnn_frame(self._frame_rgb_full)
 
+        self._run_anomaly_checks(detections)
+
         t_lstm = time.perf_counter()
         pred_step, pred_conf = self._last_pred
         if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
@@ -796,6 +856,7 @@ class HARPipeline:
         self._times.clear()
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
+        self.anomaly_monitor.reset()
         self.state_machine.reset()
         self._bind_callbacks()
 
@@ -942,6 +1003,8 @@ class HARPipeline:
             self.skeleton_buffer.append(skel)
             if self.enable_cnn_ensemble:
                 self._append_cnn_frame(self._frame_rgb_full)
+
+            self._run_anomaly_checks(detections)
 
             # ── LSTM (+ optional CNN ensemble) inference ─────
             t_lstm = time.perf_counter()

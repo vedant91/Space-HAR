@@ -214,6 +214,13 @@ class VoiceAlertSystem:
         text = self.ALERT_UNCERTAIN.format(step_id=step_id)
         self.speak(text, priority=True)
 
+    def alert_anomaly(self, code: str, message: str, priority: bool = True):
+        """Typed anomaly (A4 forbidden zone, A5 dwell/timeout, A7 occlusion —
+        see pipeline/anomaly_monitor.py). Spoken text intentionally doesn't
+        include the raw code (not useful to a crew member mid-task); the
+        code still reaches the structured log via ExperimentLogger.log_anomaly."""
+        self.speak(f"Attention. {message}", priority=priority)
+
     @property
     def is_speaking(self) -> bool:
         return self._speaking

@@ -639,6 +639,10 @@ class Dashboard(QMainWindow):
                         f"⚠ Uncertain near step {payload.get('expected_step_id')} — "
                         f"LSTM says {payload.get('lstm_step')}, CNN says {payload.get('cnn_step')}. "
                         f"Please confirm.", "#c98a12")
+                elif kind == "anomaly":
+                    self._on_anomaly(payload)
+                elif kind == "anomaly_cleared":
+                    self._on_anomaly_cleared(payload)
             except queue.Empty:
                 return
             except Exception:
@@ -688,6 +692,8 @@ class Dashboard(QMainWindow):
             self._show_alert(
                 f"⚠ HOLD — expected step {recovery['expected_step_id']}, "
                 f"observed step {recovery['observed_step_id']}", "#a83232", sticky=True)
+        elif getattr(self, "_active_anomaly_codes", None):
+            pass  # a typed anomaly (A4/A5/A7) still holds — don't stomp its banner
         elif self.alert_label.property("sticky"):
             self._clear_alert()
 
@@ -726,6 +732,25 @@ class Dashboard(QMainWindow):
     def _clear_alert(self):
         self.alert_label.setVisible(False)
         self.alert_label.setProperty("sticky", False)
+
+    def _on_anomaly(self, payload: dict):
+        """Typed anomaly (A4/A5/A7 — see pipeline/anomaly_monitor.py)."""
+        code = payload.get("code", "?")
+        severity = payload.get("severity", "hold")
+        message = payload.get("message", "")
+        color = "#c98a12" if severity == "soft" else "#a83232"  # amber=warning, red=hold/abstain
+        sticky = severity in ("hold", "abstain")
+        self._show_alert(f"⚠ [{code}] {message}", color, sticky=sticky)
+        self._active_anomaly_codes = getattr(self, "_active_anomaly_codes", set())
+        if sticky:
+            self._active_anomaly_codes.add(code)
+
+    def _on_anomaly_cleared(self, payload: dict):
+        code = payload.get("code", "?")
+        self._active_anomaly_codes = getattr(self, "_active_anomaly_codes", set())
+        self._active_anomaly_codes.discard(code)
+        if not self._active_anomaly_codes and self.alert_label.property("sticky"):
+            self._clear_alert()
 
 
 def launch_qt_dashboard(gui_queue: "queue.Queue", on_close=None,
