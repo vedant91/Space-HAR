@@ -295,11 +295,12 @@ Modes:
   e2e        → End-to-end loop: data → train → space sim until gates pass
   sim        → Space simulation latency/accuracy test only
   race       → Latency-race demo: onboard alert vs. simulated delayed-Earth alert
+  rack_demo  → Rack-frame / orientation-agnostic demo: real vs. rack-normalized accuracy across orientations
         """
     )
     parser.add_argument("--mode",
                         choices=["pipeline", "train", "posenet", "autolabel", "datagen",
-                                "tuner", "status", "e2e", "sim", "race"],
+                                "tuner", "status", "e2e", "sim", "race", "rack_demo"],
                         default="pipeline")
     parser.add_argument("--earth-delay", type=float, default=4.0, choices=[2.0, 4.0, 8.0],
                         help="--mode race: simulated Earth round-trip delay in seconds")
@@ -406,3 +407,8 @@ Modes:
             from gui.qt_dashboard import launch_qt_dashboard
             launch_qt_dashboard(gui_queue)
             t.join(timeout=1.0)
+
+    elif args.mode == "rack_demo":
+        from simulation.rack_frame_demo import run_rack_frame_demo, print_report
+        report = run_rack_frame_demo()
+        print_report(report)

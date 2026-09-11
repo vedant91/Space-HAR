@@ -1,0 +1,554 @@
+{
+  "frames_per_step": 72,
+  "seed": 7,
+  "steps_tested": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "orientations_tested": [
+    "0\u00b0 (upright)",
+    "90\u00b0",
+    "180\u00b0 (inverted)",
+    "270\u00b0"
+  ],
+  "wall_clock_sec": 159.78,
+  "raw_skeleton_mode": {
+    "by_orientation": {
+      "0\u00b0 (upright)": 0.953,
+      "90\u00b0": 0.997,
+      "180\u00b0 (inverted)": 0.82,
+      "270\u00b0": 0.901
+    },
+    "overall": 0.918
+  },
+  "rack_normalized_mode": {
+    "by_orientation": {
+      "0\u00b0 (upright)": 0.337,
+      "90\u00b0": 0.125,
+      "180\u00b0 (inverted)": 0.125,
+      "270\u00b0": 0.413
+    },
+    "overall": 0.25
+  },
+  "per_run": [
+    {
+      "step_id": 1,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 40,
+      "accuracy": 0.93
+    },
+    {
+      "step_id": 3,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 30,
+      "accuracy": 0.698
+    },
+    {
+      "step_id": 4,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 5,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 0,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 42,
+      "accuracy": 0.977
+    },
+    {
+      "step_id": 3,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 5,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 1,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 29,
+      "accuracy": 0.674
+    },
+    {
+      "step_id": 3,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 35,
+      "accuracy": 0.814
+    },
+    {
+      "step_id": 5,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 2,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 3,
+      "accuracy": 0.07
+    },
+    {
+      "step_id": 1,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 41,
+      "accuracy": 0.953
+    },
+    {
+      "step_id": 3,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 20,
+      "accuracy": 0.465
+    },
+    {
+      "step_id": 5,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 34,
+      "accuracy": 0.791
+    },
+    {
+      "step_id": 6,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 3,
+      "rack_frame_normalize": false,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 30,
+      "accuracy": 0.698
+    },
+    {
+      "step_id": 3,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 5,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 0,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 3,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 5,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 1,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 3,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 5,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 7,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 8,
+      "orientation": 2,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 1,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 2,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 33,
+      "accuracy": 0.767
+    },
+    {
+      "step_id": 3,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    },
+    {
+      "step_id": 4,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 16,
+      "accuracy": 0.372
+    },
+    {
+      "step_id": 5,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 43,
+      "accuracy": 1.0
+    },
+    {
+      "step_id": 6,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 42,
+      "accuracy": 0.977
+    },
+    {
+      "step_id": 7,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 8,
+      "accuracy": 0.186
+    },
+    {
+      "step_id": 8,
+      "orientation": 3,
+      "rack_frame_normalize": true,
+      "windows_voted": 43,
+      "windows_correct": 0,
+      "accuracy": 0.0
+    }
+  ],
+  "narrative": "Raw-skeleton mode (today's default, no retrain) already classifies 92% of real (non-oracle, PoseNet-inferred) windows correctly across all 4 orientations, thanks to the orientation augmentation already baked into the synthetic training set (generate_sequence()'s orientation param, include_orientations=True). Rack-frame normalization scored 25% \u2014 WORSE, because the current LSTM checkpoint was never trained on rack-normalized features (a real distribution shift, not a bug). Recommendation: keep RACK_FRAME_NORMALIZE=False as the shipped default; the normalizer path is real and available, but needs a matched retrain (train/train_lstm.py with the flag on first) before it's a net improvement \u2014 exactly the 'retrain if needed' the build plan flagged."
+}

@@ -176,7 +176,8 @@ class HARPipeline:
                  use_threaded: Optional[bool] = None,
                  enable_race: bool = False,
                  earth_delay_s: Optional[float] = None,
-                 uplink_mode: Optional[str] = None):
+                 uplink_mode: Optional[str] = None,
+                 rack_frame_normalize: Optional[bool] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -236,8 +237,14 @@ class HARPipeline:
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
+        # None (not just-False) means "use config.RACK_FRAME_NORMALIZE" — same
+        # `None means the config default` contract as enable_streaming/
+        # enable_cnn_ensemble, so simulation/rack_frame_demo.py (G7) can A/B
+        # it per-instance without flipping the global default.
+        _rack_frame_normalize = (RACK_FRAME_NORMALIZE if rack_frame_normalize is None
+                                 else rack_frame_normalize)
         self.rack_normalizer = None
-        if RACK_FRAME_NORMALIZE:
+        if _rack_frame_normalize:
             self.rack_normalizer = RackFrameNormalizer(
                 angle_ema=RACK_ANGLE_EMA,
                 scale_ema=RACK_SCALE_EMA,

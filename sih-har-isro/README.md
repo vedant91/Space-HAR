@@ -345,6 +345,53 @@ real `HARPipeline`: heartbeat, camera-stall, and camera-resume all fire
 correctly with sped-up thresholds; voice-thread and streamer death/recovery
 verified at the `ProcessWatchdog.tick()` level.
 
+## Rack-frame / orientation-agnostic demo — SIH's optional "no fixed up" bullet
+
+```bash
+python main.py --mode rack_demo
+```
+
+SIH's optional PS bullet asks for rack-relative (not floor-relative) tracking
+— there's no fixed "up" in microgravity. `simulation/rack_frame_demo.py`
+measures, rather than assumes, what this project's two relevant mechanisms
+actually do:
+
+1. **Training-time orientation augmentation** — `generate_sequence()`'s
+   `orientation` parameter (0/90/180/270° whole-scene rotation of astronaut +
+   rack together) is already baked into the default synthetic training set
+   for both PoseNet and the LSTM (`include_orientations=True`).
+2. **`pipeline/rack_frame.py`'s `RackFrameNormalizer`** — an explicit runtime
+   correction (rotate the skeleton into rack-relative coordinates using the
+   HSV-detected rack rectangle's angle), gated by `config.RACK_FRAME_NORMALIZE`
+   (off by default) and now also settable per-`HARPipeline`-instance via a
+   `rack_frame_normalize` constructor param.
+
+The demo renders every step at all 4 orientations and runs each through the
+**real** pipeline — actual PoseNet inference on the rendered pixels, not
+oracle ground-truth pose injection (oracle injection, correct for the
+latency-race demo's timing-only purpose, would be misleading here: the
+current LSTM checkpoint was retrained on PoseNet's own noisy predictions
+specifically to match real deployment input, so oracle vectors put it off its
+own training distribution and produce confidently wrong predictions that have
+nothing to do with orientation). Measured result (8 steps × 4 orientations,
+72 frames/step, `dataset/rack_frame_demo/rack_frame_report.json`):
+
+| Mode | 0° | 90° | 180° | 270° | Overall |
+|---|---|---|---|---|---|
+| Raw skeleton (today's default) | 0.953 | 0.997 | 0.820 | 0.901 | **0.918** |
+| Rack-normalized (not retrained) | 0.337 | 0.125 | 0.125 | 0.413 | 0.250 |
+
+**Finding:** the orientation-agnostic story is already true today — training-
+time augmentation alone gives 92% real (non-oracle) step-classification
+accuracy across all 4 orientations, with zero runtime cost. Turning on
+`RackFrameNormalizer` without a matched retrain makes things worse (a real
+distribution shift, not a bug — the LSTM has never seen rack-normalized
+features). **Shipped default stays `RACK_FRAME_NORMALIZE=False`.** The
+normalizer path is real, tested, and available; it needs `train/train_lstm.py`
+run with the flag on before it would be a net improvement — exactly the
+"retrain if needed" the build plan flagged, now a measured decision instead
+of a guess.
+
 ## The dashboard (`gui/qt_dashboard.py`)
 
 Eight tabs, all live:
