@@ -214,6 +214,13 @@ class VoiceAlertSystem:
         text = self.ALERT_UNCERTAIN.format(step_id=step_id)
         self.speak(text, priority=True)
 
+    def alert_watchdog(self, message: str):
+        """Process watchdog (pipeline/watchdog.py) reporting a degraded/dead
+        subsystem — flight-honesty rule 6: say it loudly, don't stay quiet.
+        Non-priority: system-health chatter shouldn't cut off a step alert
+        already mid-speech."""
+        self.speak(f"System notice. {message}", priority=False)
+
     def alert_anomaly(self, code: str, message: str, priority: bool = True):
         """Typed anomaly (A4 forbidden zone, A5 dwell/timeout, A7 occlusion —
         see pipeline/anomaly_monitor.py). Spoken text intentionally doesn't
@@ -224,6 +231,13 @@ class VoiceAlertSystem:
     @property
     def is_speaking(self) -> bool:
         return self._speaking
+
+    @property
+    def is_alive(self) -> bool:
+        """For pipeline/watchdog.py — whether the background speaker thread
+        (the only thing that can actually turn a queued alert into sound) is
+        still running."""
+        return self._thread.is_alive()
 
 
 if __name__ == "__main__":

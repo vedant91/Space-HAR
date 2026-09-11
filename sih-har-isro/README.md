@@ -321,6 +321,30 @@ empty-detection frames used to force A5's dwell) in one session produced a
 report with all three codes present, correct hold counts, non-null detect
 latencies, and a written JSON file matching the in-memory report.
 
+## Process watchdog — flight-honesty rule (never go silently dark)
+
+`pipeline/watchdog.py`'s `ProcessWatchdog` runs every frame and never touches
+`ExperimentStateMachine` — it's an observability layer, not a new hold reason
+(a genuinely stalled camera already stops new predictions on its own; this
+just makes sure that fact is loud, not silent):
+
+- **Heartbeat** every 30s — a "system alive and monitoring" log entry with a
+  model-availability snapshot, so a mission review can tell "this genuinely
+  ran the whole session" from "it silently died and nobody noticed."
+- **Camera stall** — `frame_idx` hasn't advanced in 5s: the capture loop
+  itself is stuck (source unplugged, driver hang). Distinct from A7 occlusion
+  (camera is live and producing frames, they're just empty of detections).
+- **Dead background threads** — the voice-alert thread, the network streamer
+  — each reported both on death and on recovery.
+
+Unhealthy events are voice-alerted (non-priority — health chatter shouldn't
+cut off a step alert already speaking), logged via
+`ExperimentLogger.log_watchdog()`, and shown on the Live Monitor tab's
+"System health" line (green when OK, red when degraded). Verified through a
+real `HARPipeline`: heartbeat, camera-stall, and camera-resume all fire
+correctly with sped-up thresholds; voice-thread and streamer death/recovery
+verified at the `ProcessWatchdog.tick()` level.
+
 ## The dashboard (`gui/qt_dashboard.py`)
 
 Eight tabs, all live:

@@ -59,6 +59,7 @@ from pipeline.hsv_detector import HSVBoxDetector, Detection
 from pipeline.anomaly_monitor import AnomalyMonitor
 from pipeline.clip_uplink import ClipUplinkManager
 from pipeline.session_metrics import SessionMetrics
+from pipeline.watchdog import ProcessWatchdog
 from pipeline.stream_sender import NetworkStreamer
 from pipeline.pose_net import PoseNetWrapper
 
@@ -231,6 +232,7 @@ class HARPipeline:
         )
         self.anomaly_monitor = AnomalyMonitor(FRAME_WIDTH, FRAME_HEIGHT, fps=FPS)
         self.session_metrics = SessionMetrics()
+        self.watchdog = ProcessWatchdog()
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
@@ -589,6 +591,33 @@ class HARPipeline:
             return
         self.clip_uplink.trigger(kind, message)
 
+    # ── Process watchdog (Brief §6 rule 6, G6) ───────────────────────────────
+
+    def _run_watchdog(self) -> None:
+        model_status = {
+            "pose_wrapper": "loaded" if self.pose_wrapper is not None else "missing",
+            "lstm": ("onnx" if self.lstm_ort_sess is not None
+                    else "pytorch" if self.lstm_model is not None else "missing"),
+            "cnn_ensemble": ("onnx" if self.cnn_session is not None
+                             else "disabled" if not self.enable_cnn_ensemble else "missing"),
+        }
+        streamer_alive = self.streamer.available if self.streamer is not None else (
+            None if not self.enable_streaming else False)
+        events = self.watchdog.tick(
+            frame_idx=self.frame_idx, voice_thread_alive=self.voice.is_alive,
+            streamer_alive=streamer_alive, model_status=model_status,
+        )
+        for ev in events:
+            self.exp_logger.log_watchdog(ev.kind, ev.healthy, ev.message, **ev.extra)
+            if not ev.healthy:
+                self.voice.alert_watchdog(ev.message)
+            if self.gui_queue:
+                try:
+                    self.gui_queue.put_nowait(("watchdog", {
+                        "kind": ev.kind, "healthy": ev.healthy, "message": ev.message}))
+                except queue.Full:
+                    pass
+
     def _on_clip_saved(self, rec) -> None:
         self.exp_logger.log_clip_saved(rec.code, rec.path, rec.frames, rec.duration_s,
                                        rec.size_bytes)
@@ -886,6 +915,7 @@ class HARPipeline:
 
         self._run_anomaly_checks(detections)
         self._feed_clip_uplink(frame)
+        self._run_watchdog()
 
         t_lstm = time.perf_counter()
         pred_step, pred_conf = self._last_pred
@@ -924,6 +954,7 @@ class HARPipeline:
         if self.clip_uplink is not None:
             self.clip_uplink.reset()
         self.session_metrics.reset()
+        self.watchdog.reset()
         self.state_machine.reset()
         self._bind_callbacks()
 
@@ -1094,6 +1125,7 @@ class HARPipeline:
 
             self._run_anomaly_checks(detections)
             self._feed_clip_uplink(frame)
+            self._run_watchdog()
 
             # ── LSTM (+ optional CNN ensemble) inference ─────
             t_lstm = time.perf_counter()

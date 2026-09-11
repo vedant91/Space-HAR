@@ -179,9 +179,13 @@ class Dashboard(QMainWindow):
         self.footer_label = QLabel("Local recording: —   |   Network stream: —")
         self.footer_label.setStyleSheet("color:#999; font-size:11px;")
 
+        self.watchdog_label = QLabel("System health: waiting for first heartbeat...")
+        self.watchdog_label.setStyleSheet("color:#7a9; font-size:11px;")
+
         left = QVBoxLayout()
         left.addWidget(self.video_label, 1)
         left.addWidget(self.footer_label)
+        left.addWidget(self.watchdog_label)
 
         right = QVBoxLayout()
         right.addWidget(self.current_label)
@@ -420,6 +424,21 @@ class Dashboard(QMainWindow):
             f"{bw.get('clip_bytes_actual', 0)/1024:.0f}KB actual vs. "
             f"{bw.get('stream_bytes_estimate', 0)/1024/1024:.1f}MB a continuous stream "
             f"would have sent this session ({bw.get('savings_pct', 0)}% smaller).")
+
+    def _on_watchdog(self, payload: dict):
+        """pipeline/watchdog.py — flight-honesty heartbeat + degraded-
+        subsystem reporting (G6). A heartbeat just updates the timestamp in
+        green; a degraded event turns the banner amber/red until the matching
+        *_resumed / next heartbeat clears it."""
+        healthy = payload.get("healthy", True)
+        message = payload.get("message", "")
+        t = time.strftime("%H:%M:%S")
+        if healthy:
+            self.watchdog_label.setStyleSheet("color:#7a9; font-size:11px;")
+            self.watchdog_label.setText(f"System health: OK — last heartbeat {t} ({message})")
+        else:
+            self.watchdog_label.setStyleSheet("color:#e89b9b; font-size:11px; font-weight:bold;")
+            self.watchdog_label.setText(f"System health: DEGRADED [{t}] — {message}")
 
     def _on_session_metrics(self, live: dict):
         avg = live.get("avg_detect_ms")
@@ -709,6 +728,8 @@ class Dashboard(QMainWindow):
                     self._on_anomaly_cleared(payload)
                 elif kind == "clip_saved":
                     self._on_clip_saved(payload)
+                elif kind == "watchdog":
+                    self._on_watchdog(payload)
             except queue.Empty:
                 return
             except Exception:

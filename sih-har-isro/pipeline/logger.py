@@ -162,6 +162,21 @@ class ExperimentLogger:
         self._write(text, entry)
         logger.warning("LOG: %s", text)
 
+    def log_watchdog(self, kind: str, healthy: bool, message: str, **extra):
+        """Process watchdog event (pipeline/watchdog.py) — heartbeat or a
+        subsystem health transition. Logged at WARNING for an unhealthy
+        transition, INFO otherwise (heartbeats included) so a heartbeat
+        stream doesn't drown real warnings in a terminal view."""
+        ts = self._elapsed()
+        status = "OK" if healthy else "DEGRADED"
+        text = f"[{ts}] [WATCHDOG]  status={status} kind={kind} | {message}"
+        entry = {
+            "event": "watchdog", "timestamp": ts, "wall_time": datetime.now().isoformat(),
+            "kind": kind, "healthy": healthy, "message": message, **extra,
+        }
+        self._write(text, entry)
+        (logger.info if healthy else logger.warning)("LOG: %s", text)
+
     def log_clip_saved(self, code: str, path: str, frames: int, duration_s: float,
                        size_bytes: int):
         """Smart clip uplink (pipeline/clip_uplink.py) flushed a clip to disk —
