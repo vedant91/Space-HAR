@@ -59,8 +59,8 @@ class AnomalyMonitor:
 
     OCCLUSION_STREAK_FRAMES = 10  # ~0.3-0.4s at 24-30fps
 
-    def __init__(self, frame_width: int, frame_height: int):
-        self.fw, self.fh = frame_width, frame_height
+    def __init__(self, frame_width: int, frame_height: int, fps: float = 30.0):
+        self.fw, self.fh, self.fps = frame_width, frame_height, fps
         self._occlusion_streak = 0
         self._occlusion_active = False
         self._zone_active = False
@@ -108,8 +108,11 @@ class AnomalyMonitor:
 
         if hit is not None and not self._zone_active:
             self._zone_active = True
+            # Edge-triggered on the same frame the hand entered — detection
+            # is bounded only by one frame period, not a real "how long did
+            # it take to notice" delay like A5/A7's below.
             return ("A4", True, "hold", f"Hand entered forbidden zone '{hit.name}'",
-                    {"zone": hit.name})
+                    {"zone": hit.name, "detect_latency_ms": round(1000.0 / self.fps, 1)})
         if hit is None and self._zone_active:
             self._zone_active = False
             return ("A4", False, "cleared", "Hand left the forbidden zone", {})
@@ -133,14 +136,18 @@ class AnomalyMonitor:
 
         if elapsed >= timeout and step_id not in self._step_escalated:
             self._step_escalated.add(step_id)
+            # Here "detection" genuinely is "how long we watched the clock" —
+            # the hold IS the elapsed dwell time, not a fixed processing cost.
             return ("A5", True, "hold",
                     f"Step {step_id} exceeded its {timeout:.0f}s window with no progress",
-                    {"step_id": step_id, "elapsed_s": round(elapsed, 1), "timeout_s": timeout})
+                    {"step_id": step_id, "elapsed_s": round(elapsed, 1), "timeout_s": timeout,
+                     "detect_latency_ms": round(elapsed * 1000.0, 1)})
         if elapsed >= 0.7 * timeout and step_id not in self._step_soft_prompted:
             self._step_soft_prompted.add(step_id)
             return ("A5", False, "soft",
                     f"Step {step_id} is at 70% of its {timeout:.0f}s window — still there?",
-                    {"step_id": step_id, "elapsed_s": round(elapsed, 1), "timeout_s": timeout})
+                    {"step_id": step_id, "elapsed_s": round(elapsed, 1), "timeout_s": timeout,
+                     "detect_latency_ms": round(elapsed * 1000.0, 1)})
         return None
 
     def clear_dwell_hold(self, step_id: int) -> Optional[Tuple[str, bool, str, str, dict]]:
@@ -161,9 +168,14 @@ class AnomalyMonitor:
 
         if self._occlusion_streak >= self.OCCLUSION_STREAK_FRAMES and not self._occlusion_active:
             self._occlusion_active = True
+            # The deliberate wait for OCCLUSION_STREAK_FRAMES consecutive
+            # empty frames (so one noisy frame doesn't false-trigger) IS the
+            # detection cost here — report the real window, not a rounding.
+            detect_latency_ms = round(self.OCCLUSION_STREAK_FRAMES / self.fps * 1000.0, 1)
             return ("A7", True, "abstain",
                     f"No detections for {self._occlusion_streak} consecutive frames "
-                    f"— camera blocked or rack out of view?", {})
+                    f"— camera blocked or rack out of view?",
+                    {"detect_latency_ms": detect_latency_ms})
         if self._occlusion_streak == 0 and self._occlusion_active:
             self._occlusion_active = False
             return ("A7", False, "cleared", "Detections resumed — no longer occluded", {})

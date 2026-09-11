@@ -49,6 +49,7 @@ from config.experiment_config import (
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
     UPLINK_MODE, CLIP_PRE_ROLL_S, CLIP_POST_ROLL_S, CLIP_OUTPUT_DIR,
+    SESSION_METRICS_PATH,
 )
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
@@ -57,6 +58,7 @@ from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
 from pipeline.anomaly_monitor import AnomalyMonitor
 from pipeline.clip_uplink import ClipUplinkManager
+from pipeline.session_metrics import SessionMetrics
 from pipeline.stream_sender import NetworkStreamer
 from pipeline.pose_net import PoseNetWrapper
 
@@ -227,7 +229,8 @@ class HARPipeline:
             frame_width=FRAME_WIDTH,
             frame_height=FRAME_HEIGHT,
         )
-        self.anomaly_monitor = AnomalyMonitor(FRAME_WIDTH, FRAME_HEIGHT)
+        self.anomaly_monitor = AnomalyMonitor(FRAME_WIDTH, FRAME_HEIGHT, fps=FPS)
+        self.session_metrics = SessionMetrics()
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
@@ -535,6 +538,7 @@ class HARPipeline:
 
     def _sync_anomaly_event(self, code: str, active: bool, severity: str,
                             message: str, extra: dict) -> None:
+        self.session_metrics.record_event(code, active, severity, extra)
         if severity == "cleared":
             self.state_machine.clear_hold(code)
             self.exp_logger.log_anomaly(code, "cleared", message, **extra)
@@ -919,6 +923,7 @@ class HARPipeline:
         self.anomaly_monitor.reset()
         if self.clip_uplink is not None:
             self.clip_uplink.reset()
+        self.session_metrics.reset()
         self.state_machine.reset()
         self._bind_callbacks()
 
@@ -942,10 +947,23 @@ class HARPipeline:
         summary["uplink_mode"] = self.uplink_mode
         if self.clip_uplink is not None:
             summary["clip_uplink"] = self.clip_uplink.summary()
+        summary["session_metrics"] = self.session_metrics.live_summary()
         try:
             self.gui_queue.put_nowait(("status", summary))
         except queue.Full:
             pass
+
+    def _write_session_metrics(self) -> None:
+        """G5 — flush the time-to-detect/false-hold/abstain report. Called
+        once per run at shutdown (close() and run()'s own cleanup both use
+        this single path, rather than duplicating the finalize+write call)."""
+        elapsed = self.state_machine.get_status_summary().get("elapsed_sec") or None
+        try:
+            report = self.session_metrics.write(SESSION_METRICS_PATH, session_duration_s=elapsed)
+            logger.info("Session metrics written: %s (%d holds, %d abstains)",
+                       SESSION_METRICS_PATH, report["total_holds"], report["abstain_count"])
+        except Exception:
+            logger.exception("Failed to write session metrics")
 
     def close(self):
         self._running = False
@@ -953,6 +971,7 @@ class HARPipeline:
             finished = self.clip_uplink.close()  # flush a still-pending clip
             if finished is not None:
                 self._on_clip_saved(finished)
+        self._write_session_metrics()
         if self.video_writer is not None:
             self.video_writer.release()
             self.video_writer = None
@@ -1120,6 +1139,7 @@ class HARPipeline:
             finished = self.clip_uplink.close()  # flush a still-pending clip
             if finished is not None:
                 self._on_clip_saved(finished)
+        self._write_session_metrics()
         if self.video_writer:
             self.video_writer.release()
             self.video_writer = None

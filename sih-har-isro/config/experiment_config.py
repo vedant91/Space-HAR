@@ -145,6 +145,11 @@ CLIP_PRE_ROLL_S = 3.0     # seconds of ring-buffered video kept before a trigger
 CLIP_POST_ROLL_S = 3.0    # seconds captured after a trigger before the clip is flushed
 CLIP_OUTPUT_DIR = "dataset/clips"
 
+# ── Session metrics (Brief §13 — G5) ────────────────────────────
+# time-to-detect / false-hold / abstain-quality report, written once per
+# session at pipeline shutdown. See pipeline/session_metrics.py.
+SESSION_METRICS_PATH = "logs/session_metrics.json"
+
 # ── Model Paths ───────────────────────────────────────────────
 MODEL_DIR = "models"
 # Custom CNN activity classifier (trained from scratch)

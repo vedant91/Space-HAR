@@ -285,6 +285,42 @@ the expected pre-roll+post-roll frame count, re-triggering while a clip is
 already pending is a no-op (matches `AnomalyMonitor`'s own "don't flood"
 edge-triggering), and `close()` flushes any still-pending clip at shutdown.
 
+## Session metrics — time-to-detect, false-hold, abstain quality
+
+`pipeline/session_metrics.py`'s `SessionMetrics` watches the same typed-
+anomaly events (A4/A5/A7 hold/abstain/cleared) `_sync_anomaly_event` already
+handles and writes `logs/session_metrics.json` once per session at shutdown
+(`HARPipeline._write_session_metrics()`, called from both `close()` and
+`run()`'s own cleanup):
+
+- **`time_to_detect_ms`** — how long each anomaly type actually took to
+  notice something was wrong. Not a single made-up number: A4 is edge-
+  triggered same-frame (~one frame period); A5's detection cost genuinely
+  *is* the elapsed dwell time since the step started; A7 deliberately waits
+  `OCCLUSION_STREAK_FRAMES` (10) consecutive empty frames before deciding the
+  camera is actually blocked, not just a noisy frame — that fixed window is
+  its real latency. `AnomalyMonitor` attaches the honest number to each
+  event's `extra["detect_latency_ms"]`; `SessionMetrics` just aggregates it.
+- **`false_hold_rate`** — a **stated heuristic proxy**, not a verified
+  number: a hold clearing within `FALSE_HOLD_BLIP_THRESHOLD_S` (1.5s) is
+  counted as a likely detector blip rather than a real anomaly the crew had
+  to work through. No onboard ground-truth "was this hold actually correct"
+  signal exists to check against — the report says so in its own
+  `false_hold_note` field rather than presenting the number as fact.
+- **`abstain_count`** — how many times the system refused to guess (A7)
+  rather than let a stale prediction sneak a wrong step through.
+
+The dashboard's **Clip Uplink** tab (metrics share the tab with clip uplink —
+both are "operational quality" numbers from the same anomaly events) shows a
+live running summary (holds closed/open, abstains, avg detect latency);
+`logs/session_metrics.json` has the full per-hold breakdown for a paper table.
+
+Verified end-to-end through a real `HARPipeline`: triggering A4 (hold+clear),
+A5 (dwell escalation+clear), and A7 (abstain, incidentally tripped by the same
+empty-detection frames used to force A5's dwell) in one session produced a
+report with all three codes present, correct hold counts, non-null detect
+latencies, and a written JSON file matching the in-memory report.
+
 ## The dashboard (`gui/qt_dashboard.py`)
 
 Eight tabs, all live:

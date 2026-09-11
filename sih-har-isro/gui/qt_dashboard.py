@@ -384,6 +384,16 @@ class Dashboard(QMainWindow):
             "background:#1f2a3a; color:#9bbde8;")
         root.addWidget(self.uplink_banner)
 
+        root.addWidget(QLabel(
+            "<b>Session metrics</b> (G5) — time-to-detect / false-hold / abstain "
+            "quality, written to logs/session_metrics.json at shutdown "
+            "(see pipeline/session_metrics.py)."))
+        self.metrics_banner = QLabel("No anomaly events yet this session.")
+        self.metrics_banner.setStyleSheet(
+            "font-size:13px; padding:6px; border-radius:4px; "
+            "background:#2a2a1f; color:#e8d99b;")
+        root.addWidget(self.metrics_banner)
+
         self.clip_list = QListWidget()
         root.addWidget(self.clip_list, 1)
 
@@ -410,6 +420,13 @@ class Dashboard(QMainWindow):
             f"{bw.get('clip_bytes_actual', 0)/1024:.0f}KB actual vs. "
             f"{bw.get('stream_bytes_estimate', 0)/1024/1024:.1f}MB a continuous stream "
             f"would have sent this session ({bw.get('savings_pct', 0)}% smaller).")
+
+    def _on_session_metrics(self, live: dict):
+        avg = live.get("avg_detect_ms")
+        self.metrics_banner.setText(
+            f"holds: {live.get('closed_holds', 0)} closed / {live.get('open_holds', 0)} open   |   "
+            f"abstains: {live.get('abstain_count', 0)}   |   "
+            f"avg detect latency: {f'{avg}ms' if avg is not None else '—'}")
 
     # ══════════════════════════════════════════════════════════════════════
     # Tab 4 — Model & Dataset info
@@ -759,6 +776,8 @@ class Dashboard(QMainWindow):
 
         if "uplink_mode" in summary:
             self._on_uplink_status(summary["uplink_mode"], summary.get("clip_uplink"))
+        if "session_metrics" in summary:
+            self._on_session_metrics(summary["session_metrics"])
 
     def _recolor_steps(self, status_by_id: dict):
         for step_id, item in self.step_items.items():
