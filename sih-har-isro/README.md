@@ -89,6 +89,28 @@ itself out-of-distribution for it, the mirror image of the original bug. The met
 actually matters for this architecture — real camera→PoseNet→LSTM accuracy — is the 0.756
 reported above, evaluated the honest way.
 
+## Opt-in YOLO detector backend (measured, off by default)
+
+`config.DETECTOR_BACKEND="yolo"` — a pretrained YOLO11n checkpoint fine-tuned on our own
+synthetic renderer bboxes for the 4 `DETECTION_CLASSES` (COCO has none of them, so the
+pretrained weights are only ever a feature-extractor starting point). Measured honestly
+against HSV, the shipped default:
+
+| Metric | HSV (default) | YOLO (opt-in) |
+|---|---:|---:|
+| Precision / recall | 1.000 / 1.000 | 0.995 / 0.973 (mAP50 0.978) |
+| Per-frame CPU cost (measured in-pipeline) | 11.6ms | 14.8ms mean / 16.3ms p95 (standalone) |
+| Validated on real footage? | Yes (color rule generalizes by construction) | **No — synthetic-only, same distribution it trained on** |
+
+Correction to an earlier assumption: HSV's cost was assumed "near-zero" — that was never
+this codebase's own claim (its docstring says "60+ FPS," i.e. ≤16.6ms), just an inference
+made mid-investigation. The real measured number is 11.6ms, not negligible. So the case for
+keeping HSV as the default isn't a big latency win — it's that YOLO's accuracy here is
+unvalidated on real footage, the exact same train/inference-distribution risk that caused
+the PoseNet/LSTM bug documented above. Closing that gap for YOLO would need the same
+real-footage fine-tune treatment PoseNet got (Stage 2) — not done yet, tracked as follow-up
+if this backend gets used for real.
+
 ## No open-source / pretrained model anywhere
 
 Every model in this system is trained from scratch on this project's own data —
