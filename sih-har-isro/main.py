@@ -149,9 +149,10 @@ def run_training(use_real_data: bool = True, skip_posenet: bool = False):
     # ── 3. LSTM training data: the TRAINED PoseNet's own predictions on
     # freshly-rendered synthetic frames (free, exact step-id labels — the
     # renderer drove them), not the ground-truth vectors from step 1. ──
-    print(f"\n[{step}/{total_steps}] Building LSTM training data from PoseNet's own predictions...")
-    from data_generation.build_posenet_realistic_dataset import build_dataset as build_posenet_lstm_data
-    build_posenet_lstm_data(str(posenet_lstm_dir), n_sequences_per_step=24)
+    print(f"\n[{step}/{total_steps}] Building LSTM training data from PoseNet's own predictions "
+         f"(full persistent-world protocol runs, balanced orientations)...")
+    from data_generation.build_posenet_realistic_dataset import build_protocol_dataset
+    build_protocol_dataset(str(posenet_lstm_dir), n_protocols=32)
     step += 1
 
     if have_real_videos:

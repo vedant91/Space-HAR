@@ -11,20 +11,19 @@ better on paper than they work in practice — so both are reported:
 
 | Metric | Value | Gate |
 |---|---:|---:|
-| HARPoseNet synthetic PCK@0.10·torso | 0.983 (Stage 1) → 0.843 (+Stage 2 real fine-tune) | ≥0.55 |
-| LSTM held-out window accuracy (PoseNet's own predictions, not ground truth) | 0.938 *(pre-resolution-bump, not remeasured)* | — |
-| LSTM val accuracy (`main.py --mode train`'s production model) | 0.835 | — |
+| HARPoseNet synthetic PCK@0.10·torso | 0.983 (Stage 1) → 0.985 (+Stage 2 real fine-tune, with synthetic replay) | ≥0.55 |
+| LSTM val accuracy (`main.py --mode train`'s production model, held out by whole protocol run) | 1.000 *(small synthetic set — NOT informative on its own; the e2e rows below are the real test)* | — |
 | CNN val accuracy (combined synthetic+real frames) | 0.757 *(not retrained this pass — CNN's input size is independent of PoseNet's)* | — |
-| Oracle step accuracy (clean ground-truth pose → LSTM → FSM) | 0.108 (see note below) | ≥0.85 |
-| **Real (non-oracle) step-window accuracy — actual camera→PoseNet→LSTM path** | **0.756** (up from 0.45) | — |
-| **Full 8-step protocol completion, non-oracle, one continuous take** | **Does not complete** (now holds at step 6, up from step 2-3) | — |
+| Oracle step accuracy (clean ground-truth pose → LSTM → FSM) | 0.108 *(stale, not remeasured — see note below)* | ≥0.85 |
+| **Real (non-oracle) step-window accuracy — actual camera→PoseNet→LSTM path** | **0.993** mean over 12 unseen seeds with random per-step orientation (min 0.953); 1.000 on 3 fixed-schedule seeds. **Synthetic renders only.** | — |
+| **Full 8-step protocol completion, non-oracle, one continuous take** | **15 / 15 runs complete** (12 random-orientation + 3 fixed-schedule seeds). **Synthetic renders only.** | — |
 | HSV red/yellow/main box recall & precision | 1.000 / 1.000 | ≥0.85 |
-| Mean / p95 per-frame latency (CPU) | 31.6ms / 32.4ms (~32 FPS) | ≤80ms / ≤130ms |
+| Mean per-frame latency (CPU, full pipeline) | 31–35ms (~30 FPS) | ≤80ms |
 | Sequence FSM logic itself (complete/skip/recovery, scripted predictions) | all pass | — |
 
 **Two different LSTM training paths exist in this repo — know which one you're running.**
 `main.py --mode train` (recommended for the actually-deployed model) trains the LSTM on
-PoseNet's own realistic predictions, per the finding below (0.843 val acc, honest).
+PoseNet's own realistic predictions, per the findings below (see the e2e rows above for its honest accuracy).
 `main.py --mode e2e` / `end_to_end_loop.py` trains its own LSTM internally, fast, on pure
 ground-truth pose vectors (by design — it's iterating a hyperparameter search many times
 and needs each iteration to be cheap; see its own `E2E_LSTM_MIN_VAL_ACC=0.90` gate, which
@@ -56,31 +55,58 @@ papered over with an oracle-only number. The state machine's strict hold-and-cor
 policy (never guess through an anomaly) is doing exactly what the problem statement asks
 of it here — it's *why* the system reports "stuck," not "wrong."
 
-**Update: closing the gap further.** The root cause above (elbow/wrist PCK bottlenecked by
-heatmap resolution) was directly addressed: `POSE_INPUT_SIZE` 192→256, `POSE_HEATMAP_SIZE`
-48→64 (kept at the architecture's fixed stride-4 ratio), `POSENET_SYNTH_SAMPLES` 4000→8000,
-`POSENET_EPOCHS` 24→40 (`POSE_HEATMAP_SIGMA`/`POSE_DECODE_RADIUS` scaled proportionally with
-the heatmap size to keep training difficulty comparable, not accidentally easier/harder).
-Result: synthetic PCK 0.665→0.983 (Stage 1), a real fine-tune regression bigger than before
-(0.983→0.843, vs. the original 0.665→0.649 — a bigger absolute drop even though the relative
-regression is still under the 25% guard; worth watching if this gets revisited), and — the
-number that actually matters — real camera→PoseNet→LSTM step-window accuracy **0.45→0.756**
-(a ~68% relative gain). The full 8-step protocol still doesn't complete in one continuous
-take, but now holds at step 6 instead of step 2-3 — real progress, not a full fix. Cost:
-mean per-frame latency rose 25.4ms→31.6ms (PoseNet's own inference cost roughly doubled),
-still comfortably inside the 80ms/130ms gate. CNN and the `LSTM held-out window
-accuracy`/`Oracle step accuracy` rows above were not remeasured this pass — CNN's input
-resolution is independent of PoseNet's, and the other two need a dedicated re-run of
-`simulation/space_sim.py`'s full gate suite (not done here, so left at their prior values
-rather than guessed at).
+**Update: closing the gap — three separate root causes.** (Measured with
+`simulation/real_e2e_eval.py`, which feeds only rendered pixels through the real pipeline
+and prints a per-step confusion matrix; `HAR_MODEL_DIR` lets checkpoint sets be A/B'd
+without touching `models/`.)
+
+1. **PoseNet resolution.** The elbow/wrist PCK bottleneck above was addressed directly:
+   `POSE_INPUT_SIZE` 192→256, `POSE_HEATMAP_SIZE` 48→64 (the architecture is a fixed stride-4
+   ladder, so they scale together), `POSENET_SYNTH_SAMPLES` 4000→8000, `POSENET_EPOCHS`
+   24→40, sigma/decode-radius scaled with the heatmap. Synthetic PCK 0.665→0.983. This alone
+   moved real e2e accuracy 0.45→0.756, but the protocol still stalled (always at step 5→6).
+2. **Stage 2 was wrecking the wrists.** Per-joint PCK showed only the two wrists collapsed
+   (0.96→0.01 / 0.95→0.06); the other 11 joints were untouched, exactly as the frozen trunk
+   guarantees. Real pseudo-labels supervise only the wrists, through one shared linear readout
+   head, and with no synthetic data in the batch it was refit entirely to the real domain. The
+   regression guard averaged PCK over all 13 joints, so a total collapse of the 2 joints that
+   drive step classification read as a 14% drop and passed the 25% limit. Fix:
+   synthetic replay mixed into every fine-tune batch (`synthetic_replay_frac`) plus a
+   per-joint guard (`max_joint_pck_drop`, rejects any single joint losing >0.10 PCK).
+   Result: synthetic PCK 0.983→0.985, worst single-joint change −0.02.
+3. **The LSTM was trained on a differently-rendered world than it is deployed in.** Its
+   training clips were 60 frames each in a fresh `MicrogravityWorld`; the deployed protocol is
+   one persistent world across all 8 steps (object state carries between steps, changing what
+   PoseNet sees around the wrists). Per-clip validation reported 1.0 while real e2e was 0.79,
+   and step 6 was read as step 7 on 129/129 windows. Fix: `build_protocol_dataset` — full
+   protocol runs in one persistent world, orientation balanced per step but independent
+   across steps (so no orientation-implies-step shortcut), grouped by protocol for the
+   train/val split. 12 protocols first exposed an orientation-coverage gap (step 8 read as
+   step 2 at rarely-seen orientations, 0.896 mean); 32 balanced protocols closed it.
+
+Final: **0.993 mean step-window accuracy (12 unseen seeds, random orientations), 15/15 full
+8-step completions**, 31–35ms per frame.
+
+**What this does and does not show.** Everything above is measured on the synthetic renderer
+(train and eval drawn from the same generator, different seeds). It fixes real train/deploy
+gaps, but says nothing yet about real footage. The only real footage is 4 AI-generated
+"gravitational mimic" clips, and **Stage 2's wrist pseudo-labels for them are wrong** — the
+skin-tone/motion tracker cannot find wrists on astronauts in white gloves (overlaying the
+labels on the frames shows them on walls, floors and chests). Consequently the real
+fine-tune has no demonstrated real-domain benefit: the replay version moves real-frame wrist
+predictions by a median of 0.005 (effectively a no-op; safe), while the old version moved them
+0.04 median / 0.27 mean toward those bad labels. Real-domain accuracy needs real ground truth
+(hand-labeled wrists/steps), which does not exist yet. `Oracle step accuracy` above and the
+CNN row were not remeasured in this pass.
 
 The CNN's 0.757 (vs. a pure-synthetic run's ~0.96 in earlier project history) reflects a
 genuinely harder, more realistic combined dataset (real, imperfectly-pseudo-labeled frames
 mixed with clean synthetic ones), not a regression — see `dataset/annotated_real` and
 `dataset/real_pseudo/autolabel_report.json` for exactly what was added.
 
-Full gate table: `logs/final_space_sim_report.json` + `simulation/gates.py`. Against the
-production model, **11 of 13 gates pass**; the 2 that don't (`lstm_val_acc` 0.84 < 0.90,
+Full gate table: `logs/final_space_sim_report.json` + `simulation/gates.py` (**generated
+before the fixes above and not regenerated — the numbers in this paragraph are historical**). Against the
+production model at that time, **11 of 13 gates pass**; the 2 that don't (`lstm_val_acc` 0.84 < 0.90,
 `oracle_step_acc` 0.11 < 0.85) fail for a specific, understood reason, not a mystery: those
 two gates were calibrated for a ground-truth-fed LSTM (`end_to_end_loop.py`'s own internal
 training/eval), and this LSTM was deliberately trained on noisier, realistic PoseNet
@@ -100,7 +126,7 @@ against HSV, the shipped default:
 |---|---:|---:|
 | Precision / recall | 1.000 / 1.000 | 0.995 / 0.973 (mAP50 0.978) |
 | Per-frame CPU cost (measured in-pipeline) | 11.6ms | 14.8ms mean / 16.3ms p95 (standalone) |
-| Validated on real footage? | Yes (color rule generalizes by construction) | **No — synthetic-only, same distribution it trained on** |
+| Validated on real footage? | **No** (a fixed color rule is expected to transfer; unverified) | **No** (synthetic-only, same distribution it trained on) |
 
 Correction to an earlier assumption: HSV's cost was assumed "near-zero" — that was never
 this codebase's own claim (its docstring says "60+ FPS," i.e. ≤16.6ms), just an inference
@@ -452,12 +478,13 @@ Eight tabs, all live:
 
 ## Known limitations (stated, not hidden)
 
-- **Real end-to-end accuracy (0.756 step-window, full-protocol run still does not
-  complete — now holds at step 6) is the main open problem**, not the pipeline/GUI/
-  training infra around it — see "Current results" above for the full diagnosis and
-  the resolution-bump update. Higher heatmap resolution already moved this once
-  (0.45→0.756); more real footage and a smaller real-fine-tune regression are the
-  next levers, not more of the same resolution bump.
+- **Real-footage accuracy is unmeasured, and that is now the main open problem.** The
+  synthetic-protocol pipeline is at 0.993 step-window accuracy / 15-of-15 full completions
+  (see "Current results"), but that is train and eval from the same renderer. No real ground
+  truth exists: the 4 real clips are AI-generated, and the wrist pseudo-labels the real
+  fine-tune uses are demonstrably wrong (skin-tone tracker can't see gloved wrists), so
+  Stage 2 currently has no demonstrated real-domain benefit. Next lever: hand-labeled
+  wrists/steps on real footage, not more synthetic tuning.
 - The real "gravitational mimic" footage is a handful of short clips; pseudo-
   labels are heuristic, not ground truth — `frac_unknown` /
   `wrist_detection_rate` per video are reported in the Model & Dataset tab and

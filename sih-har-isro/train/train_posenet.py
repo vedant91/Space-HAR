@@ -587,6 +587,8 @@ def finetune_on_real(pseudo_dir: str = "dataset/real_pseudo",
                      lr: float = POSENET_FINETUNE_LR,
                      val_holdout_frac: float = 0.15,
                      max_pck_regression_frac: float = 0.25,
+                     max_joint_pck_drop: float = 0.10,
+                     synthetic_replay_frac: float = 1.0,
                      n_regression_check_samples: int = 300,
                      seed: int = 13) -> Dict:
     """Stage 2: fine-tune the synthetic-pretrained PoseNet on real, classical-CV
@@ -626,10 +628,21 @@ def finetune_on_real(pseudo_dir: str = "dataset/real_pseudo",
     idx = rng.permutation(len(full_ds))
     n_val = max(1, int(len(full_ds) * val_holdout_frac))
     val_idx, train_idx = idx[:n_val], idx[n_val:]
-    from torch.utils.data import Subset
+    from torch.utils.data import ConcatDataset, Subset
     train_ds, val_ds = Subset(full_ds, train_idx.tolist()), Subset(full_ds, val_idx.tolist())
 
-    train_loader = DataLoader(train_ds, batch_size=min(batch_size, max(len(train_ds), 1)),
+    # Synthetic replay: real pseudo-labels only supervise the wrists, and the wrist
+    # readout is one linear head over shared features. Fit on real frames alone it
+    # drifts entirely to the real domain (measured: synthetic wrist PCK 0.96 -> 0.01,
+    # every other joint untouched). Mixing synthetic frames into every batch forces
+    # that one head to localize wrists in BOTH domains.
+    fit_ds = train_ds
+    if synthetic_replay_frac > 0:
+        replay_ds = SyntheticPoseDataset(int(len(train_ds) * synthetic_replay_frac),
+                                         seed=seed + 7000)
+        fit_ds = ConcatDataset([train_ds, replay_ds])
+
+    train_loader = DataLoader(fit_ds, batch_size=min(batch_size, max(len(fit_ds), 1)),
                               shuffle=True, num_workers=0)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -694,20 +707,37 @@ def finetune_on_real(pseudo_dir: str = "dataset/real_pseudo",
     post_pck = post_metrics["pck"]
     regression = (pre_finetune_pck - post_pck) / max(pre_finetune_pck, 1e-6)
 
-    if pre_finetune_pck > 0 and regression > max_pck_regression_frac:
+    # Per-joint check on the same set. The aggregate above averages over 13 joints, so
+    # a total collapse of just the 2 wrists (the joints that drive step classification)
+    # only reads as a ~14% drop and slips under the 25% limit — that is exactly how a
+    # wrist PCK of 0.96 -> 0.01 got accepted. Any single joint losing more than
+    # `max_joint_pck_drop` absolute PCK rejects the run.
+    base_model = HARPoseNet(num_joints=ckpt["num_joints"])
+    base_model.load_state_dict(ckpt["model_state"])
+    base_model.eval()
+    base_pj = evaluate_pck(base_model, check_ds, torch.device("cpu"))["per_joint_slot_pck"]
+    post_pj = post_metrics["per_joint_slot_pck"]
+    worst_slot = max(post_pj, key=lambda s: base_pj[s] - post_pj[s])
+    worst_drop = base_pj[worst_slot] - post_pj[worst_slot]
+    logger.info("Per-joint synthetic PCK after fine-tune (slot: before -> after): %s",
+               ", ".join(f"{s}: {base_pj[s]:.2f}->{post_pj[s]:.2f}" for s in post_pj))
+
+    if worst_drop > max_joint_pck_drop or (pre_finetune_pck > 0 and regression > max_pck_regression_frac):
         attempt_path = str(Path(output_path).with_name(Path(output_path).stem + "_finetune_attempt.pt"))
         torch.save({"model_state": best_state, **{k: v for k, v in ckpt.items() if k != "model_state"},
                    "real_finetune_val_loss": best_loss, "post_finetune_synthetic_pck": post_pck,
                    "stage": "synthetic+real_finetune_REJECTED"}, attempt_path)
         logger.error(
-            "REJECTED fine-tune result: synthetic PCK %.3f -> %.3f (%.0f%% regression, limit %.0f%%). "
+            "REJECTED fine-tune result: synthetic PCK %.3f -> %.3f (%.0f%% regression, limit %.0f%%); "
+            "worst single joint (slot %d) lost %.2f PCK (limit %.2f). "
             "%s left untouched; the rejected attempt was saved to %s for inspection. "
-            "Likely cause: too-aggressive adaptation to a small/narrow real set even with BN frozen — "
-            "try a lower --lr or fewer epochs.",
+            "Likely cause: adaptation to the small real set overwriting the synthetic-domain "
+            "readout — raise synthetic_replay_frac, or lower --lr / --finetune-epochs.",
             pre_finetune_pck, post_pck, regression * 100, max_pck_regression_frac * 100,
-            output_path, attempt_path)
+            worst_slot, worst_drop, max_joint_pck_drop, output_path, attempt_path)
         return {"rejected": True, "pre_finetune_pck": pre_finetune_pck, "post_finetune_pck": post_pck,
-               "regression_frac": regression, "attempt_path": attempt_path,
+               "regression_frac": regression, "worst_joint_slot": worst_slot,
+               "worst_joint_drop": worst_drop, "attempt_path": attempt_path,
                "n_real_samples": len(full_ds)}
 
     torch.save({
@@ -728,7 +758,8 @@ def finetune_on_real(pseudo_dir: str = "dataset/real_pseudo",
     _export_onnx(output_path)
     return {"best_val_loss": best_loss, "n_real_samples": len(full_ds),
            "n_train": len(train_ds), "n_val": len(val_ds),
-           "pre_finetune_pck": pre_finetune_pck, "post_finetune_pck": post_pck}
+           "pre_finetune_pck": pre_finetune_pck, "post_finetune_pck": post_pck,
+           "worst_joint_drop": worst_drop}
 
 
 def _export_onnx(model_pt_path: str):

@@ -381,8 +381,10 @@ def render_protocol(
     seed: int = 1,
     skip_step: Optional[int] = None,
     sequence: Optional[List[int]] = None,
+    orientations: Optional[List[int]] = None,
 ) -> Tuple[List[np.ndarray], List[dict]]:
-    """Render a persistent microgravity protocol or an injected-error sequence."""
+    """Render a persistent microgravity protocol or an injected-error sequence.
+    `orientations` (one per sequence entry) overrides the default fixed schedule."""
     frames, metas = [], []
     rng = np.random.default_rng(seed)
     world = MicrogravityWorld(width, height, rng)
@@ -392,7 +394,7 @@ def render_protocol(
             continue
         # Different deterministic body orientation for each recording, while
         # object locations remain rack-relative rather than floor-relative.
-        orientation = (occurrence // 3) % 4
+        orientation = orientations[occurrence] if orientations else (occurrence // 3) % 4
         seq = generate_sequence(sid, n_frames=frames_per_step, rng=rng,
                                 orientation=orientation, drift=True)
         for i in range(frames_per_step):

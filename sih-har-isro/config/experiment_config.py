@@ -162,7 +162,7 @@ CLIP_OUTPUT_DIR = "dataset/clips"
 SESSION_METRICS_PATH = "logs/session_metrics.json"
 
 # ── Model Paths ───────────────────────────────────────────────
-MODEL_DIR = "models"
+MODEL_DIR = os.environ.get("HAR_MODEL_DIR", "models")  # override lets A/B experiments run without touching committed checkpoints
 # Custom CNN activity classifier (trained from scratch)
 CNN_MODEL_PATH = os.path.join(MODEL_DIR, "activity_cnn.pt")
 CNN_ONNX_PATH  = os.path.join(MODEL_DIR, "activity_cnn.onnx")

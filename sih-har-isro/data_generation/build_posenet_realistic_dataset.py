@@ -137,6 +137,65 @@ def build_dataset(output_dir: str, n_sequences_per_step: int = 24, frames_per_se
     return meta
 
 
+def build_protocol_dataset(output_dir: str, n_protocols: int = 32, frames_per_step: int = 72,
+                           window: int = SEQUENCE_WINDOW, stride: int = 5, seed: int = 101) -> Dict:
+    """Same idea as build_dataset, but each trial is a FULL 8-step protocol run in
+    ONE persistent MicrogravityWorld (like simulation/renderer.py:render_protocol,
+    what the deployed pipeline actually sees), not 60-frame clips that each start a
+    fresh world. Object state (where the boxes are, who holds them) carries over
+    between steps, which changes what PoseNet sees around the wrists.
+
+    Orientation is balanced per step but independent ACROSS steps — deliberately NOT
+    render_protocol's fixed step->orientation schedule, so the LSTM can't learn
+    "orientation implies step" from training data that mirrors one evaluation recipe.
+    Groups are per-protocol so a train/val split never shares a world across sides."""
+    from data_generation.synthetic_pose import generate_sequence, sequences_to_windows
+    from simulation.renderer import render_frame, MicrogravityWorld
+    from pipeline.pose_net import PoseNetWrapper
+
+    pose_wrapper = PoseNetWrapper()
+    if not pose_wrapper.available:
+        raise RuntimeError("No trained PoseNet available — run train/train_posenet.py first.")
+    rng = np.random.default_rng(seed)
+    all_x, all_y, all_g = [], [], []
+    t0 = time.time()
+    # Balanced orientation coverage: every step sees each of the 4 orientations equally
+    # often (shuffled independently per step). Plain independent draws left some
+    # (step, orientation) combos with ~0 samples at 12 protocols, and the LSTM then
+    # misread those (e.g. step 8 read as step 2 at unseen orientations).
+    ori_plan = [rng.permutation(np.resize(np.arange(4), n_protocols)) for _ in range(8)]
+    for p in range(n_protocols):
+        world = MicrogravityWorld(FRAME_WIDTH, FRAME_HEIGHT, rng)
+        for step_id in range(1, 9):
+            gt_seq = generate_sequence(step_id, n_frames=frames_per_step, rng=rng,
+                                       orientation=int(ori_plan[step_id - 1][p]), drift=True)
+            feats = np.zeros((frames_per_step, gt_seq.shape[-1]), dtype=np.float32)
+            for i in range(frames_per_step):
+                frame_bgr, _ = render_frame(gt_seq[i], step_id, i / max(frames_per_step - 1, 1),
+                                            width=FRAME_WIDTH, height=FRAME_HEIGHT, rng=rng, world=world)
+                feats[i] = pose_wrapper.process(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
+            xw, yw = sequences_to_windows(feats, step_id, window, stride)
+            all_x.append(xw); all_y.append(yw)
+            all_g.append(np.full(len(xw), 100000 + p, dtype=np.int64))
+        logger.info("Protocol %d/%d done (%.0fs elapsed)", p + 1, n_protocols, time.time() - t0)
+
+    X, y, groups = np.concatenate(all_x), np.concatenate(all_y), np.concatenate(all_g)
+    idx = rng.permutation(len(X))
+    X, y, groups = X[idx], y[idx], groups[idx]
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(str(out / "X_sequences.npy"), X)
+    np.save(str(out / "y_labels.npy"), y)
+    np.save(str(out / "groups.npy"), groups)
+    meta = {"total_windows": int(len(X)), "n_protocols": n_protocols, "feature_dim": int(X.shape[-1]),
+            "window": int(window), "stride": int(stride), "source": "protocol_via_trained_posenet",
+            "posenet_backend": pose_wrapper.backend, "seed": int(seed),
+            "elapsed_sec": round(time.time() - t0, 1)}
+    (out / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    logger.info("Wrote %s  X=%s (%.0fs)", out, X.shape, meta["elapsed_sec"])
+    return meta
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Build LSTM training data from the trained "
@@ -145,7 +204,13 @@ if __name__ == "__main__":
     parser.add_argument("--n-sequences-per-step", type=int, default=24)
     parser.add_argument("--frames-per-seq", type=int, default=60)
     parser.add_argument("--seed", type=int, default=17)
+    parser.add_argument("--protocol", action="store_true",
+                        help="build from full persistent-world protocol runs instead of per-step clips")
+    parser.add_argument("--n-protocols", type=int, default=32)
     args = parser.parse_args()
-    meta = build_dataset(args.output, n_sequences_per_step=args.n_sequences_per_step,
-                         frames_per_seq=args.frames_per_seq, seed=args.seed)
+    if args.protocol:
+        meta = build_protocol_dataset(args.output, n_protocols=args.n_protocols)
+    else:
+        meta = build_dataset(args.output, n_sequences_per_step=args.n_sequences_per_step,
+                             frames_per_seq=args.frames_per_seq, seed=args.seed)
     print(json.dumps(meta, indent=2))
