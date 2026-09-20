@@ -11,7 +11,7 @@ better on paper than they work in practice — so both are reported:
 
 | Metric | Value | Gate |
 |---|---:|---:|
-| HARPoseNet synthetic PCK@0.10·torso | 0.983 (Stage 1) → 0.985 (+Stage 2 real fine-tune, with synthetic replay) | ≥0.55 |
+| HARPoseNet synthetic PCK@0.10·torso | 0.983 (Stage 1) → 0.985 (+Stage 2 real fine-tune with synthetic replay — the committed checkpoint; Stage 2 is now off by default) | ≥0.55 |
 | LSTM val accuracy (`main.py --mode train`'s production model, held out by whole protocol run) | 1.000 *(small synthetic set — NOT informative on its own; the e2e rows below are the real test)* | — |
 | CNN val accuracy (combined synthetic+real frames) | 0.757 *(not retrained this pass — CNN's input size is independent of PoseNet's)* | — |
 | Oracle step accuracy (clean ground-truth pose → LSTM → FSM) | 0.108 *(stale, not remeasured — see note below)* | ≥0.85 |
@@ -191,8 +191,11 @@ CV pseudo-labels** instead of a pretrained model:
   (`RuleBasedStepLabeler`), the same `required_objects` logic
   `pipeline/state_machine.py` already encodes, run in reverse.
 
-PoseNet is then fine-tuned (Stage 2) on those pseudo-labels with a **masked
-loss** — only joints the pseudo-labeler actually found contribute gradient.
+PoseNet can then be fine-tuned (Stage 2, **off by default** — opt in with `--finetune-real`)
+on those pseudo-labels with a **masked loss** — only joints the pseudo-labeler actually
+found contribute gradient. It is off because the wrist pseudo-labels are unreliable (see
+"What this does and does not show"), so it has no demonstrated benefit and costs ~25 min
+per retrain; the real LSTM windows and CNN frames don't depend on it.
 
 ## Directory guide
 
@@ -233,13 +236,13 @@ end_to_end_loop.py               Auto-fix loop: data → train → sim → diagn
 ```bash
 cd sih-har-isro
 python main.py --mode status                 # what's trained, what's missing
-python main.py --mode train                   # PoseNet -> real fine-tune -> CNN -> LSTM
+python main.py --mode train                   # PoseNet -> CNN -> LSTM (add --finetune-real for Stage 2)
 python main.py --mode pipeline --video some.mp4   # run the live pipeline + dashboard
 python main.py --mode e2e                     # full auto-fix loop until gates pass
 ```
 
-Other useful modes: `posenet` (pose model only, `--finetune-real` to also run
-Stage 2), `autolabel` (pseudo-label the real videos only), `tuner` (interactive
+Other useful modes: `posenet` (pose model only; Stage 2 real fine-tune is off unless
+`--finetune-real`), `autolabel` (pseudo-label the real videos only), `tuner` (interactive
 HSV calibration), `sim` (space-sim latency/accuracy report only), `race` (see below).
 Any mode accepts `--pack path/to/pack.yaml` to swap the experiment protocol.
 

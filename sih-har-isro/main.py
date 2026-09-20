@@ -72,8 +72,14 @@ def run_pipeline(source, headless: bool = False,
     pipeline_thread.join()
 
 
-def run_training(use_real_data: bool = True, skip_posenet: bool = False):
-    """Full training sequence: PoseNet -> (real autolabel + fine-tune) -> LSTM data -> CNN -> LSTM.
+def run_training(use_real_data: bool = True, skip_posenet: bool = False,
+                 finetune_real: bool = False):
+    """Full training sequence: PoseNet -> (real autolabel [+ optional fine-tune]) -> LSTM data -> CNN -> LSTM.
+
+    The Stage-2 real fine-tune is OFF by default (`finetune_real=False`): its wrist
+    pseudo-labels are wrong (see README "What this does and does not show"), so it has
+    no demonstrated real-domain benefit and costs ~25 min per retrain. Autolabeling still
+    runs — the real LSTM windows and CNN frames use it, not the wrist labels.
 
     Every model here is trained from scratch on this project's own data — no
     open-source/pretrained weights anywhere:
@@ -134,7 +140,7 @@ def run_training(use_real_data: bool = True, skip_posenet: bool = False):
              f"({real_video_dir})...")
         from data_generation.real_video_autolabel import run_autolabel
         run_autolabel()
-        if not skip_posenet:
+        if finetune_real and not skip_posenet:
             from train.train_posenet import finetune_on_real
             ft = finetune_on_real(pseudo_dir=REAL_PSEUDO_DIR)
             if ft.get("rejected"):
@@ -333,7 +339,8 @@ Modes:
     parser.add_argument("--no-real-data", action="store_true",
                         help="--mode train: ignore config.REAL_VIDEO_DIR, train on synthetic only")
     parser.add_argument("--finetune-real", action="store_true",
-                        help="--mode posenet: also run the Stage-2 real-video fine-tune")
+                        help="--mode posenet / --mode train: also run the Stage-2 real-video fine-tune "
+                             "(off by default — its wrist pseudo-labels are unreliable, see README)")
     args = parser.parse_args()
 
     # Must happen before ANY config-dependent module is imported below —
@@ -360,7 +367,7 @@ Modes:
                     uplink_mode=args.uplink_mode)
 
     elif args.mode == "train":
-        run_training(use_real_data=not args.no_real_data)
+        run_training(use_real_data=not args.no_real_data, finetune_real=args.finetune_real)
 
     elif args.mode == "posenet":
         from train.train_posenet import train_posenet, finetune_on_real
