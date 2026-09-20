@@ -49,7 +49,7 @@ from config.experiment_config import (
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
     UPLINK_MODE, CLIP_PRE_ROLL_S, CLIP_POST_ROLL_S, CLIP_OUTPUT_DIR,
-    SESSION_METRICS_PATH,
+    SESSION_METRICS_PATH, DETECTOR_BACKEND,
 )
 from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
@@ -177,7 +177,8 @@ class HARPipeline:
                  enable_race: bool = False,
                  earth_delay_s: Optional[float] = None,
                  uplink_mode: Optional[str] = None,
-                 rack_frame_normalize: Optional[bool] = None):
+                 rack_frame_normalize: Optional[bool] = None,
+                 detector_backend: Optional[str] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -227,10 +228,20 @@ class HARPipeline:
         self.state_machine  = ExperimentStateMachine()
         self.voice          = VoiceAlertSystem(enabled=voice_on)
         self.exp_logger     = ExperimentLogger()
-        self.hsv_detector   = HSVBoxDetector(
-            frame_width=FRAME_WIDTH,
-            frame_height=FRAME_HEIGHT,
-        )
+        # Object detector backend — "hsv" (default) or "yolo", see
+        # config.DETECTOR_BACKEND's docstring for why HSV stays the default
+        # (measured superior for this exact colored-box task).
+        self._detector_backend = (DETECTOR_BACKEND if detector_backend is None
+                                  else detector_backend).lower()
+        if self._detector_backend == "yolo":
+            from pipeline.yolo_detector import YOLOBoxDetector
+            self.hsv_detector = YOLOBoxDetector()  # name kept for existing call sites — same
+                                                    # .detect()/.draw() contract either backend
+        else:
+            self.hsv_detector = HSVBoxDetector(
+                frame_width=FRAME_WIDTH,
+                frame_height=FRAME_HEIGHT,
+            )
         self.anomaly_monitor = AnomalyMonitor(FRAME_WIDTH, FRAME_HEIGHT, fps=FPS)
         self.session_metrics = SessionMetrics()
         self.watchdog = ProcessWatchdog()

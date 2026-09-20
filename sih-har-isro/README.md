@@ -11,15 +11,15 @@ better on paper than they work in practice — so both are reported:
 
 | Metric | Value | Gate |
 |---|---:|---:|
-| HARPoseNet synthetic PCK@0.10·torso | 0.665 (Stage 1) → 0.649 (+Stage 2 real fine-tune) | ≥0.55 |
-| LSTM held-out window accuracy (PoseNet's own predictions, not ground truth) | 0.938 | — |
-| LSTM val accuracy (`main.py --mode train`'s production model) | 0.843 | — |
-| CNN val accuracy (combined synthetic+real frames) | 0.757 | — |
+| HARPoseNet synthetic PCK@0.10·torso | 0.983 (Stage 1) → 0.843 (+Stage 2 real fine-tune) | ≥0.55 |
+| LSTM held-out window accuracy (PoseNet's own predictions, not ground truth) | 0.938 *(pre-resolution-bump, not remeasured)* | — |
+| LSTM val accuracy (`main.py --mode train`'s production model) | 0.835 | — |
+| CNN val accuracy (combined synthetic+real frames) | 0.757 *(not retrained this pass — CNN's input size is independent of PoseNet's)* | — |
 | Oracle step accuracy (clean ground-truth pose → LSTM → FSM) | 0.108 (see note below) | ≥0.85 |
-| **Real (non-oracle) step-window accuracy — actual camera→PoseNet→LSTM path** | **0.45** | — |
-| **Full 8-step protocol completion, non-oracle, one continuous take** | **Does not complete** (holds at step 2-3) | — |
+| **Real (non-oracle) step-window accuracy — actual camera→PoseNet→LSTM path** | **0.756** (up from 0.45) | — |
+| **Full 8-step protocol completion, non-oracle, one continuous take** | **Does not complete** (now holds at step 6, up from step 2-3) | — |
 | HSV red/yellow/main box recall & precision | 1.000 / 1.000 | ≥0.85 |
-| Mean / p95 per-frame latency (CPU) | 25.4ms / 27.2ms (~39 FPS) | ≤80ms / ≤130ms |
+| Mean / p95 per-frame latency (CPU) | 31.6ms / 32.4ms (~32 FPS) | ≤80ms / ≤130ms |
 | Sequence FSM logic itself (complete/skip/recovery, scripted predictions) | all pass | — |
 
 **Two different LSTM training paths exist in this repo — know which one you're running.**
@@ -56,6 +56,24 @@ papered over with an oracle-only number. The state machine's strict hold-and-cor
 policy (never guess through an anomaly) is doing exactly what the problem statement asks
 of it here — it's *why* the system reports "stuck," not "wrong."
 
+**Update: closing the gap further.** The root cause above (elbow/wrist PCK bottlenecked by
+heatmap resolution) was directly addressed: `POSE_INPUT_SIZE` 192→256, `POSE_HEATMAP_SIZE`
+48→64 (kept at the architecture's fixed stride-4 ratio), `POSENET_SYNTH_SAMPLES` 4000→8000,
+`POSENET_EPOCHS` 24→40 (`POSE_HEATMAP_SIGMA`/`POSE_DECODE_RADIUS` scaled proportionally with
+the heatmap size to keep training difficulty comparable, not accidentally easier/harder).
+Result: synthetic PCK 0.665→0.983 (Stage 1), a real fine-tune regression bigger than before
+(0.983→0.843, vs. the original 0.665→0.649 — a bigger absolute drop even though the relative
+regression is still under the 25% guard; worth watching if this gets revisited), and — the
+number that actually matters — real camera→PoseNet→LSTM step-window accuracy **0.45→0.756**
+(a ~68% relative gain). The full 8-step protocol still doesn't complete in one continuous
+take, but now holds at step 6 instead of step 2-3 — real progress, not a full fix. Cost:
+mean per-frame latency rose 25.4ms→31.6ms (PoseNet's own inference cost roughly doubled),
+still comfortably inside the 80ms/130ms gate. CNN and the `LSTM held-out window
+accuracy`/`Oracle step accuracy` rows above were not remeasured this pass — CNN's input
+resolution is independent of PoseNet's, and the other two need a dedicated re-run of
+`simulation/space_sim.py`'s full gate suite (not done here, so left at their prior values
+rather than guessed at).
+
 The CNN's 0.757 (vs. a pure-synthetic run's ~0.96 in earlier project history) reflects a
 genuinely harder, more realistic combined dataset (real, imperfectly-pseudo-labeled frames
 mixed with clean synthetic ones), not a regression — see `dataset/annotated_real` and
@@ -68,7 +86,7 @@ two gates were calibrated for a ground-truth-fed LSTM (`end_to_end_loop.py`'s ow
 training/eval), and this LSTM was deliberately trained on noisier, realistic PoseNet
 features instead — feeding it clean ground truth (what the oracle check does) is now
 itself out-of-distribution for it, the mirror image of the original bug. The metric that
-actually matters for this architecture — real camera→PoseNet→LSTM accuracy — is the 0.45
+actually matters for this architecture — real camera→PoseNet→LSTM accuracy — is the 0.756
 reported above, evaluated the honest way.
 
 ## No open-source / pretrained model anywhere
@@ -412,11 +430,12 @@ Eight tabs, all live:
 
 ## Known limitations (stated, not hidden)
 
-- **Real end-to-end accuracy (0.45 step-window, full-protocol run does not complete)
-  is the main open problem**, not the pipeline/GUI/training infra around it — see
-  "Current results" above for the full diagnosis (PoseNet's elbow/wrist PCK is the
-  bottleneck) and what would actually move it (more PoseNet training budget/data,
-  higher heatmap resolution, more real footage).
+- **Real end-to-end accuracy (0.756 step-window, full-protocol run still does not
+  complete — now holds at step 6) is the main open problem**, not the pipeline/GUI/
+  training infra around it — see "Current results" above for the full diagnosis and
+  the resolution-bump update. Higher heatmap resolution already moved this once
+  (0.45→0.756); more real footage and a smaller real-fine-tune regression are the
+  next levers, not more of the same resolution bump.
 - The real "gravitational mimic" footage is a handful of short clips; pseudo-
   labels are heuristic, not ground truth — `frac_unknown` /
   `wrist_detection_rate` per video are reported in the Model & Dataset tab and

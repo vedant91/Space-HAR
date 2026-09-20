@@ -77,23 +77,34 @@ LSTM_USE_ONNX = True            # Use ONNX Runtime for LSTM (faster than PyTorch
 POSE_JOINT_SLOTS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
 #                    nose  Lsh  Rsh  Lel  Rel  Lwr  Rwr  Lhip Rhip Lkn  Rkn  Lank Rank
 POSE_NUM_JOINTS = len(POSE_JOINT_SLOTS)
-POSE_INPUT_SIZE = 192       # model input, square RGB
-POSE_HEATMAP_SIZE = 48      # output heatmap resolution (stride 4)
-POSE_HEATMAP_SIGMA = 1.5    # gaussian target sigma, in heatmap-pixel units
+POSE_INPUT_SIZE = 256       # model input, square RGB (architecture is a fixed stride-4
+                            # ladder — must scale together with POSE_HEATMAP_SIZE, 4:1)
+POSE_HEATMAP_SIZE = 64      # output heatmap resolution (stride 4). Bumped 48->64 to close
+                            # the elbow/wrist PCK gap (see README.md "Current results") —
+                            # quantization error scales with heatmap pixel size, and
+                            # elbows/wrists move too fast for the old 48px grid to localize
+                            # precisely even with soft-argmax decode.
+POSE_HEATMAP_SIGMA = 2.0    # gaussian target sigma, in heatmap-pixel units (scaled 1.5->2.0
+                            # with the 48->64 heatmap bump, same 64/48 ratio, so the target's
+                            # size relative to torso — and thus training difficulty — is
+                            # unchanged, not accidentally sharpened)
 POSE_MIN_CONFIDENCE = 0.15  # heatmap peak below this -> visibility 0 (joint not claimed)
-# Sub-pixel decode: a plain argmax on a 48x48 heatmap quantizes to ~1 heatmap
+# Sub-pixel decode: a plain argmax on a 64x64 heatmap quantizes to ~1 heatmap
 # pixel, which alone can burn most of the PCK@0.10*torso error budget (torso
-# is only ~11-12 heatmap-px wide at this resolution/frame). Decode instead
+# is only ~15-16 heatmap-px wide at this resolution/frame). Decode instead
 # takes a local softmax-weighted centroid in a (2*radius+1) window around the
 # argmax — cheap (13 tiny windows/frame) and measured ~40% relative PCK
 # improvement over plain argmax on the same checkpoint, no retraining needed.
-POSE_DECODE_RADIUS = 2
+POSE_DECODE_RADIUS = 3      # scaled 2->3 with the heatmap bump (same relative window size)
 POSE_DECODE_BETA = 20.0
 
-POSENET_EPOCHS = 24
+POSENET_EPOCHS = 40              # bumped 24->40: more synth samples per epoch needs more
+                                 # epochs to converge; early stopping (patience=6) still caps
+                                 # wasted time if it plateaus sooner
 POSENET_BATCH_SIZE = 32
 POSENET_LR = 1e-3
-POSENET_SYNTH_SAMPLES = 4000     # rendered synthetic frames for training
+POSENET_SYNTH_SAMPLES = 8000     # rendered synthetic frames for training (was 4000 — more
+                                 # coverage of fast elbow/wrist motion)
 POSENET_VAL_SAMPLES = 600        # held-out rendered frames for PCK eval
 POSENET_FINETUNE_EPOCHS = 25     # real-video pseudo-label fine-tune epochs. Safe to run
                                  # longer than Stage-1-scale epoch counts: finetune_on_real's
@@ -161,7 +172,11 @@ LSTM_ONNX_PATH = os.path.join(MODEL_DIR, "lstm_classifier.onnx")  # ONNX for CPU
 # Custom pose heatmap net (trained from scratch, replaces MediaPipe — see above)
 POSENET_PATH = os.path.join(MODEL_DIR, "pose_net.pt")
 POSENET_ONNX_PATH = os.path.join(MODEL_DIR, "pose_net.onnx")
-# No YOLOv8 — object detection uses HSV color segmentation (no training needed)
+# Optional YOLO detector (off by default — see DETECTOR_BACKEND below). Fine-tuned
+# from a pretrained COCO checkpoint on our own synthetic box/hand bboxes — COCO
+# itself has no red_box/yellow_box/hand classes, so the pretrained weights alone
+# do nothing useful here; they're just a feature-extractor starting point.
+YOLO_MODEL_PATH = os.path.join(MODEL_DIR, "yolo_detector.pt")
 
 # ── Real "gravitational mimic" video data ──────────────────────
 # Real footage (Earth-recorded, deliberately slow/floaty motion miming
@@ -197,6 +212,26 @@ STEP_CONFIDENCE_THRESHOLD = 0.65
 # RACK_FRAME_NORMALIZE.
 CNN_ENSEMBLE_ENABLED = False
 CNN_CONFIDENCE_THRESHOLD = 0.60
+
+# ── Object Detector Backend (optional YOLO, off by default) ────
+# hsv_detector.py's own docstring already concludes HSV is "actually superior
+# to a trained detector for this use-case because the colors ARE the
+# definition of the targets" — measured 1.000/1.000 precision/recall (see
+# README). YOLO exists here as an opt-in alternative to measure against, not
+# a default replacement. Same "free, exact, renderer-driven ground truth"
+# trick as HARPoseNet — COCO has no red_box/yellow_box/hand classes, so the
+# pretrained checkpoint is only ever a fine-tune starting point, never used
+# as-is at inference time.
+DETECTOR_BACKEND = "hsv"             # "hsv" (default) or "yolo"
+YOLO_BASE_CHECKPOINT = "yolo11n.pt"  # pretrained COCO nano checkpoint — smallest
+                                     # variant available, chosen for CPU latency
+                                     # (not the yolov9c requested — see train_yolo_detector.py)
+YOLO_IMG_SIZE = 384                  # detector input size — CPU latency budget, not accuracy
+YOLO_SYNTH_SAMPLES = 3000
+YOLO_VAL_SAMPLES = 400
+YOLO_EPOCHS = 30
+YOLO_BATCH_SIZE = 16
+YOLO_CONF_THRESHOLD = 0.25
 
 # ── HSV Color Ranges for Box Detection (no training needed) ───
 # Format: (H_min, S_min, V_min), (H_max, S_max, V_max)

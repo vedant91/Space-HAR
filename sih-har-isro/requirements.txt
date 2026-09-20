@@ -1,7 +1,11 @@
 # ISRO SIH 2026 — HAR Pipeline
-# Offline | No YOLO, no MediaPipe, no pretrained/open-source model anywhere —
+# Offline | No MediaPipe, no pretrained/open-source model in the shipped default —
 # custom PoseNet + CNN + LSTM, all trained from scratch on this project's own
-# synthetic renderer + real "gravitational mimic" footage (see train/).
+# synthetic renderer + real "gravitational mimic" footage (see train/). An opt-in
+# YOLO detector backend exists (config.DETECTOR_BACKEND="yolo", off by default —
+# HSV is the shipped default and measured superior for this task, see
+# pipeline/hsv_detector.py's docstring) fine-tuned from a pretrained COCO
+# checkpoint on our own synthetic bboxes, never used un-fine-tuned.
 
 # ── Core computer vision ──────────────────────────────────────
 opencv-python>=4.8.0
@@ -14,6 +18,9 @@ torchvision>=0.16.0
 # ── ONNX for CPU-optimized inference ─────────────────────────
 onnx>=1.14.0
 onnxruntime>=1.16.0
+
+# ── Optional YOLO detector backend (off by default, see DETECTOR_BACKEND) ─
+ultralytics>=8.3.0
 
 # ── Data augmentation ─────────────────────────────────────────
 albumentations>=1.3.0

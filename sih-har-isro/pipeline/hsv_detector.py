@@ -36,6 +36,29 @@ from config.experiment_config import (
 )
 
 
+def draw_detections(frame_bgr: np.ndarray, detections: List["Detection"]) -> np.ndarray:
+    """Draw detection bounding boxes and labels on frame (returns copy).
+    Backend-agnostic (duck-typed on .label/.bbox/.confidence/.centroid) —
+    shared by HSVBoxDetector.draw() and pipeline/yolo_detector.py so both
+    backends render identically."""
+    out = frame_bgr.copy()
+    COLORS = {
+        "red_box":    (0, 0, 220),
+        "yellow_box": (0, 215, 255),
+        "main_box":   (200, 200, 200),
+        "hand":       (60, 220, 60),
+    }
+    for det in detections:
+        x1, y1, x2, y2 = det.bbox
+        color = COLORS.get(det.label, (255, 255, 255))
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
+        label_text = f"{det.label} {det.confidence:.2f}"
+        cv2.putText(out, label_text, (x1, max(y1 - 8, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+        cv2.circle(out, det.centroid, 5, color, -1)
+    return out
+
+
 @dataclass
 class Detection:
     label: str           # "red_box", "yellow_box", "main_box"
@@ -170,25 +193,7 @@ class HSVBoxDetector:
         """Draw detection bounding boxes and labels on frame (returns copy)."""
         if detections is None:
             detections = self.detect(frame_bgr)
-
-        out = frame_bgr.copy()
-        COLORS = {
-            "red_box":    (0, 0, 220),
-            "yellow_box": (0, 215, 255),
-            "main_box":   (200, 200, 200),
-            "hand":       (60, 220, 60),
-        }
-
-        for det in detections:
-            x1, y1, x2, y2 = det.bbox
-            color = COLORS.get(det.label, (255, 255, 255))
-            cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
-            label_text = f"{det.label} {det.confidence:.2f}"
-            cv2.putText(out, label_text, (x1, max(y1 - 8, 0)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-            cv2.circle(out, det.centroid, 5, color, -1)
-
-        return out
+        return draw_detections(frame_bgr, detections)
 
     def calibrate_from_roi(self, frame_bgr: np.ndarray, label: str,
                            roi: Tuple[int, int, int, int], k: float = 2.5):
