@@ -2,6 +2,15 @@
 """
 ISRO HAR — End-to-End Completion Loop
 =====================================
+
+DEPRECATED FOR ACCURACY CLAIMS. Do not quote any number this loop reports.
+Its `lstm_test_acc` (and `lstm_val_acc`, and the sim_report.json it writes)
+comes from a model trained AND tested on the same closed-form generator
+(data_generation/synthetic_pose.py), so the number cannot fail: the shipped
+model scored ~0.98 here and is at chance (0.125) on rendered video. The only
+supported accuracy claim is the HOLDOUT column printed by
+tools/retrain_and_evaluate.sh. This loop remains a plumbing smoke test only.
+
 Repeats until accuracy + latency gates pass:
 
     synthetic pose data → LSTM train → (optional) CNN train
@@ -46,6 +55,7 @@ else:
     os.chdir(proj)
     sys.path.insert(0, str(proj))
 
+from config.experiment_config import RACK_FRAME_NORMALIZE
 from data_generation.synthetic_pose import generate_dataset
 from simulation.gates import DEFAULT_GATES, evaluate_gates
 from simulation.space_sim import run_full_space_sim, save_step_frames
@@ -228,6 +238,7 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
                 frames_per_seq=60,
                 seed=7 + iteration,
                 include_orientations=True,
+                rack_normalize=RACK_FRAME_NORMALIZE,
             )
             generate_dataset(
                 "dataset/skeleton_sequences_test",
@@ -235,6 +246,7 @@ def run_loop(max_iters: int = 6, skip_cnn: bool = False, quick: bool = False) ->
                 frames_per_seq=60,
                 seed=99 + iteration,
                 include_orientations=True,
+                rack_normalize=RACK_FRAME_NORMALIZE,
             )
 
             # ── 1b. PoseNet — trained once (heavy CPU cost), read its own

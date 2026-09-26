@@ -337,26 +337,44 @@ class HSVBoxDetector:
         if not contours:
             return []
 
-        # Pick largest contour that's roughly rectangular
-        for cnt in sorted(contours, key=cv2.contourArea, reverse=True)[:5]:
+        # Pick the largest box-like contour in the experiment volume.
+        # Reject ceiling lights (very wide, top of frame) and person-shaped
+        # leftovers so the rack-frame roll anchor stays on the payload rack.
+        fh, fw = hsv.shape[:2]
+        min_area = max(MIN_BOX_AREA_PX * 8, int(self.frame_area * 0.015))
+        best = None
+        for cnt in sorted(contours, key=cv2.contourArea, reverse=True)[:8]:
             area = int(cv2.contourArea(cnt))
-            if area < MIN_BOX_AREA_PX * 4:  # Main box should be bigger
+            if area < min_area:
+                continue
+            x, y, bw, bh = cv2.boundingRect(cnt)
+            aspect = bw / max(bh, 1)
+            if aspect < 0.35 or aspect > 3.5:
+                continue
+            cx, cy = x + bw / 2.0, y + bh / 2.0
+            if cy < 0.28 * fh or cy > 0.92 * fh:
+                continue
+            if cx < 0.15 * fw or cx > 0.85 * fw:
                 continue
             hull_area = cv2.contourArea(cv2.convexHull(cnt))
             if hull_area == 0:
                 continue
             solidity = area / hull_area
-            if solidity > 0.7:  # Reasonably solid (box-like) shape
-                x, y, w, h = cv2.boundingRect(cnt)
-                return [Detection(
-                    label="main_box",
-                    bbox=(x, y, x + w, y + h),
-                    confidence=min(area / (self.frame_area * 0.1), 1.0),
-                    centroid=(x + w // 2, y + h // 2),
-                    area=area,
-                    rect=cv2.minAreaRect(cnt),
-                )]
-        return []
+            if solidity < 0.65:
+                continue
+            best = (area, cnt, x, y, bw, bh)
+            break
+        if best is None:
+            return []
+        area, cnt, x, y, bw, bh = best
+        return [Detection(
+            label="main_box",
+            bbox=(x, y, x + bw, y + bh),
+            confidence=min(area / (self.frame_area * 0.1), 1.0),
+            centroid=(x + bw // 2, y + bh // 2),
+            area=area,
+            rect=cv2.minAreaRect(cnt),
+        )]
 
     def _detect_hand(self, hsv: np.ndarray, bgr: np.ndarray) -> List[Detection]:
         """

@@ -41,7 +41,10 @@ from data_generation.synthetic_pose import (
 RED_BGR = (12, 12, 230)       # hue ~0, high S/V  → HSV_RED
 YELLOW_BGR = (0, 255, 255)    # hue 30, sat 255   → HSV_YELLOW
 WHITE_BGR = (236, 236, 236)   # low S, high V     → HSV_WHITE
-SUIT_BGR = (232, 232, 228)
+# Suit/gloves must sit below HSV_WHITE (V>=200, S<=30) so the payload rack
+# — not the astronaut — is the minAreaRect roll anchor.
+SUIT_BGR = (168, 158, 148)
+GLOVE_BGR = (186, 180, 174)
 SKIN_BGR = (110, 155, 200)
 VISOR_BGR = (40, 30, 20)
 RACK_BGR = (92, 98, 108)
@@ -270,8 +273,8 @@ def _draw_astronaut(frame: np.ndarray, pose: np.ndarray):
         cv2.circle(frame, pb, 10, SUIT_BGR, -1)
 
     # Gloves
-    cv2.circle(frame, _lm_xy(pose, L_WRIST, w, h), 16, (245, 245, 240), -1)
-    cv2.circle(frame, _lm_xy(pose, R_WRIST, w, h), 16, (245, 245, 240), -1)
+    cv2.circle(frame, _lm_xy(pose, L_WRIST, w, h), 16, GLOVE_BGR, -1)
+    cv2.circle(frame, _lm_xy(pose, R_WRIST, w, h), 16, GLOVE_BGR, -1)
 
     # Helmet
     hx, hy = _lm_xy(pose, NOSE, w, h)
@@ -323,8 +326,14 @@ def render_frame(
 
     _draw_astronaut(frame, pose)
 
+    # Re-stroke the rack rectangle after the figure so HSV minAreaRect
+    # tracks the payload container, even when the astronaut overlaps it.
+    mx1, my1, mx2, my2 = boxes["main_box"]
+    cv2.rectangle(frame, (mx1, my1), (mx2, my2), WHITE_BGR, 18)
+    cv2.rectangle(frame, (mx1, my1), (mx2, my2), (180, 180, 180), 3)
+
     # Paint payload boxes on top so HSV sees a clean saturated region
-    # (held boxes would otherwise be covered by white gloves).
+    # (held boxes would otherwise be covered by gloves).
     if not closed_lid and step_id >= 2:
         _fill_rect(frame, boxes["red_box"], RED_BGR, -1)
         _fill_rect(frame, boxes["yellow_box"], YELLOW_BGR, -1)

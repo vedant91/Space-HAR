@@ -1,0 +1,832 @@
+{
+  "test_set": "holdout takes orient_-60,orient_180,pitch_60,yaw_90",
+  "chance": 0.125,
+  "sources": {
+    "mp_poseonly": "D:/SIH-2026/.tmp/ml/seq_abl_mp_poseonly",
+    "mp_boxonly": "D:/SIH-2026/.tmp/ml/seq_abl_mp_boxonly",
+    "gt_poseonly": "D:/SIH-2026/.tmp/ml/seq_abl_gt_poseonly"
+  },
+  "runs": [
+    {
+      "train_source": "mp_poseonly",
+      "seed": 7,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_poseonly_s7.pt",
+      "val_acc": 0.3402,
+      "train_takes": 16,
+      "train_wall_s": 23.3,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.2622,
+          "windows": 736,
+          "ci95": [
+            0.1328,
+            0.3995
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.4479,
+            "orient_-60": 0.0063,
+            "yaw_90": 0.2961,
+            "pitch_60": 0.25
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.3131,
+            "3": 0.1596,
+            "4": 0.2604,
+            "5": 0.22,
+            "6": 0.4948,
+            "7": 0.4949,
+            "8": 0.0417
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1019,
+          "windows": 736,
+          "ci95": [
+            0.0241,
+            0.2024
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0885,
+            "orient_-60": 0.0696,
+            "yaw_90": 0.1214,
+            "pitch_60": 0.1222
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.7021,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.125
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.1916,
+          "windows": 736,
+          "ci95": [
+            0.0815,
+            0.3114
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.3073,
+            "orient_-60": 0.1266,
+            "yaw_90": 0.1699,
+            "pitch_60": 0.15
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.202,
+            "3": 0.6702,
+            "4": 0.0,
+            "5": 0.04,
+            "6": 0.1546,
+            "7": 0.2222,
+            "8": 0.2361
+          }
+        }
+      }
+    },
+    {
+      "train_source": "mp_poseonly",
+      "seed": 11,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_poseonly_s11.pt",
+      "val_acc": 0.2737,
+      "train_takes": 16,
+      "train_wall_s": 15.2,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.2242,
+          "windows": 736,
+          "ci95": [
+            0.1069,
+            0.3519
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.3281,
+            "orient_-60": 0.1519,
+            "yaw_90": 0.2087,
+            "pitch_60": 0.1944
+          },
+          "per_step": {
+            "1": 0.0506,
+            "2": 0.2828,
+            "3": 0.3617,
+            "4": 0.375,
+            "5": 0.11,
+            "6": 0.5361,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1318,
+          "windows": 736,
+          "ci95": [
+            0.0308,
+            0.264
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1198,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.1408,
+            "pitch_60": 0.1278
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 1.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.1712,
+          "windows": 736,
+          "ci95": [
+            0.0642,
+            0.2937
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.125,
+            "orient_-60": 0.1266,
+            "yaw_90": 0.165,
+            "pitch_60": 0.2667
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.4545,
+            "3": 0.234,
+            "4": 0.1354,
+            "5": 0.0,
+            "6": 0.4742,
+            "7": 0.0,
+            "8": 0.0
+          }
+        }
+      }
+    },
+    {
+      "train_source": "mp_poseonly",
+      "seed": 23,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_poseonly_s23.pt",
+      "val_acc": 0.3435,
+      "train_takes": 16,
+      "train_wall_s": 15.9,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.2024,
+          "windows": 736,
+          "ci95": [
+            0.1028,
+            0.309
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.3594,
+            "orient_-60": 0.2215,
+            "yaw_90": 0.0728,
+            "pitch_60": 0.1667
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.3232,
+            "3": 0.1383,
+            "4": 0.4062,
+            "5": 0.28,
+            "6": 0.299,
+            "7": 0.0808,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1318,
+          "windows": 736,
+          "ci95": [
+            0.0308,
+            0.264
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1198,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.1408,
+            "pitch_60": 0.1278
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 1.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.2378,
+          "windows": 736,
+          "ci95": [
+            0.1158,
+            0.3748
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.3958,
+            "orient_-60": 0.1772,
+            "yaw_90": 0.0825,
+            "pitch_60": 0.3
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.202,
+            "3": 0.0638,
+            "4": 0.3021,
+            "5": 0.26,
+            "6": 0.4639,
+            "7": 0.4949,
+            "8": 0.0
+          }
+        }
+      }
+    },
+    {
+      "train_source": "mp_boxonly",
+      "seed": 7,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_boxonly_s7.pt",
+      "val_acc": 0.7633,
+      "train_takes": 16,
+      "train_wall_s": 36.8,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1413,
+          "windows": 736,
+          "ci95": [
+            0.0365,
+            0.2664
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1562,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.1408,
+            "pitch_60": 0.1278
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.8041,
+            "7": 0.2525,
+            "8": 0.0139
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.5435,
+          "windows": 736,
+          "ci95": [
+            0.3673,
+            0.7023
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.7292,
+            "orient_-60": 0.5696,
+            "yaw_90": 0.4951,
+            "pitch_60": 0.3778
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.9091,
+            "3": 0.266,
+            "4": 0.625,
+            "5": 0.09,
+            "6": 0.4639,
+            "7": 1.0,
+            "8": 1.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.125,
+          "windows": 736,
+          "ci95": [
+            0.0255,
+            0.25
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0938,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.1408,
+            "pitch_60": 0.1278
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.9485,
+            "7": 0.0,
+            "8": 0.0
+          }
+        }
+      }
+    },
+    {
+      "train_source": "mp_boxonly",
+      "seed": 11,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_boxonly_s11.pt",
+      "val_acc": 0.7179,
+      "train_takes": 16,
+      "train_wall_s": 47.5,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1332,
+          "windows": 736,
+          "ci95": [
+            0.029,
+            0.2596
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0938,
+            "orient_-60": 0.1266,
+            "yaw_90": 0.1311,
+            "pitch_60": 0.1833
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.9192,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0722,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.5625,
+          "windows": 736,
+          "ci95": [
+            0.3932,
+            0.7201
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.6771,
+            "orient_-60": 0.6266,
+            "yaw_90": 0.4951,
+            "pitch_60": 0.4611
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 1.0,
+            "3": 0.1489,
+            "4": 0.8854,
+            "5": 0.0,
+            "6": 0.4639,
+            "7": 1.0,
+            "8": 1.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.0856,
+          "windows": 736,
+          "ci95": [
+            0.0014,
+            0.1984
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0469,
+            "orient_-60": 0.0063,
+            "yaw_90": 0.1311,
+            "pitch_60": 0.1444
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.6364,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        }
+      }
+    },
+    {
+      "train_source": "mp_boxonly",
+      "seed": 23,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_mp_boxonly_s23.pt",
+      "val_acc": 0.8248,
+      "train_takes": 16,
+      "train_wall_s": 36.5,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1345,
+          "windows": 736,
+          "ci95": [
+            0.0316,
+            0.2627
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1302,
+            "orient_-60": 0.1456,
+            "yaw_90": 0.1311,
+            "pitch_60": 0.1333
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 1.0,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.5584,
+          "windows": 736,
+          "ci95": [
+            0.3845,
+            0.7177
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.7031,
+            "orient_-60": 0.6266,
+            "yaw_90": 0.5243,
+            "pitch_60": 0.3833
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 1.0,
+            "3": 0.2766,
+            "4": 0.6354,
+            "5": 0.11,
+            "6": 0.4639,
+            "7": 1.0,
+            "8": 0.9722
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.1304,
+          "windows": 736,
+          "ci95": [
+            0.029,
+            0.256
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1302,
+            "orient_-60": 0.1456,
+            "yaw_90": 0.1311,
+            "pitch_60": 0.1167
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.9697,
+            "8": 0.0
+          }
+        }
+      }
+    },
+    {
+      "train_source": "gt_poseonly",
+      "seed": 7,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_gt_poseonly_s7.pt",
+      "val_acc": 0.9043,
+      "train_takes": 16,
+      "train_wall_s": 34.1,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1277,
+          "windows": 736,
+          "ci95": [
+            0.0496,
+            0.2227
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.099,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.0728,
+            "pitch_60": 0.2111
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.1717,
+            "3": 0.2979,
+            "4": 0.3542,
+            "5": 0.06,
+            "6": 0.0,
+            "7": 0.0909,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1318,
+          "windows": 736,
+          "ci95": [
+            0.0308,
+            0.264
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1198,
+            "orient_-60": 0.1392,
+            "yaw_90": 0.1408,
+            "pitch_60": 0.1278
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 1.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.8383,
+          "windows": 736,
+          "ci95": [
+            0.7301,
+            0.9248
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.9635,
+            "orient_-60": 1.0,
+            "yaw_90": 0.5388,
+            "pitch_60": 0.9056
+          },
+          "per_step": {
+            "1": 0.6962,
+            "2": 0.8081,
+            "3": 0.6383,
+            "4": 0.9688,
+            "5": 1.0,
+            "6": 0.8969,
+            "7": 0.8889,
+            "8": 0.75
+          }
+        }
+      }
+    },
+    {
+      "train_source": "gt_poseonly",
+      "seed": 11,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_gt_poseonly_s11.pt",
+      "val_acc": 0.8757,
+      "train_takes": 16,
+      "train_wall_s": 48.7,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1114,
+          "windows": 736,
+          "ci95": [
+            0.0279,
+            0.2201
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0104,
+            "orient_-60": 0.1519,
+            "yaw_90": 0.1214,
+            "pitch_60": 0.1722
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.734,
+            "4": 0.0938,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0404,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1277,
+          "windows": 736,
+          "ci95": [
+            0.0284,
+            0.2527
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.1406,
+            "orient_-60": 0.1266,
+            "yaw_90": 0.1214,
+            "pitch_60": 0.1222
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 1.0,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.6916,
+          "windows": 736,
+          "ci95": [
+            0.5408,
+            0.8417
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.9531,
+            "orient_-60": 1.0,
+            "yaw_90": 0.1602,
+            "pitch_60": 0.75
+          },
+          "per_step": {
+            "1": 0.5696,
+            "2": 0.5051,
+            "3": 0.8723,
+            "4": 0.7083,
+            "5": 0.52,
+            "6": 0.701,
+            "7": 0.9293,
+            "8": 0.7222
+          }
+        }
+      }
+    },
+    {
+      "train_source": "gt_poseonly",
+      "seed": 23,
+      "checkpoint": "D:/SIH-2026/.tmp/ml/models/t14_gt_poseonly_s23.pt",
+      "val_acc": 0.9541,
+      "train_takes": 16,
+      "train_wall_s": 23.6,
+      "test": {
+        "mp_poseonly": {
+          "acc": 0.1535,
+          "windows": 736,
+          "ci95": [
+            0.0329,
+            0.2821
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.125,
+            "orient_-60": 0.1266,
+            "yaw_90": 0.1214,
+            "pitch_60": 0.2444
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.7128,
+            "4": 0.4792,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.0,
+            "8": 0.0
+          }
+        },
+        "mp_boxonly": {
+          "acc": 0.1223,
+          "windows": 736,
+          "ci95": [
+            0.0331,
+            0.232
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.0625,
+            "orient_-60": 0.1835,
+            "yaw_90": 0.1311,
+            "pitch_60": 0.1222
+          },
+          "per_step": {
+            "1": 0.0,
+            "2": 0.0,
+            "3": 0.8404,
+            "4": 0.0,
+            "5": 0.0,
+            "6": 0.0,
+            "7": 0.1111,
+            "8": 0.0
+          }
+        },
+        "gt_poseonly": {
+          "acc": 0.8818,
+          "windows": 736,
+          "ci95": [
+            0.7881,
+            0.9638
+          ],
+          "n_clusters": 32,
+          "per_take": {
+            "orient_180": 0.9792,
+            "orient_-60": 1.0,
+            "yaw_90": 0.6262,
+            "pitch_60": 0.9667
+          },
+          "per_step": {
+            "1": 0.8608,
+            "2": 0.6869,
+            "3": 0.9468,
+            "4": 0.9688,
+            "5": 1.0,
+            "6": 1.0,
+            "7": 0.8283,
+            "8": 0.7222
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "mp_poseonly->mp_poseonly": {
+      "mean": 0.2296,
+      "min": 0.2024,
+      "max": 0.2622,
+      "seeds": 3
+    },
+    "mp_poseonly->mp_boxonly": {
+      "mean": 0.1218,
+      "min": 0.1019,
+      "max": 0.1318,
+      "seeds": 3
+    },
+    "mp_poseonly->gt_poseonly": {
+      "mean": 0.2002,
+      "min": 0.1712,
+      "max": 0.2378,
+      "seeds": 3
+    },
+    "mp_boxonly->mp_poseonly": {
+      "mean": 0.1363,
+      "min": 0.1332,
+      "max": 0.1413,
+      "seeds": 3
+    },
+    "mp_boxonly->mp_boxonly": {
+      "mean": 0.5548,
+      "min": 0.5435,
+      "max": 0.5625,
+      "seeds": 3
+    },
+    "mp_boxonly->gt_poseonly": {
+      "mean": 0.1137,
+      "min": 0.0856,
+      "max": 0.1304,
+      "seeds": 3
+    },
+    "gt_poseonly->mp_poseonly": {
+      "mean": 0.1309,
+      "min": 0.1114,
+      "max": 0.1535,
+      "seeds": 3
+    },
+    "gt_poseonly->mp_boxonly": {
+      "mean": 0.1273,
+      "min": 0.1223,
+      "max": 0.1318,
+      "seeds": 3
+    },
+    "gt_poseonly->gt_poseonly": {
+      "mean": 0.8039,
+      "min": 0.6916,
+      "max": 0.8818,
+      "seeds": 3
+    }
+  }
+}

@@ -1,0 +1,434 @@
+{
+  "c0_w640": {
+    "all_key_mean_px": 88.9,
+    "all_wrist_mean_px": 115.8,
+    "holdout_key_mean_px": 78.0,
+    "holdout_wrist_mean_px": 102.1,
+    "takes": {
+      "orient_0": {
+        "key_mean_px": 81.6,
+        "wrist_mean_px": 106.2,
+        "detect": 1.0
+      },
+      "orient_30": {
+        "key_mean_px": 95.4,
+        "wrist_mean_px": 103.4,
+        "detect": 1.0
+      },
+      "orient_60": {
+        "key_mean_px": 86.9,
+        "wrist_mean_px": 82.0,
+        "detect": 1.0
+      },
+      "orient_90": {
+        "key_mean_px": 105.1,
+        "wrist_mean_px": 120.5,
+        "detect": 1.0
+      },
+      "orient_180": {
+        "key_mean_px": 72.0,
+        "wrist_mean_px": 94.2,
+        "detect": 0.9764
+      },
+      "orient_-30": {
+        "key_mean_px": 114.6,
+        "wrist_mean_px": 143.9,
+        "detect": 1.0
+      },
+      "orient_-60": {
+        "key_mean_px": 84.7,
+        "wrist_mean_px": 121.3,
+        "detect": 1.0
+      },
+      "orient_-90": {
+        "key_mean_px": 131.7,
+        "wrist_mean_px": 135.6,
+        "detect": 0.9256
+      },
+      "yaw_45": {
+        "key_mean_px": 78.9,
+        "wrist_mean_px": 110.3,
+        "detect": 1.0
+      },
+      "yaw_90": {
+        "key_mean_px": 94.8,
+        "wrist_mean_px": 108.5,
+        "detect": 0.9392
+      },
+      "yaw_-45": {
+        "key_mean_px": 74.4,
+        "wrist_mean_px": 125.7,
+        "detect": 1.0
+      },
+      "pitch_30": {
+        "key_mean_px": 82.2,
+        "wrist_mean_px": 119.7,
+        "detect": 1.0
+      },
+      "pitch_-30": {
+        "key_mean_px": 94.5,
+        "wrist_mean_px": 151.7,
+        "detect": 1.0
+      },
+      "pitch_60": {
+        "key_mean_px": 62.3,
+        "wrist_mean_px": 88.3,
+        "detect": 1.0
+      },
+      "light_dim_0": {
+        "key_mean_px": 82.5,
+        "wrist_mean_px": 117.9,
+        "detect": 1.0
+      },
+      "light_dim_90": {
+        "key_mean_px": 111.2,
+        "wrist_mean_px": 129.8,
+        "detect": 0.9922
+      },
+      "light_single_fail_0": {
+        "key_mean_px": 92.4,
+        "wrist_mean_px": 116.4,
+        "detect": 0.9894
+      },
+      "light_single_fail_180": {
+        "key_mean_px": 101.8,
+        "wrist_mean_px": 86.0,
+        "detect": 0.7374
+      },
+      "clutter_none": {
+        "key_mean_px": 88.6,
+        "wrist_mean_px": 120.3,
+        "detect": 1.0
+      },
+      "clutter_harsh": {
+        "key_mean_px": 80.0,
+        "wrist_mean_px": 123.9,
+        "detect": 1.0
+      }
+    }
+  },
+  "c0_w1280": {
+    "all_key_mean_px": 89.9,
+    "all_wrist_mean_px": 117.8,
+    "holdout_key_mean_px": 77.1,
+    "holdout_wrist_mean_px": 100.6,
+    "takes": {
+      "orient_0": {
+        "key_mean_px": 88.5,
+        "wrist_mean_px": 117.9,
+        "detect": 1.0
+      },
+      "orient_30": {
+        "key_mean_px": 102.5,
+        "wrist_mean_px": 116.5,
+        "detect": 1.0
+      },
+      "orient_60": {
+        "key_mean_px": 95.8,
+        "wrist_mean_px": 103.1,
+        "detect": 1.0
+      },
+      "orient_90": {
+        "key_mean_px": 98.9,
+        "wrist_mean_px": 113.2,
+        "detect": 1.0
+      },
+      "orient_180": {
+        "key_mean_px": 72.6,
+        "wrist_mean_px": 96.5,
+        "detect": 0.9918
+      },
+      "orient_-30": {
+        "key_mean_px": 103.9,
+        "wrist_mean_px": 136.6,
+        "detect": 1.0
+      },
+      "orient_-60": {
+        "key_mean_px": 83.1,
+        "wrist_mean_px": 116.2,
+        "detect": 1.0
+      },
+      "orient_-90": {
+        "key_mean_px": 134.0,
+        "wrist_mean_px": 141.0,
+        "detect": 0.91
+      },
+      "yaw_45": {
+        "key_mean_px": 83.2,
+        "wrist_mean_px": 112.4,
+        "detect": 1.0
+      },
+      "yaw_90": {
+        "key_mean_px": 92.8,
+        "wrist_mean_px": 111.5,
+        "detect": 0.9382
+      },
+      "yaw_-45": {
+        "key_mean_px": 74.8,
+        "wrist_mean_px": 132.9,
+        "detect": 1.0
+      },
+      "pitch_30": {
+        "key_mean_px": 78.7,
+        "wrist_mean_px": 115.5,
+        "detect": 1.0
+      },
+      "pitch_-30": {
+        "key_mean_px": 94.6,
+        "wrist_mean_px": 151.9,
+        "detect": 1.0
+      },
+      "pitch_60": {
+        "key_mean_px": 61.6,
+        "wrist_mean_px": 82.3,
+        "detect": 1.0
+      },
+      "light_dim_0": {
+        "key_mean_px": 85.1,
+        "wrist_mean_px": 117.4,
+        "detect": 1.0
+      },
+      "light_dim_90": {
+        "key_mean_px": 109.7,
+        "wrist_mean_px": 127.6,
+        "detect": 1.0
+      },
+      "light_single_fail_0": {
+        "key_mean_px": 91.0,
+        "wrist_mean_px": 118.2,
+        "detect": 0.9965
+      },
+      "light_single_fail_180": {
+        "key_mean_px": 107.4,
+        "wrist_mean_px": 94.4,
+        "detect": 0.7856
+      },
+      "clutter_none": {
+        "key_mean_px": 87.7,
+        "wrist_mean_px": 120.4,
+        "detect": 1.0
+      },
+      "clutter_harsh": {
+        "key_mean_px": 88.0,
+        "wrist_mean_px": 112.5,
+        "detect": 1.0
+      }
+    }
+  },
+  "c1_w900": {
+    "all_key_mean_px": 96.1,
+    "all_wrist_mean_px": 121.3,
+    "holdout_key_mean_px": 82.8,
+    "holdout_wrist_mean_px": 101.0,
+    "takes": {
+      "orient_0": {
+        "key_mean_px": 109.2,
+        "wrist_mean_px": 137.4,
+        "detect": 1.0
+      },
+      "orient_30": {
+        "key_mean_px": 109.1,
+        "wrist_mean_px": 123.0,
+        "detect": 0.999
+      },
+      "orient_60": {
+        "key_mean_px": 91.0,
+        "wrist_mean_px": 86.0,
+        "detect": 1.0
+      },
+      "orient_90": {
+        "key_mean_px": 108.9,
+        "wrist_mean_px": 117.3,
+        "detect": 1.0
+      },
+      "orient_180": {
+        "key_mean_px": 84.8,
+        "wrist_mean_px": 103.7,
+        "detect": 0.9488
+      },
+      "orient_-30": {
+        "key_mean_px": 92.5,
+        "wrist_mean_px": 127.7,
+        "detect": 1.0
+      },
+      "orient_-60": {
+        "key_mean_px": 81.2,
+        "wrist_mean_px": 101.4,
+        "detect": 1.0
+      },
+      "orient_-90": {
+        "key_mean_px": 125.2,
+        "wrist_mean_px": 130.5,
+        "detect": 0.9293
+      },
+      "yaw_45": {
+        "key_mean_px": 80.5,
+        "wrist_mean_px": 107.3,
+        "detect": 1.0
+      },
+      "yaw_90": {
+        "key_mean_px": 100.8,
+        "wrist_mean_px": 113.3,
+        "detect": 0.8763
+      },
+      "yaw_-45": {
+        "key_mean_px": 68.2,
+        "wrist_mean_px": 124.2,
+        "detect": 1.0
+      },
+      "pitch_30": {
+        "key_mean_px": 92.7,
+        "wrist_mean_px": 128.0,
+        "detect": 1.0
+      },
+      "pitch_-30": {
+        "key_mean_px": 95.7,
+        "wrist_mean_px": 156.9,
+        "detect": 1.0
+      },
+      "pitch_60": {
+        "key_mean_px": 67.2,
+        "wrist_mean_px": 88.6,
+        "detect": 0.9989
+      },
+      "light_dim_0": {
+        "key_mean_px": 99.4,
+        "wrist_mean_px": 126.9,
+        "detect": 0.999
+      },
+      "light_dim_90": {
+        "key_mean_px": 106.8,
+        "wrist_mean_px": 115.4,
+        "detect": 0.9961
+      },
+      "light_single_fail_0": {
+        "key_mean_px": 83.8,
+        "wrist_mean_px": 107.8,
+        "detect": 0.9965
+      },
+      "light_single_fail_180": {
+        "key_mean_px": 96.3,
+        "wrist_mean_px": 88.8,
+        "detect": 0.8821
+      },
+      "clutter_none": {
+        "key_mean_px": 109.9,
+        "wrist_mean_px": 147.9,
+        "detect": 0.9972
+      },
+      "clutter_harsh": {
+        "key_mean_px": 125.0,
+        "wrist_mean_px": 158.0,
+        "detect": 1.0
+      }
+    }
+  },
+  "c1_w1280": {
+    "all_key_mean_px": 95.6,
+    "all_wrist_mean_px": 121.9,
+    "holdout_key_mean_px": 83.6,
+    "holdout_wrist_mean_px": 101.3,
+    "takes": {
+      "orient_0": {
+        "key_mean_px": 106.9,
+        "wrist_mean_px": 135.0,
+        "detect": 1.0
+      },
+      "orient_30": {
+        "key_mean_px": 113.4,
+        "wrist_mean_px": 128.3,
+        "detect": 0.999
+      },
+      "orient_60": {
+        "key_mean_px": 96.6,
+        "wrist_mean_px": 88.0,
+        "detect": 1.0
+      },
+      "orient_90": {
+        "key_mean_px": 102.2,
+        "wrist_mean_px": 114.5,
+        "detect": 0.999
+      },
+      "orient_180": {
+        "key_mean_px": 81.7,
+        "wrist_mean_px": 100.9,
+        "detect": 0.9754
+      },
+      "orient_-30": {
+        "key_mean_px": 79.3,
+        "wrist_mean_px": 121.6,
+        "detect": 1.0
+      },
+      "orient_-60": {
+        "key_mean_px": 80.9,
+        "wrist_mean_px": 102.0,
+        "detect": 1.0
+      },
+      "orient_-90": {
+        "key_mean_px": 119.7,
+        "wrist_mean_px": 124.1,
+        "detect": 0.9192
+      },
+      "yaw_45": {
+        "key_mean_px": 83.0,
+        "wrist_mean_px": 109.3,
+        "detect": 1.0
+      },
+      "yaw_90": {
+        "key_mean_px": 104.9,
+        "wrist_mean_px": 118.6,
+        "detect": 0.9372
+      },
+      "yaw_-45": {
+        "key_mean_px": 70.2,
+        "wrist_mean_px": 131.4,
+        "detect": 1.0
+      },
+      "pitch_30": {
+        "key_mean_px": 93.0,
+        "wrist_mean_px": 128.9,
+        "detect": 1.0
+      },
+      "pitch_-30": {
+        "key_mean_px": 93.6,
+        "wrist_mean_px": 152.8,
+        "detect": 1.0
+      },
+      "pitch_60": {
+        "key_mean_px": 69.2,
+        "wrist_mean_px": 89.4,
+        "detect": 0.9968
+      },
+      "light_dim_0": {
+        "key_mean_px": 99.0,
+        "wrist_mean_px": 128.9,
+        "detect": 0.999
+      },
+      "light_dim_90": {
+        "key_mean_px": 107.3,
+        "wrist_mean_px": 118.1,
+        "detect": 0.999
+      },
+      "light_single_fail_0": {
+        "key_mean_px": 87.6,
+        "wrist_mean_px": 114.3,
+        "detect": 0.9988
+      },
+      "light_single_fail_180": {
+        "key_mean_px": 98.2,
+        "wrist_mean_px": 89.3,
+        "detect": 0.8778
+      },
+      "clutter_none": {
+        "key_mean_px": 111.2,
+        "wrist_mean_px": 145.4,
+        "detect": 0.9991
+      },
+      "clutter_harsh": {
+        "key_mean_px": 119.4,
+        "wrist_mean_px": 165.0,
+        "detect": 1.0
+      }
+    }
+  }
+}

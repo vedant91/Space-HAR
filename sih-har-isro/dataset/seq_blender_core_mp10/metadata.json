@@ -1,0 +1,26 @@
+{
+  "total_windows": 1857,
+  "n_source_takes": 10,
+  "feature_dim": 143,
+  "window": 30,
+  "stride": 1,
+  "purity": 0.75,
+  "source": "blender_render/mediapipe",
+  "feature_layout": "pose132+obj11",
+  "sample_every": 3,
+  "rack_normalized": true,
+  "pose_source": "mediapipe",
+  "pose_complexity": 0,
+  "pose_input_width": 640,
+  "upright": true,
+  "class_counts": {
+    "1": 189,
+    "2": 251,
+    "3": 240,
+    "4": 250,
+    "5": 254,
+    "6": 245,
+    "7": 253,
+    "8": 175
+  }
+}

@@ -1,0 +1,2221 @@
+{
+  "label": "blender_core train takes (clutter_harsh,clutter_none,light_dim_0,light_dim_90,light_single_fail_0,light_single_fail_180,orient_-30,orient_-90,orient_0,orient_30,orient_60,orient_90,pitch_-30,pitch_30,yaw_-45,yaw_45)",
+  "model": "models/lstm_blender_core.pt",
+  "model_reported_val_acc": 0.7283311772315654,
+  "rack_normalize": true,
+  "model_contract": {
+    "feature_layout": "pose132+obj11",
+    "sample_every": 3,
+    "rack_normalized": true
+  },
+  "window_purity": 0.75,
+  "upright_pose": true,
+  "pose_complexity": 0,
+  "pose_input_width": 640,
+  "takes": [
+    {
+      "take": "take_0000",
+      "index": 0,
+      "tag": "orient_0",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 1036,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 13.51,
+          "p95": 19.74
+        },
+        "pose": {
+          "mean": 51.85,
+          "p95": 77.09
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.342,
+          "precision": 1.0,
+          "tp": 275,
+          "fp": 0,
+          "fn": 529,
+          "tn": 232,
+          "mean_iou": 0.7442
+        },
+        "yellow_box": {
+          "recall": 0.1795,
+          "precision": 1.0,
+          "tp": 186,
+          "fp": 0,
+          "fn": 850,
+          "tn": 0,
+          "mean_iou": 0.6898
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1036,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 91.82,
+          "median_px": 73.94,
+          "p90_px": 175.82,
+          "pck@5pct": 0.2164,
+          "n": 23965
+        },
+        "key_landmarks": {
+          "mean_px": 81.6,
+          "median_px": 69.65,
+          "p90_px": 165.31,
+          "pck@5pct": 0.3598,
+          "n": 5194
+        },
+        "frames_with_detection": 1036,
+        "frames_total": 1036
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9906,
+          "correct": 210,
+          "windows": 212,
+          "confident_frac": 0.9906,
+          "top_confusions": {
+            "3->1": 1,
+            "5->4": 1
+          }
+        },
+        "oracle": {
+          "accuracy": 0.816,
+          "correct": 173,
+          "windows": 212,
+          "confident_frac": 0.816,
+          "top_confusions": {
+            "5->4": 15,
+            "1->2": 12,
+            "1->6": 9,
+            "3->6": 2,
+            "6->7": 1
+          }
+        },
+        "perception_cost": -0.1746
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ]
+        ],
+        "out_of_sequence_events": [
+          [
+            3,
+            1
+          ]
+        ],
+        "recovery_events": 1,
+        "recovered_steps": [
+          4
+        ]
+      }
+    },
+    {
+      "take": "take_0001",
+      "index": 1,
+      "tag": "orient_30",
+      "body_roll_deg": 30.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 972,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 13.41,
+          "p95": 20.09
+        },
+        "pose": {
+          "mean": 45.93,
+          "p95": 66.19
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3955,
+          "precision": 1.0,
+          "tp": 284,
+          "fp": 0,
+          "fn": 434,
+          "tn": 254,
+          "mean_iou": 0.8461
+        },
+        "yellow_box": {
+          "recall": 0.1698,
+          "precision": 1.0,
+          "tp": 165,
+          "fp": 0,
+          "fn": 807,
+          "tn": 0,
+          "mean_iou": 0.6566
+        },
+        "main_box": {
+          "recall": 0.0062,
+          "precision": 1.0,
+          "tp": 6,
+          "fp": 0,
+          "fn": 966,
+          "tn": 0,
+          "mean_iou": 0.0798
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 99.07,
+          "median_px": 92.7,
+          "p90_px": 156.58,
+          "pck@5pct": 0.0655,
+          "n": 25323
+        },
+        "key_landmarks": {
+          "mean_px": 95.35,
+          "median_px": 93.33,
+          "p90_px": 156.05,
+          "pck@5pct": 0.1675,
+          "n": 3810
+        },
+        "frames_with_detection": 972,
+        "frames_total": 972
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9947,
+          "correct": 189,
+          "windows": 190,
+          "confident_frac": 1.0,
+          "top_confusions": {
+            "3->2": 1
+          }
+        },
+        "oracle": {
+          "accuracy": 0.5316,
+          "correct": 101,
+          "windows": 190,
+          "confident_frac": 0.7,
+          "top_confusions": {
+            "3->5": 22,
+            "1->6": 17,
+            "2->6": 14,
+            "2->8": 10,
+            "6->7": 8
+          }
+        },
+        "perception_cost": -0.4631
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 2,
+        "recovered_steps": [
+          4,
+          7
+        ]
+      }
+    },
+    {
+      "take": "take_0002",
+      "index": 2,
+      "tag": "orient_60",
+      "body_roll_deg": 60.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 902,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 10.26,
+          "p95": 16.32
+        },
+        "pose": {
+          "mean": 38.09,
+          "p95": 57.86
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3614,
+          "precision": 1.0,
+          "tp": 253,
+          "fp": 0,
+          "fn": 447,
+          "tn": 202,
+          "mean_iou": 0.8695
+        },
+        "yellow_box": {
+          "recall": 0.1364,
+          "precision": 1.0,
+          "tp": 123,
+          "fp": 0,
+          "fn": 779,
+          "tn": 0,
+          "mean_iou": 0.7373
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 902,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 84.04,
+          "median_px": 77.81,
+          "p90_px": 135.09,
+          "pck@5pct": 0.1072,
+          "n": 20114
+        },
+        "key_landmarks": {
+          "mean_px": 86.88,
+          "median_px": 85.82,
+          "p90_px": 139.1,
+          "pck@5pct": 0.1461,
+          "n": 3354
+        },
+        "frames_with_detection": 902,
+        "frames_total": 902
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.7365,
+          "correct": 123,
+          "windows": 167,
+          "confident_frac": 0.976,
+          "top_confusions": {
+            "6->2": 18,
+            "1->2": 15,
+            "3->4": 6,
+            "8->7": 5
+          }
+        },
+        "oracle": {
+          "accuracy": 0.6168,
+          "correct": 103,
+          "windows": 167,
+          "confident_frac": 0.9341,
+          "top_confusions": {
+            "2->6": 22,
+            "1->6": 15,
+            "7->8": 13,
+            "3->4": 11,
+            "3->6": 2
+          }
+        },
+        "perception_cost": -0.1197
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [],
+        "n_completed": 0,
+        "experiment_complete": false,
+        "skip_events": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            6
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            7
+          ],
+          [
+            1,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 9,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0003",
+      "index": 3,
+      "tag": "orient_90",
+      "body_roll_deg": 90.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 962,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 12.18,
+          "p95": 18.74
+        },
+        "pose": {
+          "mean": 51.17,
+          "p95": 110.71
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3003,
+          "precision": 1.0,
+          "tp": 230,
+          "fp": 0,
+          "fn": 536,
+          "tn": 196,
+          "mean_iou": 0.7634
+        },
+        "yellow_box": {
+          "recall": 0.1663,
+          "precision": 1.0,
+          "tp": 160,
+          "fp": 0,
+          "fn": 802,
+          "tn": 0,
+          "mean_iou": 0.7418
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 962,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 107.1,
+          "median_px": 104.08,
+          "p90_px": 175.57,
+          "pck@5pct": 0.1265,
+          "n": 18372
+        },
+        "key_landmarks": {
+          "mean_px": 105.12,
+          "median_px": 102.13,
+          "p90_px": 191.92,
+          "pck@5pct": 0.2413,
+          "n": 2984
+        },
+        "frames_with_detection": 962,
+        "frames_total": 962
+      },
+      "step": {
+        "real": {
+          "accuracy": 1.0,
+          "correct": 187,
+          "windows": 187,
+          "confident_frac": 1.0,
+          "top_confusions": {}
+        },
+        "oracle": {
+          "accuracy": 0.1444,
+          "correct": 27,
+          "windows": 187,
+          "confident_frac": 0.9733,
+          "top_confusions": {
+            "5->3": 26,
+            "6->3": 25,
+            "4->3": 22,
+            "7->5": 21,
+            "8->3": 19
+          }
+        },
+        "perception_cost": -0.8556
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 2,
+        "recovered_steps": [
+          4,
+          7
+        ]
+      }
+    },
+    {
+      "take": "take_0005",
+      "index": 5,
+      "tag": "orient_-30",
+      "body_roll_deg": -30.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 857,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 12.46,
+          "p95": 18.31
+        },
+        "pose": {
+          "mean": 43.59,
+          "p95": 59.18
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.2433,
+          "precision": 1.0,
+          "tp": 163,
+          "fp": 0,
+          "fn": 507,
+          "tn": 187,
+          "mean_iou": 0.7682
+        },
+        "yellow_box": {
+          "recall": 0.5403,
+          "precision": 1.0,
+          "tp": 463,
+          "fp": 0,
+          "fn": 394,
+          "tn": 0,
+          "mean_iou": 0.1654
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 857,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 114.81,
+          "median_px": 77.64,
+          "p90_px": 242.27,
+          "pck@5pct": 0.1152,
+          "n": 16578
+        },
+        "key_landmarks": {
+          "mean_px": 114.6,
+          "median_px": 105.31,
+          "p90_px": 202.15,
+          "pck@5pct": 0.1449,
+          "n": 3969
+        },
+        "frames_with_detection": 857,
+        "frames_total": 857
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.875,
+          "correct": 133,
+          "windows": 152,
+          "confident_frac": 0.9803,
+          "top_confusions": {
+            "5->3": 19
+          }
+        },
+        "oracle": {
+          "accuracy": 0.4868,
+          "correct": 74,
+          "windows": 152,
+          "confident_frac": 0.7697,
+          "top_confusions": {
+            "6->2": 19,
+            "1->2": 16,
+            "3->2": 12,
+            "4->7": 10,
+            "7->6": 9
+          }
+        },
+        "perception_cost": -0.3882
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [],
+        "out_of_sequence_events": [
+          [
+            6,
+            3
+          ]
+        ],
+        "recovery_events": 0,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0007",
+      "index": 7,
+      "tag": "orient_-90",
+      "body_roll_deg": -90.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 1089,
+      "pose_detect_rate": 0.9256,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 11.34,
+          "p95": 18.03
+        },
+        "pose": {
+          "mean": 81.69,
+          "p95": 269.63
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.403,
+          "precision": 1.0,
+          "tp": 324,
+          "fp": 0,
+          "fn": 480,
+          "tn": 285,
+          "mean_iou": 0.7749
+        },
+        "yellow_box": {
+          "recall": 0.1788,
+          "precision": 1.0,
+          "tp": 186,
+          "fp": 0,
+          "fn": 854,
+          "tn": 49,
+          "mean_iou": 0.7166
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1070,
+          "tn": 19,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 149.39,
+          "median_px": 143.13,
+          "p90_px": 247.45,
+          "pck@5pct": 0.0653,
+          "n": 7255
+        },
+        "key_landmarks": {
+          "mean_px": 131.68,
+          "median_px": 128.45,
+          "p90_px": 219.84,
+          "pck@5pct": 0.0563,
+          "n": 1633
+        },
+        "frames_with_detection": 1008,
+        "frames_total": 1089
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.7904,
+          "correct": 181,
+          "windows": 229,
+          "confident_frac": 0.9694,
+          "top_confusions": {
+            "3->5": 20,
+            "5->4": 10,
+            "6->2": 8,
+            "8->6": 5,
+            "4->5": 4
+          }
+        },
+        "oracle": {
+          "accuracy": 0.2271,
+          "correct": 52,
+          "windows": 229,
+          "confident_frac": 0.9563,
+          "top_confusions": {
+            "4->3": 31,
+            "6->2": 29,
+            "7->6": 29,
+            "1->2": 23,
+            "5->2": 23
+          }
+        },
+        "perception_cost": -0.5633
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            2,
+            6
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        "out_of_sequence_events": [
+          [
+            6,
+            2
+          ]
+        ],
+        "recovery_events": 2,
+        "recovered_steps": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "take": "take_0008",
+      "index": 8,
+      "tag": "yaw_45",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 858,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.55,
+          "p95": 11.6
+        },
+        "pose": {
+          "mean": 33.32,
+          "p95": 49.38
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.1417,
+          "precision": 1.0,
+          "tp": 87,
+          "fp": 0,
+          "fn": 527,
+          "tn": 244,
+          "mean_iou": 0.6149
+        },
+        "yellow_box": {
+          "recall": 0.155,
+          "precision": 1.0,
+          "tp": 133,
+          "fp": 0,
+          "fn": 725,
+          "tn": 0,
+          "mean_iou": 0.5117
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 858,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 102.7,
+          "median_px": 98.13,
+          "p90_px": 158.49,
+          "pck@5pct": 0.0824,
+          "n": 16986
+        },
+        "key_landmarks": {
+          "mean_px": 78.92,
+          "median_px": 70.59,
+          "p90_px": 139.77,
+          "pck@5pct": 0.2095,
+          "n": 3584
+        },
+        "frames_with_detection": 858,
+        "frames_total": 858
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9934,
+          "correct": 151,
+          "windows": 152,
+          "confident_frac": 0.9934,
+          "top_confusions": {
+            "1->2": 1
+          }
+        },
+        "oracle": {
+          "accuracy": 0.6447,
+          "correct": 98,
+          "windows": 152,
+          "confident_frac": 0.7961,
+          "top_confusions": {
+            "1->2": 16,
+            "5->6": 11,
+            "5->3": 5,
+            "6->2": 5,
+            "7->8": 5
+          }
+        },
+        "perception_cost": -0.3487
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [],
+        "out_of_sequence_events": [],
+        "recovery_events": 0,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0010",
+      "index": 10,
+      "tag": "yaw_-45",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 976,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.52,
+          "p95": 11.8
+        },
+        "pose": {
+          "mean": 30.25,
+          "p95": 42.99
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.1856,
+          "precision": 1.0,
+          "tp": 131,
+          "fp": 0,
+          "fn": 575,
+          "tn": 270,
+          "mean_iou": 0.7029
+        },
+        "yellow_box": {
+          "recall": 0.1629,
+          "precision": 1.0,
+          "tp": 159,
+          "fp": 0,
+          "fn": 817,
+          "tn": 0,
+          "mean_iou": 0.5995
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 976,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 110.64,
+          "median_px": 103.58,
+          "p90_px": 185.69,
+          "pck@5pct": 0.169,
+          "n": 13878
+        },
+        "key_landmarks": {
+          "mean_px": 74.39,
+          "median_px": 60.98,
+          "p90_px": 147.57,
+          "pck@5pct": 0.4082,
+          "n": 4253
+        },
+        "frames_with_detection": 976,
+        "frames_total": 976
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9844,
+          "correct": 189,
+          "windows": 192,
+          "confident_frac": 0.9844,
+          "top_confusions": {
+            "3->2": 3
+          }
+        },
+        "oracle": {
+          "accuracy": 0.6198,
+          "correct": 119,
+          "windows": 192,
+          "confident_frac": 0.8021,
+          "top_confusions": {
+            "4->3": 24,
+            "5->3": 23,
+            "1->2": 9,
+            "1->6": 9,
+            "6->2": 5
+          }
+        },
+        "perception_cost": -0.3646
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 1,
+        "recovered_steps": [
+          4
+        ]
+      }
+    },
+    {
+      "take": "take_0011",
+      "index": 11,
+      "tag": "pitch_30",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 955,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.51,
+          "p95": 11.53
+        },
+        "pose": {
+          "mean": 29.15,
+          "p95": 42.18
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.5726,
+          "precision": 1.0,
+          "tp": 217,
+          "fp": 0,
+          "fn": 162,
+          "tn": 576,
+          "mean_iou": 0.7363
+        },
+        "yellow_box": {
+          "recall": 0.155,
+          "precision": 1.0,
+          "tp": 148,
+          "fp": 0,
+          "fn": 807,
+          "tn": 0,
+          "mean_iou": 0.7398
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 955,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 84.59,
+          "median_px": 64.98,
+          "p90_px": 156.47,
+          "pck@5pct": 0.1606,
+          "n": 16917
+        },
+        "key_landmarks": {
+          "mean_px": 82.19,
+          "median_px": 67.66,
+          "p90_px": 154.58,
+          "pck@5pct": 0.2508,
+          "n": 4155
+        },
+        "frames_with_detection": 955,
+        "frames_total": 955
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.5459,
+          "correct": 101,
+          "windows": 185,
+          "confident_frac": 0.9297,
+          "top_confusions": {
+            "2->1": 24,
+            "5->3": 19,
+            "3->5": 15,
+            "6->2": 14,
+            "6->1": 11
+          }
+        },
+        "oracle": {
+          "accuracy": 0.5243,
+          "correct": 97,
+          "windows": 185,
+          "confident_frac": 0.7892,
+          "top_confusions": {
+            "6->2": 24,
+            "5->3": 20,
+            "1->2": 19,
+            "3->5": 13,
+            "7->8": 6
+          }
+        },
+        "perception_cost": -0.0216
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2
+        ],
+        "n_completed": 2,
+        "experiment_complete": false,
+        "skip_events": [
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            3,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 7,
+        "recovered_steps": [
+          2
+        ]
+      }
+    },
+    {
+      "take": "take_0012",
+      "index": 12,
+      "tag": "pitch_-30",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 993,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.51,
+          "p95": 11.81
+        },
+        "pose": {
+          "mean": 28.48,
+          "p95": 40.65
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.1282,
+          "precision": 1.0,
+          "tp": 101,
+          "fp": 0,
+          "fn": 687,
+          "tn": 205,
+          "mean_iou": 0.7607
+        },
+        "yellow_box": {
+          "recall": 0.1138,
+          "precision": 1.0,
+          "tp": 113,
+          "fp": 0,
+          "fn": 880,
+          "tn": 0,
+          "mean_iou": 0.5495
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 993,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 103.26,
+          "median_px": 92.85,
+          "p90_px": 201.2,
+          "pck@5pct": 0.1033,
+          "n": 26165
+        },
+        "key_landmarks": {
+          "mean_px": 94.5,
+          "median_px": 61.43,
+          "p90_px": 212.28,
+          "pck@5pct": 0.4092,
+          "n": 4849
+        },
+        "frames_with_detection": 993,
+        "frames_total": 993
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.7462,
+          "correct": 147,
+          "windows": 197,
+          "confident_frac": 0.4924,
+          "top_confusions": {
+            "3->6": 22,
+            "1->6": 19,
+            "3->2": 5,
+            "6->2": 2,
+            "5->3": 1
+          }
+        },
+        "oracle": {
+          "accuracy": 0.5482,
+          "correct": 108,
+          "windows": 197,
+          "confident_frac": 0.5888,
+          "top_confusions": {
+            "1->6": 19,
+            "2->3": 14,
+            "3->6": 14,
+            "2->5": 13,
+            "3->2": 13
+          }
+        },
+        "perception_cost": -0.198
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [],
+        "n_completed": 0,
+        "experiment_complete": false,
+        "skip_events": [
+          [
+            1,
+            5
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            8
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            1,
+            7
+          ],
+          [
+            1,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 6,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0014",
+      "index": 14,
+      "tag": "light_dim_0",
+      "body_roll_deg": 0.0,
+      "lighting": "dim",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 977,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.51,
+          "p95": 11.73
+        },
+        "pose": {
+          "mean": 32.53,
+          "p95": 47.06
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3756,
+          "precision": 1.0,
+          "tp": 290,
+          "fp": 0,
+          "fn": 482,
+          "tn": 205,
+          "mean_iou": 0.7849
+        },
+        "yellow_box": {
+          "recall": 0.1638,
+          "precision": 1.0,
+          "tp": 160,
+          "fp": 0,
+          "fn": 817,
+          "tn": 0,
+          "mean_iou": 0.6528
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 977,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 103.77,
+          "median_px": 87.0,
+          "p90_px": 187.9,
+          "pck@5pct": 0.1325,
+          "n": 22478
+        },
+        "key_landmarks": {
+          "mean_px": 82.47,
+          "median_px": 71.99,
+          "p90_px": 153.97,
+          "pck@5pct": 0.3062,
+          "n": 4569
+        },
+        "frames_with_detection": 977,
+        "frames_total": 977
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.8229,
+          "correct": 158,
+          "windows": 192,
+          "confident_frac": 0.9948,
+          "top_confusions": {
+            "1->2": 21,
+            "5->4": 9,
+            "3->5": 2,
+            "6->2": 2
+          }
+        },
+        "oracle": {
+          "accuracy": 0.8698,
+          "correct": 167,
+          "windows": 192,
+          "confident_frac": 0.8438,
+          "top_confusions": {
+            "1->2": 13,
+            "1->6": 8,
+            "6->7": 3,
+            "3->5": 1
+          }
+        },
+        "perception_cost": 0.0469
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [],
+        "n_completed": 0,
+        "experiment_complete": false,
+        "skip_events": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            1,
+            6
+          ],
+          [
+            1,
+            7
+          ],
+          [
+            1,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 8,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0015",
+      "index": 15,
+      "tag": "light_dim_90",
+      "body_roll_deg": 90.0,
+      "lighting": "dim",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 1020,
+      "pose_detect_rate": 0.9922,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.41,
+          "p95": 11.42
+        },
+        "pose": {
+          "mean": 34.57,
+          "p95": 72.75
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.2794,
+          "precision": 1.0,
+          "tp": 223,
+          "fp": 0,
+          "fn": 575,
+          "tn": 222,
+          "mean_iou": 0.743
+        },
+        "yellow_box": {
+          "recall": 0.1569,
+          "precision": 1.0,
+          "tp": 160,
+          "fp": 0,
+          "fn": 860,
+          "tn": 0,
+          "mean_iou": 0.6891
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1020,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 117.34,
+          "median_px": 115.84,
+          "p90_px": 184.84,
+          "pck@5pct": 0.0781,
+          "n": 20517
+        },
+        "key_landmarks": {
+          "mean_px": 111.21,
+          "median_px": 107.09,
+          "p90_px": 199.32,
+          "pck@5pct": 0.1977,
+          "n": 3642
+        },
+        "frames_with_detection": 1012,
+        "frames_total": 1020
+      },
+      "step": {
+        "real": {
+          "accuracy": 1.0,
+          "correct": 206,
+          "windows": 206,
+          "confident_frac": 1.0,
+          "top_confusions": {}
+        },
+        "oracle": {
+          "accuracy": 0.1602,
+          "correct": 33,
+          "windows": 206,
+          "confident_frac": 0.9223,
+          "top_confusions": {
+            "2->3": 25,
+            "1->5": 24,
+            "4->3": 20,
+            "7->3": 19,
+            "8->3": 19
+          }
+        },
+        "perception_cost": -0.8398
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            2,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 3,
+        "recovered_steps": [
+          2,
+          4,
+          7
+        ]
+      }
+    },
+    {
+      "take": "take_0016",
+      "index": 16,
+      "tag": "light_single_fail_0",
+      "body_roll_deg": 0.0,
+      "lighting": "single_fail",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 852,
+      "pose_detect_rate": 0.9894,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.85,
+          "p95": 13.7
+        },
+        "pose": {
+          "mean": 42.83,
+          "p95": 155.53
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3166,
+          "precision": 1.0,
+          "tp": 215,
+          "fp": 0,
+          "fn": 464,
+          "tn": 173,
+          "mean_iou": 0.8274
+        },
+        "yellow_box": {
+          "recall": 0.162,
+          "precision": 1.0,
+          "tp": 138,
+          "fp": 0,
+          "fn": 714,
+          "tn": 0,
+          "mean_iou": 0.6203
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 852,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 131.88,
+          "median_px": 102.14,
+          "p90_px": 263.19,
+          "pck@5pct": 0.0913,
+          "n": 18866
+        },
+        "key_landmarks": {
+          "mean_px": 92.4,
+          "median_px": 84.13,
+          "p90_px": 161.47,
+          "pck@5pct": 0.1852,
+          "n": 4018
+        },
+        "frames_with_detection": 843,
+        "frames_total": 852
+      },
+      "step": {
+        "real": {
+          "accuracy": 1.0,
+          "correct": 150,
+          "windows": 150,
+          "confident_frac": 0.9933,
+          "top_confusions": {}
+        },
+        "oracle": {
+          "accuracy": 0.84,
+          "correct": 126,
+          "windows": 150,
+          "confident_frac": 0.9,
+          "top_confusions": {
+            "1->6": 15,
+            "5->3": 4,
+            "4->5": 3,
+            "5->4": 1,
+            "6->7": 1
+          }
+        },
+        "perception_cost": -0.16
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [],
+        "out_of_sequence_events": [],
+        "recovery_events": 0,
+        "recovered_steps": []
+      }
+    },
+    {
+      "take": "take_0017",
+      "index": 17,
+      "tag": "light_single_fail_180",
+      "body_roll_deg": 180.0,
+      "lighting": "single_fail",
+      "distractors": "moderate",
+      "camera": "payload_a",
+      "frames": 933,
+      "pose_detect_rate": 0.7374,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.43,
+          "p95": 11.85
+        },
+        "pose": {
+          "mean": 98.24,
+          "p95": 257.62
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.2689,
+          "precision": 1.0,
+          "tp": 199,
+          "fp": 0,
+          "fn": 541,
+          "tn": 193,
+          "mean_iou": 0.7698
+        },
+        "yellow_box": {
+          "recall": 0.1436,
+          "precision": 1.0,
+          "tp": 134,
+          "fp": 0,
+          "fn": 799,
+          "tn": 0,
+          "mean_iou": 0.6708
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 933,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 119.59,
+          "median_px": 100.81,
+          "p90_px": 222.22,
+          "pck@5pct": 0.0983,
+          "n": 11735
+        },
+        "key_landmarks": {
+          "mean_px": 101.77,
+          "median_px": 82.03,
+          "p90_px": 213.61,
+          "pck@5pct": 0.2268,
+          "n": 2597
+        },
+        "frames_with_detection": 688,
+        "frames_total": 933
+      },
+      "step": {
+        "real": {
+          "accuracy": 1.0,
+          "correct": 177,
+          "windows": 177,
+          "confident_frac": 1.0,
+          "top_confusions": {}
+        },
+        "oracle": {
+          "accuracy": 0.2542,
+          "correct": 45,
+          "windows": 177,
+          "confident_frac": 0.9887,
+          "top_confusions": {
+            "6->2": 26,
+            "5->3": 25,
+            "4->3": 24,
+            "7->6": 23,
+            "1->2": 16
+          }
+        },
+        "perception_cost": -0.7458
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 1,
+        "recovered_steps": [
+          4
+        ]
+      }
+    },
+    {
+      "take": "take_0018",
+      "index": 18,
+      "tag": "clutter_none",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "none",
+      "camera": "payload_a",
+      "frames": 1090,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.47,
+          "p95": 11.55
+        },
+        "pose": {
+          "mean": 31.33,
+          "p95": 47.95
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.3746,
+          "precision": 1.0,
+          "tp": 324,
+          "fp": 0,
+          "fn": 541,
+          "tn": 225,
+          "mean_iou": 0.7279
+        },
+        "yellow_box": {
+          "recall": 0.1881,
+          "precision": 1.0,
+          "tp": 205,
+          "fp": 0,
+          "fn": 885,
+          "tn": 0,
+          "mean_iou": 0.6513
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1090,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 94.76,
+          "median_px": 82.85,
+          "p90_px": 171.99,
+          "pck@5pct": 0.2254,
+          "n": 25195
+        },
+        "key_landmarks": {
+          "mean_px": 88.57,
+          "median_px": 77.31,
+          "p90_px": 170.45,
+          "pck@5pct": 0.3209,
+          "n": 5347
+        },
+        "frames_with_detection": 1090,
+        "frames_total": 1090
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9913,
+          "correct": 228,
+          "windows": 230,
+          "confident_frac": 0.9957,
+          "top_confusions": {
+            "6->2": 2
+          }
+        },
+        "oracle": {
+          "accuracy": 0.8261,
+          "correct": 190,
+          "windows": 230,
+          "confident_frac": 0.8304,
+          "top_confusions": {
+            "1->2": 14,
+            "1->6": 11,
+            "4->5": 6,
+            "6->7": 4,
+            "3->5": 2
+          }
+        },
+        "perception_cost": -0.1652
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 2,
+        "recovered_steps": [
+          4,
+          7
+        ]
+      }
+    },
+    {
+      "take": "take_0019",
+      "index": 19,
+      "tag": "clutter_harsh",
+      "body_roll_deg": 0.0,
+      "lighting": "nominal",
+      "distractors": "harsh",
+      "camera": "payload_a",
+      "frames": 985,
+      "pose_detect_rate": 1.0,
+      "pose_backend": "tasks",
+      "upright_pose": true,
+      "latency_ms": {
+        "hsv": {
+          "mean": 8.77,
+          "p95": 12.5
+        },
+        "pose": {
+          "mean": 31.11,
+          "p95": 43.89
+        }
+      },
+      "hsv": {
+        "red_box": {
+          "recall": 0.324,
+          "precision": 1.0,
+          "tp": 254,
+          "fp": 0,
+          "fn": 530,
+          "tn": 201,
+          "mean_iou": 0.8504
+        },
+        "yellow_box": {
+          "recall": 0.203,
+          "precision": 1.0,
+          "tp": 200,
+          "fp": 0,
+          "fn": 785,
+          "tn": 0,
+          "mean_iou": 0.5739
+        },
+        "main_box": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 985,
+          "tn": 0,
+          "mean_iou": 0.0
+        }
+      },
+      "pose_error": {
+        "all_visible_landmarks": {
+          "mean_px": 85.62,
+          "median_px": 68.9,
+          "p90_px": 165.85,
+          "pck@5pct": 0.284,
+          "n": 23088
+        },
+        "key_landmarks": {
+          "mean_px": 79.95,
+          "median_px": 62.56,
+          "p90_px": 172.34,
+          "pck@5pct": 0.3889,
+          "n": 4510
+        },
+        "frames_with_detection": 985,
+        "frames_total": 985
+      },
+      "step": {
+        "real": {
+          "accuracy": 0.9949,
+          "correct": 194,
+          "windows": 195,
+          "confident_frac": 0.9949,
+          "top_confusions": {
+            "1->6": 1
+          }
+        },
+        "oracle": {
+          "accuracy": 0.8308,
+          "correct": 162,
+          "windows": 195,
+          "confident_frac": 0.8051,
+          "top_confusions": {
+            "1->6": 11,
+            "1->2": 8,
+            "6->7": 7,
+            "6->8": 5,
+            "3->5": 2
+          }
+        },
+        "perception_cost": -0.1641
+      },
+      "protocol": {
+        "rendered_sequence": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "steps_completed": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "n_completed": 8,
+        "experiment_complete": true,
+        "skip_events": [
+          [
+            4,
+            5
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "out_of_sequence_events": [],
+        "recovery_events": 2,
+        "recovered_steps": [
+          4,
+          7
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "n_takes": 16,
+    "total_frames": 15457,
+    "step_windows_scored": 3013,
+    "step_acc_real": 0.9041,
+    "step_acc_oracle": 0.5559,
+    "step_acc_real_take_mean": 0.9041,
+    "perception_cost": -0.3482,
+    "pose_detect_rate": 0.9778,
+    "key_landmark_mean_px": 93.85,
+    "key_landmark_pck5": 0.2512,
+    "hsv_red_recall": 0.3133,
+    "hsv_red_precision": 1.0,
+    "hsv_yellow_recall": 0.186,
+    "hsv_yellow_precision": 1.0,
+    "hsv_main_recall": 0.0004,
+    "pose_latency_ms_mean": 44.0081,
+    "hsv_latency_ms_mean": 9.9181,
+    "experiments_completed": 12
+  }
+}

@@ -113,12 +113,17 @@ class RackFrameNormalizer:
         self.min_torso_norm = float(min_torso_norm)
         self._rep = None    # continuous rack rotation angle (deg, −180..180)
         self._scale = None  # EMA torso length (image-normalized units)
+        # (cos, sin, origin, scale) the latest normalize() applied, or None
+        # when that frame produced zeros. to_rack_xy() reuses it so anything
+        # else in the frame (box centroids) lands in the SAME rack frame.
+        self._last = None
 
     # ── public ────────────────────────────────────────────────────────────
 
     def reset(self) -> None:
         self._rep = None
         self._scale = None
+        self._last = None
 
     @property
     def initialized(self) -> bool:
@@ -150,6 +155,7 @@ class RackFrameNormalizer:
         """
         p = np.asarray(skel, dtype=np.float32).reshape(NUM_LANDMARKS, 4)
         out = np.zeros_like(p)
+        self._last = None
 
         vis = p[:, 3]
         sh = p[[L_SHOULDER, R_SHOULDER], :2]
@@ -204,23 +210,35 @@ class RackFrameNormalizer:
             # in the hundreds (vs. the expected O(1)) that would silently
             # poison the LSTM. Treat this frame as unusable instead.
             return out.reshape(-1).astype(np.float32)
-        scale = self._scale
         phi = math.radians(self._rep)
-        cos_t, sin_t = math.cos(phi), math.sin(phi)
-
-        origin = 0.5 * (sh_mid + hp_mid)
-        xy = p[:, :2] - origin
-        # rotate by −θ (image frame → rack frame)
-        rx = cos_t * xy[:, 0] + sin_t * xy[:, 1]
-        ry = -sin_t * xy[:, 0] + cos_t * xy[:, 1]
-        out[:, 0] = rx / scale
-        out[:, 1] = ry / scale
+        self._last = (math.cos(phi), math.sin(phi), 0.5 * (sh_mid + hp_mid), self._scale)
+        out[:, :2] = self.to_rack_xy(p[:, :2])
 
         # z is MediaPipe's weak relative depth: recenter only (its units
         # differ from x/y, so it is not rescaled). Visibility passes through.
         out[:, 2] = p[:, 2] - float(p[:, 2].mean())
         out[:, 3] = vis
         return out.reshape(-1).astype(np.float32)
+
+    def to_rack_xy(self, xy) -> Optional[np.ndarray]:
+        """
+        Map image-normalised (N, 2) points into the rack frame with exactly
+        the transform the latest normalize() call applied to the landmarks:
+        same angle, same origin, same scale. None when that call output zeros
+        (no usable pose), since there is then no transform to apply.
+
+        This is the only implementation of the transform. normalize() uses it
+        for the landmarks and pipeline/features.py for the box centroids; a
+        second copy is how train/serve skew gets back in.
+        """
+        if self._last is None:
+            return None
+        cos_t, sin_t, origin, scale = self._last
+        d = np.asarray(xy, dtype=np.float32).reshape(-1, 2) - origin
+        # rotate by −θ (image frame → rack frame)
+        rx = cos_t * d[:, 0] + sin_t * d[:, 1]
+        ry = -sin_t * d[:, 0] + cos_t * d[:, 1]
+        return np.stack([rx / scale, ry / scale], axis=1)
 
     # ── internal ──────────────────────────────────────────────────────────
 
@@ -361,6 +379,17 @@ def _selftest() -> None:
     degenerate[L_HIP, :2] = degenerate[R_HIP, :2] = (0.5, 0.5 + 1e-6)  # torso_len ~ 1e-6
     out_bad = n.normalize(degenerate.reshape(-1), rack_rect=_rect_from_line(0.0))
     assert not np.any(out_bad), f"degenerate first frame should be all-zero, got max={np.abs(out_bad).max():.2f}"
+
+    # 9) to_rack_xy() is the landmark transform: a point placed exactly on a
+    # landmark maps to that landmark's output, and an unusable frame has no
+    # transform at all (None, not a stale one from the previous frame).
+    n = RackFrameNormalizer(angle_ema=0.0, scale_ema=0.0)
+    pose = _make_pose(wrap180(90.0 + 37.0))
+    feats = n.normalize(pose.reshape(-1), rack_rect=_rect_from_line(37.0)).reshape(NUM_LANDMARKS, 4)
+    mapped = n.to_rack_xy(pose[[L_WRIST, R_HIP], :2])
+    assert np.array_equal(mapped, feats[[L_WRIST, R_HIP], :2]), "to_rack_xy differs from landmarks"
+    n.normalize(np.zeros(FEATURE_DIM, dtype=np.float32))
+    assert n.to_rack_xy([[0.5, 0.5]]) is None, "stale transform survived an unusable frame"
 
     logger.info("rack_frame selftest passed: equivariance, inversion, scale, fallbacks, "
                "NaN-safety, angle-EMA damping, degenerate-scale-before-init")

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAS HAR Ultimate Plan</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1b1c1e; --mute:#5d6166; --line:#e2e2de;
+  --accent:#1f5fbf; --ok:#1d7a46; --okbg:#e3f3ea; --warn:#9a6200; --warnbg:#fbf0d9;
+  --bad:#b3261e; --badbg:#fbe4e2; --code:#f0f0ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034;
+    --accent:#7aa7ef; --ok:#6fcf97; --okbg:#1c3226; --warn:#f0c060; --warnbg:#3a2f16;
+    --bad:#f28b82; --badbg:#3d1f1d; --code:#26282c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034;
+  --accent:#7aa7ef; --ok:#6fcf97; --okbg:#1c3226; --warn:#f0c060; --warnbg:#3a2f16;
+  --bad:#f28b82; --badbg:#3d1f1d; --code:#26282c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:960px;margin:0 auto;padding:32px 16px 72px}
+h1{font-size:1.95rem;margin:0 0 4px}
+h2{font-size:1.28rem;margin:44px 0 12px;padding-top:10px;border-top:1px solid var(--line)}
+h3{font-size:1.03rem;margin:20px 0 6px}
+p{margin:8px 0}
+.sub{color:var(--mute);margin:0 0 18px}
+nav{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.9rem;margin:0 0 8px}
+a{color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+.verdict{border-left:4px solid var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.tw{overflow-x:auto}
+.b{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.87em}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow-x:auto;font-size:.85rem;margin:8px 0}
+.flow{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.layer{display:grid;grid-template-columns:130px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.layer b.tag{color:var(--accent);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+.arrow{text-align:center;color:var(--mute);line-height:1}
+ul,ol{margin:6px 0;padding-left:20px} li{margin:4px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.num{font-size:1.5rem;font-weight:700}
+.small{font-size:.86rem;color:var(--mute)}
+@media (max-width:700px){.layer{grid-template-columns:1fr}.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+
+<h1>BAS HAR: the ultimate plan</h1>
+<p class="sub">SIH 2026 · PS 26174 · submission 28 Sep · 24 hours of work · AI model → data → hardware → software → demo → PPT → GitHub</p>
+<nav>
+<a href="#thesis">Thesis</a><a href="#scorecard">Scorecard</a><a href="#arch">Architecture</a><a href="#model">AI model</a><a href="#data">Data</a><a href="#hw">Hardware</a><a href="#space">Space physics</a><a href="#sw">Software</a><a href="#team">Team</a><a href="#timeline">24 h timeline</a><a href="#risks">Risks</a><a href="#demo">Demo</a><a href="#ppt">PPT</a><a href="#qa">Judge Q&amp;A</a><a href="competitor-analysis.html">Competitors ↗</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="thesis">0. The winning thesis</h2>
+<div class="card verdict">
+<p><b>Every other team built an upright person at a desk. We build for space.</b></p>
+<p>We scanned all 22 public repos for PS 26174. They share one architecture: webcam → YOLO or colour detection → MediaPipe hands → rules → dashboard. None of them tests a rotated or inverted astronaut, and none actually runs HMR. Their datasets are 170–550 frames from a single room.</p>
+<p>Our system is the only one that:</p>
+<ol>
+<li>generates labelled training data at <b>any crew orientation</b> from a 3D digital twin (22,349 frames),</li>
+<li>trains <b>and tests</b> on orientations the model never saw,</li>
+<li>runs <b>HMR</b> for real on a laptop GPU.</li>
+</ol>
+<p>The 24 hours go to closing our one gap against them (a trained object detector and a live real-prop demo) and making all of this visible.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="scorecard">1. Scorecard: every requirement, status, owner</h2>
+<div class="tw"><table>
+<tr><th>Problem-statement requirement</th><th>Now</th><th>Action</th><th>Owner</th></tr>
+<tr><td>Trained AI model that recognises and validates the step sequence</td><td><span class="b warn">Weak</span></td><td>Detector swap + seed ensemble + retrain (sections 3 and 4)</td><td>P1, P2</td></tr>
+<tr><td>Dataset for object detection, pose, hand-object interaction</td><td><span class="b warn">Half</span></td><td>Export the Blender boxes to YOLO labels + record real takes</td><td>P1, P3</td></tr>
+<tr><td>Continuously process local video from a fixed camera</td><td><span class="b ok">Done</span></td><td>Mount the camera on the mock rack</td><td>P3</td></tr>
+<tr><td>Suggest the next step at the start and after each step</td><td><span class="b ok">Done</span></td><td>Check it on a real take</td><td>P4</td></tr>
+<tr><td>Voice alert on a skipped or out-of-order step</td><td><span class="b ok">Done</span></td><td>Add the reason to the alert text</td><td>P4</td></tr>
+<tr><td>Timestamped, structured, lightweight text log</td><td><span class="b ok">Done</span></td><td>Show the file size in the GUI</td><td>P4</td></tr>
+<tr><td>Stream video to an IP + store locally</td><td><span class="b ok">Done</span></td><td>UDP MPEG-TS via ffmpeg (installed). Test with VLC on a 2nd laptop.</td><td>P4</td></tr>
+<tr><td>GUI for monitoring</td><td><span class="b bad">Broken</span></td><td><code>pip install PyQt6</code>. The Qt dashboard fails to import without it.</td><td>P4</td></tr>
+<tr><td>Offline, standalone</td><td><span class="b ok">Done</span></td><td>Record the demo with Wi-Fi off, on camera</td><td>P4</td></tr>
+<tr><td>Optional: orientation-agnostic HMR, rack-relative</td><td><span class="b warn">Partial</span></td><td>Live 3D side panel with 2D fallback, and state its limits</td><td>P5</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="arch">2. Architecture, end to end</h2>
+<p><b>Full box-and-arrow diagram, with the HMR branch and the training pipeline: <a href="architecture.html">architecture.html</a></b></p>
+<div class="flow">
+<div class="layer"><b class="tag">Hardware</b><div>Fixed payload camera clamped to the rack (1080p USB) · printed <b>ArUco marker</b> on the rack · edge computer (RTX 3050 laptop now, Jetson Orin class for flight) · speaker · LAN link to a "ground" receiver.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Rack frame</b><div>ArUco pose → camera-to-rack transform. Every coordinate after this point is <b>rack-relative</b>. The existing geometry normaliser (<code>pipeline/rack_frame.py</code>) is the fallback when the marker is hidden.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Perception (CNN)</b><div><b>YOLOv8n</b>, 4 classes: <code>main_box_closed</code>, <code>main_box_open</code>, <code>red_box</code>, <code>yellow_box</code>. It replaces the colour detector.<br><b>MediaPipe Hands + Pose</b> for hands and body (with the roll correction already in <code>upright_pose.py</code>).<br><b>ROMP HMR</b> as an optional 3D body channel: run on a cropped, rotation-corrected person patch (not the raw frame), triggered adaptively rather than on a fixed schedule, with automatic 2D fallback when it loses the body. See <a href="architecture.html">architecture.html §2</a> for why this fixes speed and accuracy together.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Features</b><div><code>pipeline/features.py</code> (shared by training and live, byte-identical, tested). Layout <code>pose132+obj11</code>: 3 boxes × (x, y, visible) + 2 hand-to-box distances. <b>YOLO produces the same 11 numbers the colour detector did</b>, so the LSTM input format doesn't change and the parity tests still hold.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Temporal (LSTM)</b><div>LSTM over 2–3 s windows on a fixed 100 ms clock. <b>Ensemble of 3 seeds</b> (average their probabilities), which directly attacks the 0.38–0.60 seed spread we measured. Exported to ONNX.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Protocol judge</b><div>Deterministic state machine: a step is confirmed only after N consistent windows above threshold. It classifies deviations (<b>skipped</b>, <b>out of order</b>, <b>repeated</b>, <b>wrong object</b>), gives recovery guidance, and never lets one bad frame corrupt the state.</div></div>
+<div class="arrow">↓</div>
+<div class="layer"><b class="tag">Outputs</b><div>Qt dashboard · offline voice (pyttsx3) · JSONL + TXT log (kilobytes) · UDP stream to a set IP · local MP4 recording.</div></div>
+</div>
+<p class="small"><b>Why hybrid:</b> learning handles what's fuzzy (seeing boxes, recognising motion), and rules handle what's safety-critical (sequence judgement). A pure end-to-end video model would need thousands of real takes and couldn't explain its alerts. Every alert can say <i>why</i>.</p>
+
+<!-- ============================================================ -->
+<h2 id="model">3. The AI model (the graded deliverable)</h2>
+<div class="grid2">
+<div class="card"><h3 style="margin-top:0">Model card</h3>
+<ul>
+<li><b>Name:</b> BAS-HAR v1 = YOLOv8n detector + LSTM step classifier (3-seed ensemble)</li>
+<li><b>Input:</b> fixed-camera video, any frame rate (resampled to 10 Hz)</li>
+<li><b>Output:</b> step 1–8 or idle, with confidence, every 100 ms</li>
+<li><b>Size:</b> YOLOv8n ~6 MB, LSTM &lt;1 MB each, ONNX</li>
+<li><b>Runs on:</b> RTX 3050 laptop, fully offline</li>
+<li><b>Trained on:</b> 23 Blender takes at every orientation + real webcam takes</li>
+<li><b>Tested on:</b> held-out orientations (180° roll, −60° roll, 90° yaw, 60° pitch) + skip/recover sequences</li>
+</ul></div>
+<div class="card"><h3 style="margin-top:0">What we report (targets, not promises)</h3>
+<ul>
+<li>Step accuracy on held-out orientations: <b>mean ± spread of 3 seeds</b> (baseline 0.38–0.60)</li>
+<li>Detector recall per class (baseline yellow box ≈ 0.15)</li>
+<li>Skip / out-of-order detection recall on error takes</li>
+<li>False alerts per run</li>
+<li>End-to-end latency and fps on the RTX 3050</li>
+</ul>
+<p class="small">Event-level metrics (deviation recall, false alarms) matter more than frame accuracy. Only 2 of 22 competitors even define them.</p></div>
+</div>
+
+<h3>Why this will work: our own evidence</h3>
+<div class="grid3">
+<div class="card"><div class="num">0.555</div><p class="small">Held-out accuracy from box signals alone, <i>with</i> a detector that misses 85% of yellow boxes. Better box detection is the biggest lever.</p></div>
+<div class="card"><div class="num">0.23</div><p class="small">Pose alone. Pose helps, but it isn't what decides the step.</p></div>
+<div class="card"><div class="num">~0.80</div><p class="small">With perfect inputs. The LSTM and features are fine, and perception is the bottleneck.</p></div>
+</div>
+
+<h3>Training recipe</h3>
+<pre># 1. YOLO labels from Blender ground truth (new script, ~30 lines)
+python tools/export_yolo_labels.py --dataset dataset/blender_core --out dataset/yolo_boxes
+# 2. Train the detector (synthetic + ~300 real frames)
+pip install ultralytics PyQt6
+yolo detect train model=yolov8n.pt data=dataset/yolo_boxes/data.yaml epochs=40 imgsz=640 device=0
+# 3. Rebuild sequences with YOLO boxes, train 3 seeds, score held-out
+tools/retrain_and_evaluate.sh dataset/blender_core orient_180,orient_-60,yaw_90,pitch_60</pre>
+
+<!-- ============================================================ -->
+<h2 id="data">4. Data: what we have, what we collect</h2>
+<div class="tw"><table>
+<tr><th>Source</th><th>Contents</th><th>Use</th></tr>
+<tr><td><b>Blender digital twin</b> <span class="b ok">have</span></td><td>23 takes, 22,349 frames: roll 0–180°, yaw, pitch, dim light, failed light, clutter, skip/recover. Per frame: step label, 2D/3D pose, <b>true box positions + visibility</b> (<code>payload.json</code>).</td><td>YOLO pre-training (60k+ boxes for free), LSTM training, held-out orientation test</td></tr>
+<tr><td><b>Real webcam takes</b> <span class="b bad">collect</span></td><td>12 takes with the real props (see the shot list below). Recorded with <code>tools/record_take.py</code>.</td><td>YOLO fine-tuning, a real-world test, the live demo</td></tr>
+<tr><td><b>Real frame labels</b> <span class="b bad">collect</span></td><td>~300 frames. <b>Auto-label with the synthetic-trained YOLO, then fix by hand</b> in CVAT or Roboflow. That's about 3× faster than labelling from scratch.</td><td>Closes the synthetic-to-real gap</td></tr>
+</table></div>
+
+<h3>Real-take shot list (P3, hours 0–3)</h3>
+<ul>
+<li><b>6 normal takes</b>: 2 people × 3 lighting setups (room light, desk lamp only, lamp turned off mid-take).</li>
+<li><b>2 skip takes</b> (skip "Examine Red Box") and <b>2 out-of-order takes</b> (yellow before red).</li>
+<li><b>2 "sideways crew" takes</b>: the teammate lies on their side on the table next to the rack and does the protocol. That's a real 90° orientation relative to the rack, and no other team has this footage.</li>
+<li>Camera stays fixed on the rack for every take. Label the steps with the recorder's key presses while filming.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="hw">5. Hardware</h2>
+<div class="grid2">
+<div class="card"><h3 style="margin-top:0">Demo rig (build tonight, ~₹500)</h3>
+<ul>
+<li><b>Mock payload rack:</b> a foam board or cardboard panel (~60×80 cm) with velcro strips, like an ISS rack face</li>
+<li><b>ArUco marker</b> (A5 print) fixed to the rack corner</li>
+<li><b>Props:</b> a main box with a hinged lid, plus a red and a yellow small box</li>
+<li><b>Camera:</b> 1080p USB webcam <b>clamped to the rack</b> (fixed-payload camera, never handheld)</li>
+<li><b>Lighting:</b> a desk LED lamp, switched off to demo a lighting failure</li>
+<li><b>Edge computer:</b> the RTX 3050 6 GB laptop, Wi-Fi off during the demo</li>
+<li><b>"Ground station":</b> a second laptop or phone running VLC on <code>udp://@:5000</code></li>
+<li>Speaker for the voice alerts</li>
+</ul></div>
+<div class="card"><h3 style="margin-top:0">Flight path (for the PPT, clearly labelled as projected)</h3>
+<ul>
+<li><b>Target:</b> NVIDIA Jetson Orin class module (edge GPU, 7–25 W)</li>
+<li><b>Path:</b> ONNX → TensorRT FP16. YOLOv8n and the LSTM are both tiny.</li>
+<li><b>Cameras:</b> rack-fixed, so the rack frame is calibrated once per payload</li>
+<li><b>Downlink:</b> only the log (KB) + an optional low-bitrate stream. Raw video stays on board.</li>
+<li>Measured numbers come from the RTX 3050. <b>Never</b> present Jetson numbers as measured.</li>
+</ul></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="space">6. Space physics, and our answer to each</h2>
+<div class="tw"><table>
+<tr><th>In orbit</th><th>What breaks</th><th>Our answer</th><th>Proof we show</th></tr>
+<tr><td>No up or down. The crew floats at any angle.</td><td>Upright-pose assumptions, "hand above hip" features</td><td>Rack frame + distance-based features + training at every orientation</td><td>Held-out 180° / 60° pitch results + the sideways-crew real take</td></tr>
+<tr><td>Released objects drift</td><td>"Placed" can't mean "resting on a table"</td><td>Placed = box in its target zone (rack space) + hand released</td><td>Zone overlay in the GUI</td></tr>
+<tr><td>The body is anchored by restraints</td><td>No standing, no floor</td><td>Recognise hands and objects, ignore the legs</td><td>Feature importance slide</td></tr>
+<tr><td>Harsh or failing station lighting</td><td>Colour thresholds</td><td>Learned detector trained on lighting-randomised and failed-lamp renders</td><td>Lamp-off moment in the demo</td></tr>
+<tr><td>Comms delay, thin downlink</td><td>Ground can't guide in real time</td><td>Fully on-board, and the log is kilobytes</td><td>Wi-Fi off + log file size</td></tr>
+<tr><td>Camera may be mounted at any angle</td><td>Image-orientation assumptions</td><td>Rack marker defines the frame, whatever way the camera is mounted</td><td>Rotate the camera 90° live and keep tracking</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="sw">7. Software and GitHub</h2>
+<div class="grid2">
+<div class="card"><h3 style="margin-top:0">Must fix</h3>
+<ul>
+<li><code>PyQt6</code> and <code>ultralytics</code> into <code>requirements.txt</code></li>
+<li>A detector backend switch: YOLO, with the colour detector as fallback</li>
+<li>ArUco rack anchor (OpenCV's built-in <code>cv2.aruco</code>, no new dependency)</li>
+<li>A replay mode on a recorded take, so judges can run it without props</li>
+<li>Deviation reason in the voice alert + log line</li>
+</ul></div>
+<div class="card"><h3 style="margin-top:0">GitHub cleanup (judges open the link)</h3>
+<ul>
+<li>README: problem → architecture diagram → one command to run → results table → limits</li>
+<li>Drop the Gemini/Veo "datagen" mode from the story. It needs the cloud, and our pitch is offline.</li>
+<li>Move experiments and old results into <code>archive/</code></li>
+<li>Commit the trained models (ONNX) and link the demo video</li>
+<li>Keep the 49 tests green, and give a CI badge or a command to run them</li>
+</ul></div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="team">8. Team roles (6 people; merge roles if fewer)</h2>
+<div class="tw"><table>
+<tr><th>Who</th><th>Owns</th><th>Delivers by</th></tr>
+<tr><td><b>P1</b> Detector</td><td>YOLO label export, training, the backend switch</td><td>H8: trained detector + recall numbers</td></tr>
+<tr><td><b>P2</b> Sequence model</td><td>Seed ensemble, retrain with YOLO features, held-out evaluation, results table</td><td>H12: model card numbers</td></tr>
+<tr><td><b>P3</b> Data + rig</td><td>Build the mock rack and props, record 12 real takes, fix auto-labels</td><td>H4: takes on disk · H7: 300 labels</td></tr>
+<tr><td><b>P4</b> Integration</td><td>PyQt6 GUI, ArUco anchor, voice/log/stream check, replay mode, live run</td><td>H14: clean live run end to end</td></tr>
+<tr><td><b>P5</b> Space + HMR</td><td>Crop + rotate-correct + adaptive scheduler in front of ROMP, measured before/after on the 8 <code>HMR_UNRELIABLE_TAGS</code> takes · HMR side panel, Blender inverted clip, rotation demo shots</td><td>H10: crop+correct measured · H14: 2 clips</td></tr>
+<tr><td><b>P6</b> Story</td><td>PPT, demo video edit, README, judge Q&amp;A sheet</td><td>H22: everything final</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="timeline">9. The 24-hour timeline</h2>
+<div class="tw"><table>
+<tr><th>Hours</th><th>Detector / model</th><th>Data / rig</th><th>Integration / demo</th><th>Story</th></tr>
+<tr><td>0–3</td><td>Export Blender boxes to YOLO labels · install packages</td><td>Build the rig · start recording takes</td><td>PyQt6 fix · GUI smoke test</td><td>PPT skeleton from section 12</td></tr>
+<tr><td>3–7</td><td>Train YOLO on synthetic · auto-label real frames</td><td>Finish takes · fix labels</td><td>ArUco rack anchor</td><td>Architecture diagram</td></tr>
+<tr><td>7–10</td><td>Fine-tune YOLO on real · seed-ensemble test on existing models</td><td>Support labelling</td><td>YOLO backend switch · replay mode</td><td>Competitor slide</td></tr>
+<tr><td>10–14</td><td>Rebuild sequences · train 3 seeds · held-out evaluation</td><td>Test takes for the demo</td><td>Full live run (GUI, voice, log, stream)</td><td>Results slides (fill in the numbers)</td></tr>
+<tr><td>14–18</td><td>Freeze the model · export ONNX · model card</td><td colspan="2">Record the demo video: real run with a skip, sideways crew, camera rotation, Blender inverted, HMR panel</td><td>Script the video voice-over</td></tr>
+<tr><td>18–22</td><td colspan="3">README · archive the clutter · commit models · tests green</td><td>Finish the PPT + edit the video</td></tr>
+<tr><td>22–24</td><td colspan="4">Buffer · full dry run of the pitch · submit</td></tr>
+</table></div>
+<p class="small"><b>P5 runs in parallel, hours 0–10:</b> crop ROMP's input to YOLO's person box, rotate it upright using MediaPipe's shoulder–hip vector, and gate ROMP's calls on how fast that angle is changing instead of a fixed schedule (<a href="architecture.html">architecture.html §2</a>). By H10, measure detection rate before/after on the 8 <code>HMR_UNRELIABLE_TAGS</code> takes — this doesn't block P1–P4's critical path, but it's what turns the HMR side panel from "runs sometimes" into "runs correctly and fast".</p>
+<p><b>Gates:</b></p>
+<ul>
+<li><b>H7:</b> if YOLO yellow recall isn't clearly above 0.15, spend 2 more hours on real labels and stop tuning.</li>
+<li><b>H10:</b> if the crop+rotate fix doesn't measurably raise ROMP's detection rate on the 8 unreliable takes, keep the 2D fallback as primary and demote HMR to "occasional 3D panel", not a claimed fix.</li>
+<li><b>H12:</b> if the ensemble doesn't beat 0.53, ship the ensemble we have and let the rule layer run on detector object states, which is reliable on real footage.</li>
+<li><b>H14:</b> after this, no new features. Only the demo and the story.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="risks">10. Risks and fallbacks</h2>
+<div class="tw"><table>
+<tr><th>Risk</th><th>Fallback</th></tr>
+<tr><td>YOLO trained on renders doesn't transfer to real props</td><td>Real labels dominate the fine-tune. Auto-labelling makes 300 frames cheap.</td></tr>
+<tr><td>LSTM accuracy stays low on held-out orientations</td><td>Report it honestly with the spread. The demo runs on detector states + rules, and the story is the method plus the honest test.</td></tr>
+<tr><td>Live demo fails in front of judges</td><td>Replay mode on a recorded take + the pre-recorded video</td></tr>
+<tr><td>HMR loses the body in the demo</td><td>That's the designed behaviour: the panel shows "HMR lost → 2D fallback" and keeps working</td></tr>
+<tr><td>GPU memory full with YOLO + MediaPipe + HMR</td><td>The crop+adaptive scheduler already cuts ROMP calls sharply; if still tight, drop to a fixed low rate or turn HMR off for the live run</td></tr>
+<tr><td>Running out of time</td><td>Cut in this order: HMR panel → camera rotation shot → sideways takes. Never cut the live skip-alert demo.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="demo">11. The demo video (3 minutes)</h2>
+<ol>
+<li><b>0:00</b> Problem in one line: "Light-seconds from Earth, nobody on the ground can watch your experiment."</li>
+<li><b>0:15</b> Real rig. Wi-Fi visibly off. The astronaut starts, the GUI shows the step, and the voice suggests the next one.</li>
+<li><b>0:50</b> Deliberate skip. Voice: "Warning: Examine Red Box was skipped." The log line appears.</li>
+<li><b>1:15</b> Lamp switched off: detection keeps going.</li>
+<li><b>1:30</b> Camera rotated 90° on the rack mount: tracking continues in rack coordinates.</li>
+<li><b>1:45</b> Sideways-crew take: a real human at 90° to the rack, steps still recognised.</li>
+<li><b>2:05</b> Blender astronaut upside down + HMR 3D panel, and a fallback moment.</li>
+<li><b>2:30</b> Ground station laptop receiving the UDP stream. Log file: a few KB for the whole experiment.</li>
+<li><b>2:45</b> Results table on held-out orientations. Close.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="ppt">12. PPT</h2>
+<p>If SIH gives you an official template, use it and map these into its sections. The usual idea-submission template has: <b>title · idea/solution · technical approach · feasibility and viability · impact and benefits · research and references</b>.</p>
+<div class="tw"><table>
+<tr><th>Section</th><th>Content</th></tr>
+<tr><td>Title</td><td>PS 26174, team name, one-line thesis: "HAR built for zero-g, not for a desk."</td></tr>
+<tr><td>Idea / solution</td><td>The on-board assistant: tracks the protocol, suggests the next step, gives voice alerts, logs, streams. 3 differentiators: digital-twin data at any orientation · tested on unseen orientations · real HMR.</td></tr>
+<tr><td>Technical approach</td><td>The architecture diagram (section 2), the model card, the tech stack (YOLOv8n, MediaPipe, ROMP, LSTM, PyQt6, ffmpeg, Blender).</td></tr>
+<tr><td>Feasibility and viability</td><td>Measured fps and latency on the RTX 3050, the results table, the Jetson path (labelled projected), and the risks with their fallbacks.</td></tr>
+<tr><td>Impact and benefits</td><td>Fewer failed experiments, less crew workload, bandwidth saved (KB log vs GB video), any new experiment = a new protocol file + a Blender run.</td></tr>
+<tr><td>Research and references</td><td>MediaPipe, YOLOv8, ROMP/SMPL, ISS crew procedure practice, and our own held-out evaluation method.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="qa">13. Judge Q&amp;A: prepare these answers</h2>
+<div class="tw"><table>
+<tr><th>They ask</th><th>We answer</th></tr>
+<tr><td>How does this work in microgravity?</td><td>Everything is measured relative to the rack, not the floor. Trained at every orientation, and here are the results on orientations it never saw.</td></tr>
+<tr><td>Why not a single end-to-end video model?</td><td>It would need thousands of real takes and can't explain its alerts. Ours learns perception and keeps the safety logic auditable.</td></tr>
+<tr><td>How accurate is it?</td><td>Give the held-out numbers with the seed spread, and explain why held-out orientation is the honest test.</td></tr>
+<tr><td>Why is HMR optional?</td><td>We run it (ROMP), we measured where it fails (strong tilt, inverted), and the system falls back automatically. Rack-frame features carry the orientation problem.</td></tr>
+<tr><td>Synthetic data won't match reality.</td><td>That's why we fine-tune on real takes and test on real takes. Blender covers orientations you can't film on Earth.</td></tr>
+<tr><td>How do we add a new experiment?</td><td>Write a protocol file, render it in the digital twin, record a few real takes, retrain. Hours, not weeks.</td></tr>
+<tr><td>What hardware would fly?</td><td>An edge GPU module (Jetson Orin class) via ONNX/TensorRT. The demo numbers are measured on a laptop GPU.</td></tr>
+<tr><td>Privacy / bandwidth?</td><td>Raw video stays on board. Only a kilobyte log and an optional stream leave.</td></tr>
+</table></div>
+
+<h2>14. What we don't do</h2>
+<ul>
+<li>No LLM, no face recognition, no life-support panels. Competitors did that, and it's scope creep.</li>
+<li>No more Blender showcase renders and no more HMR tuning.</li>
+<li>No accuracy number without its test split and seed spread.</li>
+</ul>
+
+</main>
+</body>
+</html>

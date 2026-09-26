@@ -1,0 +1,94 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+.venv*/
+venv/
+env/
+
+# ── Vendored runtime ─────────────────────────────────────────────────────────
+# `sih-har-isro/.runtime/site-packages` is a full checked-in copy of torch,
+# numpy, sympy and friends - roughly 300 MB, and the reason a clone of this
+# repo is ~330 MB when the actual project source is under 1 MB. Dependencies
+# belong in requirements.txt, which already lists them; a committed
+# site-packages is also platform- and Python-version-locked (these are
+# cp312 Windows builds), so it cannot serve the offline-deployment purpose it
+# looks like it was meant for on any other machine.
+#
+# NOTE: adding it here stops it growing further but does NOT shrink existing
+# clones - the objects are already in history. To actually reclaim the space
+# someone has to rewrite history (git filter-repo --path sih-har-isro/.runtime
+# --invert-paths) and force-push, which is a decision for the repo owner
+# because it invalidates every existing clone.
+.runtime/
+tmp/pip/
+
+# ── Generated datasets and renders ───────────────────────────────────────────
+# Regenerate with:
+#   blender --background --factory-startup --python blender/render_dataset.py -- --plan study
+sih-har-isro/dataset/blender/
+sih-har-isro/dataset/blender_smoke/
+sih-har-isro/dataset/sequences_*/
+sih-har-isro/dataset/annotated/
+sih-har-isro/build/
+sih-har-isro/recordings/*.mp4
+
+# Keep the small ground-truth-only artefacts that document a run
+!sih-har-isro/dataset/**/meta.json
+!sih-har-isro/dataset/**/index.json
+
+# ── Blender ──────────────────────────────────────────────────────────────────
+*.blend1
+*.blend2
+
+# ── Runtime output ───────────────────────────────────────────────────────────
+sih-har-isro/config/tuned_overrides.json
+*.crash.txt
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ── MediaPipe pose bundles ───────────────────────────────────────────────────
+# lite + full are committed via Git LFS so a fresh clone is genuinely offline-
+# capable (the PS requires a standalone offline system). 'heavy' is a 30 MB
+# optional accuracy upgrade - fetch it on demand rather than paying for it in
+# every clone:  python tools/fetch_pose_model.py --variant heavy
+sih-har-isro/models/mediapipe/pose_landmarker_heavy.task
+
+# ── SMPL body model — licensed, not ours to redistribute ─────────────────────
+# The SMPL model file (basicmodel_neutral_lbs_10_207_0_v1.1.0.pkl) is
+# distributed under a license that requires each user to register and accept
+# its terms directly; it must not be redistributed via this repo. Every
+# teammate downloads their own copy after accepting the license at
+# https://smpl.is.tue.mpg.de/ and places it as documented in
+# sih-har-isro/docs/HANDOFF_YOLO_MEDIAPIPE.md / hmr-env agent notes.
+SMPL_NEUTRAL.pkl/
+hmr_models/
+
+# ── Local caches, scratch, and vendored tools — never project state ──────────
+.pip-cache/
+.tmp/
+sih-har-isro/.showcase_deps/
+/tools/
+
+# ── Local run logs ────────────────────────────────────────────────────────────
+# One pair of files per local pipeline run (timestamped); these are dev
+# scratch, not a deliverable. The small evaluation result JSONs in
+# sih-har-isro/logs/ (real_eval_*, t14_*, hmr_eval/) are NOT matched by this
+# and stay tracked.
+sih-har-isro/logs/experiment_log_*.txt
+sih-har-isro/logs/experiment_log_*.jsonl
+
+# ── The big rendered dataset — too large for plain git ────────────────────────
+# 11 GB, 22,349 frames. Transfer this directly (zip + shared drive, or a
+# separate Git LFS remote) rather than through a normal git push/pull —
+# see docs/HANDOFF_YOLO_MEDIAPIPE.md for how each teammate gets a copy.
+sih-har-isro/dataset/blender_core/
