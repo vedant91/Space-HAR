@@ -137,6 +137,33 @@ POSENET_PCK_THRESHOLD = 0.10     # "correct" = within 10% of torso length
 RACK_FRAME_NORMALIZE = True     # training must match: build_sequences.py --rack-normalize
 RACK_ANGLE_EMA = 0.85           # Rack roll smoothing (0=raw, 1=frozen)
 RACK_SCALE_EMA = 0.90           # Torso-scale smoothing
+
+# ArUco rack marker (pipeline/rack_frame.py:estimate_rack_pose) — an
+# alternative, more precise rotation source for the SAME Stage 1 transform
+# above: a printed marker sheet on the rack corners gives a real solvePnP
+# pose instead of inferring rack angle from the HSV main-box rect. Optional
+# — RackFrameNormalizer still works with rack_rect (HSV) or no rack info at
+# all (torso fallback) exactly as before when no marker is visible.
+ARUCO_DICT_NAME = "DICT_4X4_50"   # 50 distinct 4x4-bit markers — plenty for 4 rack corners
+ARUCO_MARKER_LENGTH_M = 0.05      # printed marker side length, meters (measure your printout)
+ARUCO_MIN_MARKERS_FOR_POSE = 2    # solvePnP on coplanar points is pose-ambiguous with only 1
+# Marker center positions in the RACK's own 3D frame (meters), coplanar
+# (z=0) unless your rig mounts markers on different faces. PLACEHOLDER
+# layout — replace with your physically measured positions before trusting
+# the pose for anything beyond a smoke test (see estimate_rack_pose's
+# docstring). ~30x20cm rectangle, markers at the 4 corners.
+ARUCO_RACK_LAYOUT_M = {
+    0: (-0.15, 0.10, 0.0),   # top-left
+    1: (0.15, 0.10, 0.0),    # top-right
+    2: (0.15, -0.10, 0.0),   # bottom-right
+    3: (-0.15, -0.10, 0.0),  # bottom-left
+}
+# Uncalibrated default camera intrinsics (assumed ~65deg horizontal FOV
+# pinhole). solvePnP's accuracy depends directly on real calibration —
+# this is a usable-without-hardware default, NOT a substitute for running
+# cv2.calibrateCamera on your actual camera before a real demo.
+ARUCO_ASSUMED_FOV_DEG = 65.0
+
 # Stage 0 (runs BEFORE pose estimation): canonicalise the IMAGE, not just the
 # landmarks. MediaPipe is trained on upright people and does not degrade
 # gracefully when the subject is rolled - it stops detecting entirely.
