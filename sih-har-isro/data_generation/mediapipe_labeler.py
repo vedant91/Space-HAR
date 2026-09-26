@@ -21,9 +21,10 @@ from typing import List, Optional
 # Ensure project root is in path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect  # noqa: E402
+from pipeline.rack_frame import RackFrameNormalizer  # noqa: E402
 from pipeline.hsv_detector import HSVBoxDetector  # noqa: E402
-from config.experiment_config import SKELETON_FEATURES  # noqa: E402
+from pipeline.features import LAYOUT_DIMS, build_frame_features, stack_windows  # noqa: E402
+from config.experiment_config import FEATURE_LAYOUT, SAMPLE_EVERY  # noqa: E402
 
 # Pose goes through pipeline/pose_backend.py, not `mp.solutions` directly:
 # that API was removed in MediaPipe 1.0 and this module would not import at
@@ -42,11 +43,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # MediaPipe constants
 NUM_POSE_LANDMARKS = 33
 
-# Feature vector length per frame:
-# pose only: 33 × 4 (x,y,z,vis) = 132
-# (Hands removed for faster inference — pose captures key motion)
-# Single source of truth is config.SKELETON_FEATURES.
-FEATURE_DIM = SKELETON_FEATURES
+# Feature vector length per frame: the deployed model layout (pose + object
+# channels), built by pipeline/features.py exactly as the live pipeline does.
+FEATURE_DIM = LAYOUT_DIMS[FEATURE_LAYOUT]
 
 
 def extract_landmarks_from_frame(results) -> np.ndarray:
@@ -63,11 +62,16 @@ def extract_landmarks_from_frame(results) -> np.ndarray:
     return np.array(features, dtype=np.float32)
 
 
-def _rack_rect_for_frame(frame_bgr: np.ndarray, hsv_detector: Optional[HSVBoxDetector]):
-    """Pick the rack-anchor rect for a frame (None when no box is visible)."""
-    if hsv_detector is None:
-        return None
-    return pick_rack_rect(hsv_detector.detect(frame_bgr))
+def _frame_vector(frame_bgr: np.ndarray, pose, hsv_detector: HSVBoxDetector,
+                  normalizer: Optional[RackFrameNormalizer], prev_dets):
+    """One frame -> (model vector, this frame's detections), through the live
+    loop's own perceive() (pose hinted with the previous frame's detections)
+    and the shared builder."""
+    from pipeline.har_pipeline import perceive
+    rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    h, w = frame_bgr.shape[:2]
+    dets, raw = perceive(frame_bgr, rgb, hsv_detector, pose, prev_dets)
+    return build_frame_features(raw, dets, (w, h), normalizer, FEATURE_LAYOUT), dets
 
 
 def process_video(video_path: str, step_label: int, pose,
@@ -86,19 +90,15 @@ def process_video(video_path: str, step_label: int, pose,
 
     if normalizer is not None:
         normalizer.reset()  # each video is a new session: re-latch polarity
+    pose.reset()            # ...and re-latch the upright working angle
 
-    sequences = []
+    sequences, prev = [], None
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        features = pose.process(rgb)
-        if normalizer is not None:
-            features = normalizer.normalize(
-                features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
-            )
-        sequences.append(features)
+        vec, prev = _frame_vector(frame, pose, hsv_detector or HSVBoxDetector(), normalizer, prev)
+        sequences.append(vec)
 
     cap.release()
     if not sequences:
@@ -118,19 +118,15 @@ def process_frames_folder(folder: str, step_label: int, pose,
 
     if normalizer is not None:
         normalizer.reset()  # each folder is a new session: re-latch polarity
+    pose.reset()
 
-    sequences = []
+    sequences, prev = [], None
     for fpath in frame_files:
         frame = cv2.imread(str(fpath))
         if frame is None:
             continue
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        features = pose.process(rgb)
-        if normalizer is not None:
-            features = normalizer.normalize(
-                features, rack_rect=_rack_rect_for_frame(frame, hsv_detector)
-            )
-        sequences.append(features)
+        vec, prev = _frame_vector(frame, pose, hsv_detector or HSVBoxDetector(), normalizer, prev)
+        sequences.append(vec)
 
     return np.array(sequences) if sequences else None
 
@@ -158,18 +154,16 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
     metadata = []
 
     normalizer = None
-    hsv_detector = None
+    # Always on: object channels need the boxes, not just the rack anchor.
+    hsv_detector = HSVBoxDetector()
     if rack_normalize:
         normalizer = RackFrameNormalizer()
-        hsv_detector = HSVBoxDetector()
         logger.info("Rack-frame normalization enabled for labeling.")
 
-    # static_image_mode=False keeps the tracker's temporal smoothing, which
-    # matters because these frames are consecutive video, not independent
-    # stills. PoseBackend handles the Tasks-API timestamp bookkeeping that
-    # VIDEO mode requires.
-    pose = PoseBackend(complexity=0, min_det_conf=0.3, min_trk_conf=0.3,
-                       downscale=1, static_image_mode=False)
+    # The live pose stage with config defaults (complexity, POSE_INPUT_WIDTH,
+    # upright), so labelled data is built with the same pose as serving.
+    from pipeline.har_pipeline import OptimizedMPWrapper
+    pose = OptimizedMPWrapper()
     try:
 
         for step_tag, step_id in step_label_map.items():
@@ -222,23 +216,21 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
             # grouping by step_id here would put entire classes only in train
             # or only in val, since GroupShuffleSplit keeps whole groups
             # together and there's only one group per step in this function).
+            # Shared windowing (pipeline/features.py): decimated to
+            # SAMPLE_EVERY like the live buffer, 50%-overlap stride in samples.
             from config.experiment_config import SEQUENCE_WINDOW
-            windows = []
-            for start in range(0, len(seq) - SEQUENCE_WINDOW + 1, SEQUENCE_WINDOW // 2):
-                window = seq[start: start + SEQUENCE_WINDOW]
-                if len(window) == SEQUENCE_WINDOW:
-                    windows.append(window)
+            windows_arr, labels_arr = stack_windows(
+                seq, np.full(len(seq), step_id), stride=SEQUENCE_WINDOW // 2,
+                sample_every=SAMPLE_EVERY)
 
-            if windows:
-                windows_arr = np.array(windows)
-                labels_arr = np.full(len(windows), step_id, dtype=np.int64)
+            if len(windows_arr):
                 all_sequences.append(windows_arr)
                 all_labels.append(labels_arr)
-                metadata.append({"step_id": step_id, "windows": len(windows)})
-                logger.info("  → %d windows extracted (step %d)", len(windows), step_id)
+                metadata.append({"step_id": step_id, "windows": int(len(windows_arr))})
+                logger.info("  → %d windows extracted (step %d)", len(windows_arr), step_id)
     finally:
         # The old `with mp_pose.Pose(...)` released the graph on any exit path.
-        # PoseBackend is not a context manager, so the close has to be explicit
+        # The pose stage is not a context manager, so the close has to be explicit
         # or an exception mid-labelling leaks the TFLite interpreter.
         pose.close()
 
@@ -255,6 +247,7 @@ def run_labeling(input_path: str, output_dir: str, step_label_map: dict,
 
     with open(str(out_path / "metadata.json"), "w") as f:
         json.dump({"total_windows": int(len(X)), "feature_dim": int(FEATURE_DIM),
+                   "feature_layout": FEATURE_LAYOUT, "sample_every": SAMPLE_EVERY,
                    "rack_normalized": bool(rack_normalize),
                    "steps": metadata}, f, indent=2)
 
@@ -275,9 +268,14 @@ if __name__ == "__main__":
                         help="Input directory (contains step_XX sub-folders)")
     parser.add_argument("--output", default="dataset/skeleton_sequences",
                         help="Output directory for .npy sequence files")
-    parser.add_argument("--rack-normalize", action="store_true",
+    from config.experiment_config import RACK_FRAME_NORMALIZE
+    parser.add_argument("--rack-normalize", dest="rack_normalize",
+                        action="store_true",
                         help="Re-express pose in the payload-rack frame "
-                             "(must match RACK_FRAME_NORMALIZE=True at inference)")
+                             "(must match RACK_FRAME_NORMALIZE at inference)")
+    parser.add_argument("--no-rack-normalize", dest="rack_normalize",
+                        action="store_false")
+    parser.set_defaults(rack_normalize=RACK_FRAME_NORMALIZE)
     args = parser.parse_args()
 
     label_map = build_default_label_map()

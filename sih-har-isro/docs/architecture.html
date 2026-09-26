@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAS HAR Architecture</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1b1c1e; --mute:#5d6166; --line:#e2e2de; --line2:#b9bab4;
+  --band:#efefeb; --arrow:#6b6f75;
+  --accent:#1f5fbf; --aibg:#e6eefb;
+  --hmr:#7a3fb8; --hmrbg:#f1e8fb;
+  --ok:#1d7a46; --okbg:#e3f3ea;
+  --warn:#9a6200; --warnbg:#fbf0d9; --code:#f0f0ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034; --line2:#4a4d52;
+    --band:#18191b; --arrow:#9a9ea4;
+    --accent:#7aa7ef; --aibg:#1b2740;
+    --hmr:#c29af0; --hmrbg:#2a1f3a;
+    --ok:#6fcf97; --okbg:#1c3226;
+    --warn:#f0c060; --warnbg:#3a2f16; --code:#26282c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034; --line2:#4a4d52;
+  --band:#18191b; --arrow:#9a9ea4;
+  --accent:#7aa7ef; --aibg:#1b2740;
+  --hmr:#c29af0; --hmrbg:#2a1f3a;
+  --ok:#6fcf97; --okbg:#1c3226;
+  --warn:#f0c060; --warnbg:#3a2f16; --code:#26282c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:32px 16px 72px}
+h1{font-size:1.9rem;margin:0 0 4px}
+h2{font-size:1.25rem;margin:40px 0 10px;padding-top:10px;border-top:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--mute);margin:0 0 16px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:.88rem;margin:10px 0 4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;border:1.5px solid}
+.diagram{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:12px 0}
+.diagram svg{display:block;width:100%;min-width:860px;height:auto}
+.bx{stroke-width:1.5}
+.hw{fill:var(--card);stroke:var(--mute)}
+.data{fill:var(--card);stroke:var(--line2)}
+.ai{fill:var(--aibg);stroke:var(--accent)}
+.hmr{fill:var(--hmrbg);stroke:var(--hmr)}
+.rule{fill:var(--okbg);stroke:var(--ok)}
+.out{fill:var(--warnbg);stroke:var(--warn)}
+.dash{stroke-dasharray:5 4}
+.t{font:600 14px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--ink)}
+.s{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--mute)}
+.lane{font:700 11px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.08em;fill:var(--mute)}
+.tag{font:700 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--hmr)}
+.arr{fill:none;stroke:var(--arrow);stroke-width:1.6}
+.ahd{fill:var(--arrow)}
+.band{fill:var(--band)}
+ul{margin:6px 0;padding-left:20px} li{margin:5px 0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.tw{overflow-x:auto}
+.b{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.ok{background:var(--okbg);color:var(--ok)} .new{background:var(--aibg);color:var(--accent)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.87em}
+a{color:var(--accent)}
+.small{font-size:.86rem;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+
+<h1>BAS HAR architecture</h1>
+<p class="sub">End to end, with HMR as a real branch · what runs on board, and how its models are trained · <a href="ultimate-plan.html">back to the plan</a></p>
+
+<div class="legend">
+<span><i class="sw" style="background:var(--card);border-color:var(--mute)"></i>Hardware / input</span>
+<span><i class="sw" style="background:var(--card);border-color:var(--line2)"></i>Processing</span>
+<span><i class="sw" style="background:var(--aibg);border-color:var(--accent)"></i>Trained AI model</span>
+<span><i class="sw" style="background:var(--hmrbg);border-color:var(--hmr)"></i>HMR (3D body)</span>
+<span><i class="sw" style="background:var(--okbg);border-color:var(--ok)"></i>Rules (deterministic)</span>
+<span><i class="sw" style="background:var(--warnbg);border-color:var(--warn)"></i>Output</span>
+</div>
+
+<h2>1. Runtime: what runs on board</h2>
+<div class="diagram">
+<svg viewBox="0 0 1000 920" role="img" aria-label="Runtime architecture: camera and rack marker feed a frame sampler and rack pose estimator; three perception branches (YOLO objects, MediaPipe 2D pose, ROMP HMR 3D body) feed a pose fusion gate and rack-space features; an LSTM classifies the step; a protocol state machine and microgravity rules produce voice, GUI, log, stream and recording outputs.">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahd"/></marker>
+</defs>
+
+<!-- lane bands -->
+<rect class="band" x="0" y="8" width="1000" height="90"/>
+<rect class="band" x="0" y="228" width="1000" height="176"/>
+<rect class="band" x="0" y="508" width="1000" height="94"/>
+<rect class="band" x="0" y="710" width="1000" height="94"/>
+
+<!-- lane labels -->
+<text class="lane" x="16" y="57">INPUT</text>
+<text class="lane" x="16" y="165">PREP</text>
+<text class="lane" x="16" y="320">PERCEPTION</text>
+<text class="lane" x="16" y="460">FUSION</text>
+<text class="lane" x="16" y="559">FEATURES</text>
+<text class="lane" x="16" y="660">TEMPORAL AI</text>
+<text class="lane" x="16" y="761">DECISION</text>
+<text class="lane" x="16" y="875">OUTPUT</text>
+
+<!-- row 1: input -->
+<rect class="bx hw" x="130" y="20" width="535" height="66" rx="8"/>
+<text class="t" x="397" y="47" text-anchor="middle">Fixed payload camera</text>
+<text class="s" x="397" y="67" text-anchor="middle">1080p USB · clamped to the rack · raw video never leaves the station</text>
+<rect class="bx hw dash" x="700" y="20" width="250" height="66" rx="8"/>
+<text class="t" x="825" y="47" text-anchor="middle">ArUco marker</text>
+<text class="s" x="825" y="67" text-anchor="middle">printed on the payload rack</text>
+
+<!-- row 2: prep -->
+<rect class="bx data" x="130" y="130" width="535" height="62" rx="8"/>
+<text class="t" x="397" y="156" text-anchor="middle">Frame sampler</text>
+<text class="s" x="397" y="175" text-anchor="middle">fixed 100 ms clock · works at any camera fps</text>
+<rect class="bx data" x="700" y="130" width="250" height="62" rx="8"/>
+<text class="t" x="825" y="156" text-anchor="middle">Rack pose (solvePnP)</text>
+<text class="s" x="825" y="175" text-anchor="middle">camera → rack transform T</text>
+
+<!-- row 3: perception -->
+<rect class="bx ai" x="130" y="240" width="250" height="66" rx="8"/>
+<text class="t" x="255" y="264" text-anchor="middle">YOLOv8n detector</text>
+<text class="s" x="255" y="282" text-anchor="middle">main box open / closed</text>
+<text class="s" x="255" y="298" text-anchor="middle">red box · yellow box</text>
+
+<rect class="bx ai" x="415" y="240" width="250" height="152" rx="8"/>
+<text class="t" x="540" y="290" text-anchor="middle">MediaPipe Hands + Pose</text>
+<text class="s" x="540" y="312" text-anchor="middle">2D keypoints, every frame</text>
+<text class="s" x="540" y="330" text-anchor="middle">hands 21 × 2 · body 33</text>
+<text class="s" x="540" y="348" text-anchor="middle">roll-corrected before inference</text>
+
+<rect class="bx hmr" x="700" y="240" width="250" height="66" rx="8"/>
+<text class="t" x="825" y="264" text-anchor="middle">HMR · ROMP</text>
+<text class="s" x="825" y="282" text-anchor="middle">on a cropped, rotation-corrected</text>
+<text class="s" x="825" y="298" text-anchor="middle">person crop · runs adaptively</text>
+
+<rect class="bx data" x="130" y="330" width="250" height="62" rx="8"/>
+<text class="t" x="255" y="356" text-anchor="middle">Object tracker</text>
+<text class="s" x="255" y="375" text-anchor="middle">IDs + velocity (Kalman)</text>
+
+<rect class="bx hmr" x="700" y="330" width="250" height="62" rx="8"/>
+<text class="t" x="825" y="356" text-anchor="middle">3D joints → rack frame</text>
+<text class="s" x="825" y="375" text-anchor="middle">apply T · crew attitude vs rack</text>
+
+<!-- row 4: fusion -->
+<rect class="bx hmr dash" x="415" y="425" width="535" height="62" rx="8"/>
+<text class="t" x="682" y="451" text-anchor="middle">Pose fusion gate</text>
+<text class="s" x="682" y="470" text-anchor="middle">HMR confident → 3D wrists + attitude   ·   HMR lost → 2D fallback</text>
+
+<!-- row 5: features -->
+<rect class="bx data" x="130" y="520" width="820" height="70" rx="8" style="stroke-width:2"/>
+<text class="t" x="540" y="544" text-anchor="middle">Rack-space interaction features</text>
+<text class="s" x="540" y="563" text-anchor="middle">hand ↔ box distance · box held · lid open · box zone · box velocity · crew attitude</text>
+<text class="s" x="540" y="580" text-anchor="middle">same code in training and live (pipeline/features.py)</text>
+
+<!-- row 6: temporal -->
+<rect class="bx hw" x="130" y="625" width="250" height="62" rx="8"/>
+<text class="t" x="255" y="651" text-anchor="middle">Protocol file</text>
+<text class="s" x="255" y="670" text-anchor="middle">8 steps · JSON · per experiment</text>
+<rect class="bx ai" x="415" y="625" width="425" height="62" rx="8"/>
+<text class="t" x="627" y="651" text-anchor="middle">LSTM step classifier</text>
+<text class="s" x="627" y="670" text-anchor="middle">3-seed ensemble · 2–3 s window → P(step) every 100 ms</text>
+
+<!-- row 7: decision -->
+<rect class="bx rule" x="130" y="722" width="390" height="70" rx="8"/>
+<text class="t" x="325" y="746" text-anchor="middle">Protocol state machine</text>
+<text class="s" x="325" y="765" text-anchor="middle">confirm step · suggest next step</text>
+<text class="s" x="325" y="782" text-anchor="middle">skip · out of order · repeat · wrong object</text>
+<rect class="bx rule" x="560" y="722" width="390" height="70" rx="8"/>
+<text class="t" x="755" y="746" text-anchor="middle">Microgravity rules</text>
+<text class="s" x="755" y="765" text-anchor="middle">drift = box moving, no hand near</text>
+<text class="s" x="755" y="782" text-anchor="middle">placed = in target zone + released</text>
+
+<!-- row 8: outputs -->
+<rect class="bx out" x="130" y="840" width="148" height="62" rx="8"/>
+<text class="t" x="204" y="866" text-anchor="middle">Voice alerts</text>
+<text class="s" x="204" y="885" text-anchor="middle">offline TTS</text>
+<rect class="bx out" x="298" y="840" width="148" height="62" rx="8"/>
+<text class="t" x="372" y="866" text-anchor="middle">Qt dashboard</text>
+<text class="s" x="372" y="885" text-anchor="middle">live view + 3D panel</text>
+<rect class="bx out" x="466" y="840" width="148" height="62" rx="8"/>
+<text class="t" x="540" y="866" text-anchor="middle">Step log</text>
+<text class="s" x="540" y="885" text-anchor="middle">JSONL + TXT · KB</text>
+<rect class="bx out" x="634" y="840" width="148" height="62" rx="8"/>
+<text class="t" x="708" y="866" text-anchor="middle">UDP stream</text>
+<text class="s" x="708" y="885" text-anchor="middle">to ground IP</text>
+<rect class="bx out" x="802" y="840" width="148" height="62" rx="8"/>
+<text class="t" x="876" y="866" text-anchor="middle">Local recording</text>
+<text class="s" x="876" y="885" text-anchor="middle">annotated MP4</text>
+
+<!-- arrows -->
+<path class="arr" d="M397,86 V128" marker-end="url(#ah)"/>
+<path class="arr dash" d="M825,86 V128" marker-end="url(#ah)"/>
+<path class="arr" d="M665,161 H698" marker-end="url(#ah)"/>
+<path class="arr" d="M255,192 V238" marker-end="url(#ah)"/>
+<path class="arr" d="M540,192 V238" marker-end="url(#ah)"/>
+<path class="arr" d="M640,192 V216 H825 V238" marker-end="url(#ah)"/>
+<path class="arr" d="M255,306 V328" marker-end="url(#ah)"/>
+<path class="arr" d="M825,306 V328" marker-end="url(#ah)"/>
+<path class="arr" d="M950,161 H975 V361 H952" marker-end="url(#ah)"/>
+<path class="arr" d="M975,361 V555 H952" marker-end="url(#ah)"/>
+<text class="tag" x="982" y="265">T</text>
+<path class="arr" d="M540,392 V423" marker-end="url(#ah)"/>
+<text class="s" x="548" y="412">2D</text>
+<path class="arr" d="M825,392 V423" marker-end="url(#ah)"/>
+<text class="tag" x="833" y="412">3D</text>
+<path class="arr" d="M255,392 V518" marker-end="url(#ah)"/>
+<path class="arr" d="M682,487 V518" marker-end="url(#ah)"/>
+<path class="arr" d="M627,590 V623" marker-end="url(#ah)"/>
+<path class="arr" d="M900,590 V720" marker-end="url(#ah)"/>
+<path class="arr" d="M255,687 V720" marker-end="url(#ah)"/>
+<path class="arr" d="M470,687 V720" marker-end="url(#ah)"/>
+<path class="arr" d="M560,757 H522" marker-end="url(#ah)"/>
+<path class="arr" d="M325,792 V815"/>
+<path class="arr" d="M204,815 H876"/>
+<path class="arr" d="M204,815 V838" marker-end="url(#ah)"/>
+<path class="arr" d="M372,815 V838" marker-end="url(#ah)"/>
+<path class="arr" d="M540,815 V838" marker-end="url(#ah)"/>
+<path class="arr" d="M708,815 V838" marker-end="url(#ah)"/>
+<path class="arr" d="M876,815 V838" marker-end="url(#ah)"/>
+</svg>
+</div>
+
+<h2>2. How HMR fits</h2>
+<ul>
+<li><b>What it adds:</b> a 3D body measured against the rack. That gives us the astronaut's attitude (roll, pitch, yaw relative to the rack) and 3D wrist positions when 2D keypoints are unreliable. It also drives the 3D panel in the dashboard.</li>
+<li><b>When it's used:</b> the fusion gate decides every frame. If ROMP is confident and the skeleton passes a bone-length sanity check, we use its 3D wrists and attitude. Otherwise we use MediaPipe 2D.</li>
+<li><b>When it fails today:</b> on our renders ROMP loses the astronaut at ≥30° roll, 60° pitch and upside down. The 2D branch with roll correction takes over, and the step decision keeps working because it's driven mostly by boxes and hands.</li>
+<li><b>Training consequence:</b> the LSTM must be trained on the <i>same fused features</i> it will see live, both with and without HMR. Otherwise switching HMR on changes its input and accuracy silently drops. The builder records this as its own pose source (<code>fused</code>), and the existing load-time guard enforces it.</li>
+</ul>
+
+<h3>Why it's slow and wrong at the same time, and the fix</h3>
+<div class="diagram">
+<svg viewBox="0 0 1000 260" role="img" aria-label="HMR input pipeline: YOLO person box and MediaPipe shoulder-hip vector feed a crop and rotate step, then a confidence check gates ROMP, then an adaptive scheduler decides whether to reuse the last attitude or re-run.">
+<defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahd"/></marker></defs>
+<rect class="bx data" x="20" y="20" width="220" height="62" rx="8"/>
+<text class="t" x="130" y="46" text-anchor="middle">YOLO person box</text>
+<text class="s" x="130" y="65" text-anchor="middle">already running · free</text>
+<rect class="bx data" x="20" y="100" width="220" height="62" rx="8"/>
+<text class="t" x="130" y="126" text-anchor="middle">MediaPipe shoulder–hip</text>
+<text class="s" x="130" y="145" text-anchor="middle">rough roll estimate · free</text>
+<rect class="bx hmr" x="290" y="60" width="230" height="62" rx="8"/>
+<text class="t" x="405" y="86" text-anchor="middle">Crop + rotate to upright</text>
+<text class="s" x="405" y="105" text-anchor="middle">small, centred, corrected</text>
+<rect class="bx hmr dash" x="560" y="60" width="200" height="62" rx="8"/>
+<text class="t" x="660" y="86" text-anchor="middle">ROMP on the crop</text>
+<text class="s" x="660" y="105" text-anchor="middle">low conf → try ±90°/180°</text>
+<rect class="bx rule" x="800" y="20" width="180" height="140" rx="8"/>
+<text class="t" x="890" y="60" text-anchor="middle">Adaptive</text>
+<text class="t" x="890" y="80" text-anchor="middle">scheduler</text>
+<text class="s" x="890" y="105" text-anchor="middle">angle stable →</text>
+<text class="s" x="890" y="122" text-anchor="middle">reuse last 3D pose</text>
+<text class="s" x="890" y="143" text-anchor="middle">angle drifting → re-run</text>
+<path class="arr" d="M240,51 H288 V90" marker-end="url(#ah3)"/>
+<path class="arr" d="M240,131 H288 V95" marker-end="url(#ah3)"/>
+<path class="arr" d="M520,91 H558" marker-end="url(#ah3)"/>
+<path class="arr" d="M760,91 H798" marker-end="url(#ah3)"/>
+<text class="s" x="490" y="180" text-anchor="middle">Old path: ROMP saw the full 1920×1080 frame — mostly background, body too small to read after downsampling.</text>
+<text class="s" x="490" y="200" text-anchor="middle">New path: ROMP only ever sees a small, upright, already-centred crop of the astronaut.</text>
+<text class="s" x="490" y="222" text-anchor="middle">Same fix solves both problems: less compute (small crop) and higher accuracy (upright, high-resolution body).</text>
+</svg>
+</div>
+<ul>
+<li><b>Cheap steps run every frame</b> (YOLO person box, MediaPipe shoulder–hip vector) — both already computed for other reasons, so this costs nothing new.</li>
+<li><b>ROMP only ever sees a small, upright, corrected crop</b>, never the raw 1080p frame. This is the single highest-leverage change: it cuts the pixels ROMP's backbone processes by roughly an order of magnitude, and gives it the upright, well-resolved body it was actually trained to expect.</li>
+<li><b>The scheduler decides when to re-run ROMP at all</b>, based on how fast the cheap rotation estimate is changing — not a fixed "every Nth frame". An astronaut holding still while examining a box (most of a step) costs nothing; a fast tumble triggers frequent re-checks.</li>
+<li><b>Prove it on the same 8 takes that fail today.</b> <code>HMR_UNRELIABLE_TAGS</code> in <code>tools/build_sequences.py</code> is the exact before/after test: measure ROMP's detection rate on those 8 takes with and without this pipeline, rather than assuming it helps.</li>
+</ul>
+
+<h2>3. Training: how the models are made</h2>
+<div class="diagram">
+<svg viewBox="0 0 1000 490" role="img" aria-label="Training architecture: Blender digital twin and real webcam takes form a dataset; box labels train YOLOv8n; a sequence builder runs the trained detector, MediaPipe and the HMR gate to build features that train three LSTM seeds; held-out testing, promote_model contract check, then deployment to the runtime.">
+<defs>
+<marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahd"/></marker>
+</defs>
+<rect class="band" x="0" y="8" width="1000" height="90"/>
+<rect class="band" x="0" y="193" width="1000" height="90"/>
+<rect class="band" x="0" y="393" width="1000" height="90"/>
+
+<text class="lane" x="16" y="57">SOURCES</text>
+<text class="lane" x="16" y="149">DATASET</text>
+<text class="lane" x="16" y="242">DETECTOR</text>
+<text class="lane" x="16" y="336">SEQUENCE</text>
+<text class="lane" x="16" y="350">MODEL</text>
+<text class="lane" x="16" y="436">VALIDATE</text>
+<text class="lane" x="16" y="450">&amp; SHIP</text>
+
+<rect class="bx hw" x="130" y="20" width="390" height="66" rx="8"/>
+<text class="t" x="325" y="47" text-anchor="middle">Blender digital twin</text>
+<text class="s" x="325" y="67" text-anchor="middle">23 takes · 22,349 frames · every orientation</text>
+<rect class="bx hw" x="560" y="20" width="390" height="66" rx="8"/>
+<text class="t" x="755" y="47" text-anchor="middle">Real webcam takes</text>
+<text class="s" x="755" y="67" text-anchor="middle">12 takes · real props · sideways crew</text>
+
+<rect class="bx data" x="130" y="120" width="820" height="50" rx="8"/>
+<text class="t" x="540" y="150" text-anchor="middle">Frames + step labels + box positions + pose ground truth</text>
+
+<rect class="bx data" x="130" y="205" width="390" height="66" rx="8"/>
+<text class="t" x="325" y="232" text-anchor="middle">YOLO box labels</text>
+<text class="s" x="325" y="252" text-anchor="middle">auto from Blender · auto-label real, fix by hand</text>
+<rect class="bx ai" x="560" y="205" width="390" height="66" rx="8"/>
+<text class="t" x="755" y="232" text-anchor="middle">Train YOLOv8n</text>
+<text class="s" x="755" y="252" text-anchor="middle">synthetic pre-train → real fine-tune</text>
+
+<rect class="bx ai" x="130" y="305" width="390" height="66" rx="8"/>
+<text class="t" x="325" y="332" text-anchor="middle">Train LSTM × 3 seeds</text>
+<text class="s" x="325" y="352" text-anchor="middle">held-out takes never seen in training</text>
+<rect class="bx data" x="560" y="305" width="390" height="66" rx="8"/>
+<text class="t" x="755" y="332" text-anchor="middle">Sequence builder</text>
+<text class="s" x="755" y="352" text-anchor="middle">trained YOLO + MediaPipe + HMR gate, same features.py</text>
+
+<rect class="bx data" x="130" y="405" width="250" height="66" rx="8"/>
+<text class="t" x="255" y="432" text-anchor="middle">Held-out test</text>
+<text class="s" x="255" y="452" text-anchor="middle">unseen orientations + skip takes</text>
+<rect class="bx rule" x="415" y="405" width="250" height="66" rx="8"/>
+<text class="t" x="540" y="432" text-anchor="middle">promote_model.py</text>
+<text class="s" x="540" y="452" text-anchor="middle">contract check · ONNX match</text>
+<rect class="bx out" x="700" y="405" width="250" height="66" rx="8"/>
+<text class="t" x="825" y="432" text-anchor="middle">Deploy to runtime</text>
+<text class="s" x="825" y="452" text-anchor="middle">yolo.onnx + lstm.onnx</text>
+
+<path class="arr" d="M325,86 V118" marker-end="url(#ah2)"/>
+<path class="arr" d="M755,86 V118" marker-end="url(#ah2)"/>
+<path class="arr" d="M325,170 V203" marker-end="url(#ah2)"/>
+<path class="arr" d="M520,238 H558" marker-end="url(#ah2)"/>
+<path class="arr" d="M755,271 V303" marker-end="url(#ah2)"/>
+<text class="s" x="763" y="292">detector weights</text>
+<path class="arr" d="M950,145 H975 V338 H952" marker-end="url(#ah2)"/>
+<path class="arr" d="M560,338 H522" marker-end="url(#ah2)"/>
+<path class="arr" d="M255,371 V403" marker-end="url(#ah2)"/>
+<path class="arr" d="M380,438 H413" marker-end="url(#ah2)"/>
+<path class="arr" d="M665,438 H698" marker-end="url(#ah2)"/>
+</svg>
+</div>
+<p class="small">The sequence builder runs the <i>trained</i> detector rather than the Blender ground-truth boxes, so the LSTM learns from the same imperfect detections it will see live.</p>
+
+<h2>4. What exists and what's new</h2>
+<div class="tw"><table>
+<tr><th>Block</th><th>Status</th><th>Where / how</th></tr>
+<tr><td>Frame sampler, rack-space features</td><td><span class="b ok">exists</span></td><td><code>pipeline/features.py</code>, train/live parity tests</td></tr>
+<tr><td>MediaPipe + roll correction</td><td><span class="b ok">exists</span></td><td><code>pipeline/pose_backend.py</code>, <code>upright_pose.py</code></td></tr>
+<tr><td>HMR · ROMP backend + pose-source guard</td><td><span class="b ok">exists</span></td><td><code>pipeline/hmr_backend.py</code> (runs in <code>.venv-hmr</code>)</td></tr>
+<tr><td>LSTM, protocol state machine, voice, log, stream, promotion</td><td><span class="b ok">exists</span></td><td><code>train/</code>, <code>pipeline/</code>, <code>tools/promote_model.py</code></td></tr>
+<tr><td>Qt dashboard</td><td><span class="b ok">exists</span></td><td>needs <code>pip install PyQt6</code></td></tr>
+<tr><td>YOLOv8n detector + tracker</td><td><span class="b new">new</span></td><td>ultralytics, built-in tracking. Outputs the same 11 box numbers as the colour detector.</td></tr>
+<tr><td>ArUco rack pose</td><td><span class="b new">new</span></td><td>OpenCV <code>cv2.aruco</code> + <code>solvePnP</code>. The geometry normaliser stays as fallback.</td></tr>
+<tr><td>Pose fusion gate + <code>fused</code> pose source</td><td><span class="b new">new</span></td><td>in the sequence builder and the live pipeline, recorded in the model contract</td></tr>
+<tr><td>HMR crop + rotation-correct + adaptive scheduler</td><td><span class="b new">new</span></td><td>crop to YOLO's person box, rotate using MediaPipe's shoulder–hip vector, re-run only when that angle drifts. Same fix cuts ROMP's compute and raises its accuracy at odd angles — see section 2.</td></tr>
+<tr><td>Microgravity rules (drift, placed)</td><td><span class="b new">new</span></td><td>rules on tracker velocity + hand distance</td></tr>
+<tr><td>3-seed LSTM ensemble, 3D dashboard panel</td><td><span class="b new">new</span></td><td>average probabilities · render ROMP joints in rack frame</td></tr>
+</table></div>
+
+</main>
+</body>
+</html>

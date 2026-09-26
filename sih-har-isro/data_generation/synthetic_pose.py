@@ -10,19 +10,21 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import sys
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+# Project root on path so this module works when run from anywhere
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config.experiment_config import SKELETON_FEATURES
+from pipeline.rack_frame import RackFrameNormalizer  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 NUM_LANDMARKS = 33
-FEATURE_DIM = SKELETON_FEATURES  # single source of truth: config.SKELETON_FEATURES (132)
+FEATURE_DIM = NUM_LANDMARKS * 4  # 132
 
 # MediaPipe Pose landmark indices
 NOSE, L_EYE, R_EYE = 0, 2, 5
@@ -144,10 +146,10 @@ _STEP_WAYPOINTS = {
         ((0.38, 0.58), (0.46, 0.58)),
         ((0.36, 0.44), (0.44, 0.44)),
     ],
-    4: [  # Examine red — hands together at chest, small rotation
-        ((0.44, 0.42), (0.52, 0.42)),
-        ((0.46, 0.38), (0.54, 0.40)),
-        ((0.44, 0.40), (0.52, 0.38)),
+    4: [  # Examine red — hands together at chest, slightly LEFT of midline
+        ((0.42, 0.42), (0.50, 0.42)),
+        ((0.40, 0.37), (0.48, 0.39)),
+        ((0.42, 0.40), (0.50, 0.38)),
     ],
     5: [  # Place red — move to left zone and lower
         ((0.36, 0.44), (0.44, 0.44)),
@@ -159,10 +161,12 @@ _STEP_WAYPOINTS = {
         ((0.54, 0.58), (0.62, 0.58)),
         ((0.56, 0.44), (0.64, 0.44)),
     ],
-    7: [  # Examine yellow — hands together slightly lower/right of red-examine
-        ((0.48, 0.44), (0.56, 0.44)),
-        ((0.50, 0.40), (0.58, 0.42)),
-        ((0.48, 0.42), (0.56, 0.40)),
+    7: [  # Examine yellow — raised toward face, slightly RIGHT, elbows wider
+        # (must stay distinct from step 4 in TORSO-RELATIVE coords: the rack
+        # frame removes absolute image position, so height/side is the signal)
+        ((0.50, 0.34), (0.60, 0.34)),
+        ((0.52, 0.29), (0.62, 0.31)),
+        ((0.50, 0.32), (0.60, 0.30)),
     ],
     8: [  # Place yellow — move to right zone and lower
         ((0.56, 0.44), (0.64, 0.44)),
@@ -199,14 +203,51 @@ def _rotate_xy(pose: np.ndarray, k: int):
     pose[:, :2] = xy + 0.5
 
 
+def _rotate_xy_deg(pose: np.ndarray, deg: float):
+    """Rotate x,y around (0.5, 0.5) by an arbitrary angle in degrees."""
+    if (deg % 360.0) == 0.0:
+        return
+    th = math.radians(deg)
+    c, s = math.cos(th), math.sin(th)
+    xy = pose[:, :2] - 0.5
+    x = xy[:, 0].copy()
+    y = xy[:, 1].copy()
+    xy[:, 0] = c * x - s * y
+    xy[:, 1] = s * x + c * y
+    pose[:, :2] = xy + 0.5
+
+
+# Fixed rack anchor used during rack-normalized data generation: the rack sits
+# axis-aligned in the image (camera is mounted to the rack), which matches the
+# HSV minAreaRect the pipeline extracts at inference.
+_RACK_RECT = ((0.5, 0.5), (0.8, 0.4), 0.0)
+
+
+def _normalize_sequence(seq: np.ndarray, normalizer: RackFrameNormalizer,
+                        rack_rect) -> np.ndarray:
+    """Rack-normalize every frame of a (T, 132) sequence. Resets state first."""
+    normalizer.reset()  # each sequence = new session: re-latch polarity
+    out = np.stack(
+        [normalizer.normalize(frame, rack_rect=rack_rect) for frame in seq],
+        axis=0,
+    )
+    return out.astype(np.float32)
+
+
 def generate_sequence(
     step_id: int,
     n_frames: int = 60,
     rng: Optional[np.random.Generator] = None,
     orientation: int = 0,
     drift: bool = True,
+    body_roll_deg: Optional[float] = None,
 ) -> np.ndarray:
-    """Return (n_frames, 132) pose features for one trial of a step."""
+    """Return (n_frames, 132) pose features for one trial of a step.
+
+    orientation: discrete 90° scene rotation (legacy, image-frame augmentation).
+    body_roll_deg: continuous body roll relative to the rack — used with
+        rack_normalize=True so the LSTM sees all microgravity attitudes.
+    """
     if rng is None:
         rng = np.random.default_rng()
     if step_id not in _STEP_WAYPOINTS:
@@ -237,12 +278,18 @@ def generate_sequence(
             pose[:, 0] += 0.015 * np.sin(2 * np.pi * t + step_id)
             pose[:, 1] += 0.010 * np.cos(2 * np.pi * t * 0.7 + step_id)
 
-        _rotate_xy(pose, orientation)
+        if body_roll_deg is not None:
+            _rotate_xy_deg(pose, body_roll_deg)
+        else:
+            _rotate_xy(pose, orientation)
 
         # Landmark noise + visibility
         pose[:, :3] += rng.normal(0.0, 0.006, size=pose[:, :3].shape).astype(np.float32)
         pose[:, 3] = np.clip(pose[:, 3] + rng.normal(0.0, 0.03, size=NUM_LANDMARKS), 0.4, 1.0)
-        pose[:, :2] = np.clip(pose[:, :2], 0.02, 0.98)
+        # Clipping after a rigid roll shears the skeleton and breaks rack-frame
+        # equivariance. The renderer already clamps at draw time.
+        if body_roll_deg is None:
+            pose[:, :2] = np.clip(pose[:, :2], 0.02, 0.98)
         frames[i] = pose
 
     return frames.reshape(n_frames, FEATURE_DIM)
@@ -270,15 +317,15 @@ def generate_dataset(
     seed: int = 7,
     include_orientations: bool = True,
     steps: Optional[list] = None,
+    rack_normalize: bool = False,
 ) -> Dict:
     """Generate train-ready X_sequences.npy / y_labels.npy and return metadata.
 
-    Also writes groups.npy — one source-trial id per window, aligned with
-    X/y — so train_lstm.py can split by trial instead of by window. Adjacent
-    windows (stride=15, window=30 → 50% overlap) come from the same trial
-    and share its per-trial identity jitter (body_shift/scale/z_bias, see
-    generate_sequence); splitting at the window level let near-duplicate
-    windows land on both sides of train/val, inflating the reported val acc.
+    rack_normalize: re-express every frame in the payload-rack reference frame
+    (RACK_FRAME_NORMALIZE=True at inference). Body roll is sampled CONTINUOUSLY
+    over (-180, 180] so the LSTM learns roll-invariant step dynamics — discrete
+    90° scene rotations are superseded in this mode. ~10% of sequences drop the
+    rack rect to also cover the torso-fallback path when the box is occluded.
     """
     rng = np.random.default_rng(seed)
     out = Path(output_dir)
@@ -286,56 +333,70 @@ def generate_dataset(
     if steps is None:
         steps = list(range(1, 9))
 
-    orientations = (0, 1, 2, 3) if include_orientations else (0,)
-    all_x, all_y, all_groups = [], [], []
+    normalizer = RackFrameNormalizer() if rack_normalize else None
+    all_x, all_y = [], []
     per_step = {}
-    trial_id = 0
 
     for step_id in steps:
         step_windows = 0
-        n_ori = len(orientations)
-        per_ori = max(1, n_sequences_per_step // n_ori)
-        for ori in orientations:
-            for _ in range(per_ori):
+        if rack_normalize:
+            for _ in range(n_sequences_per_step):
+                roll = float(rng.uniform(-180.0, 180.0))
                 seq = generate_sequence(
-                    step_id, n_frames=frames_per_seq, rng=rng, orientation=ori, drift=True
+                    step_id, n_frames=frames_per_seq, rng=rng,
+                    body_roll_deg=roll, drift=True,
                 )
+                rect = _RACK_RECT if rng.random() > 0.1 else None
+                seq = _normalize_sequence(seq, normalizer, rect)
                 xw, yw = sequences_to_windows(seq, step_id, window, stride)
                 if len(xw) == 0:
                     continue
                 all_x.append(xw)
                 all_y.append(yw)
-                all_groups.append(np.full(len(xw), trial_id, dtype=np.int64))
                 step_windows += len(xw)
-                trial_id += 1
+        else:
+            orientations = (0, 1, 2, 3) if include_orientations else (0,)
+            n_ori = len(orientations)
+            per_ori = max(1, n_sequences_per_step // n_ori)
+            for ori in orientations:
+                for _ in range(per_ori):
+                    seq = generate_sequence(
+                        step_id, n_frames=frames_per_seq, rng=rng, orientation=ori, drift=True
+                    )
+                    xw, yw = sequences_to_windows(seq, step_id, window, stride)
+                    if len(xw) == 0:
+                        continue
+                    all_x.append(xw)
+                    all_y.append(yw)
+                    step_windows += len(xw)
         per_step[int(step_id)] = int(step_windows)
         logger.info("Step %d: %d windows", step_id, step_windows)
 
     X = np.concatenate(all_x, axis=0)
     y = np.concatenate(all_y, axis=0)
-    groups = np.concatenate(all_groups, axis=0)
-    # Shuffle (keep groups aligned with X/y)
+    # Shuffle
     idx = rng.permutation(len(X))
-    X, y, groups = X[idx], y[idx], groups[idx]
+    X, y = X[idx], y[idx]
 
     np.save(str(out / "X_sequences.npy"), X)
     np.save(str(out / "y_labels.npy"), y)
-    np.save(str(out / "groups.npy"), groups)
     meta = {
         "total_windows": int(len(X)),
-        "n_source_trials": int(trial_id),
         "feature_dim": int(X.shape[-1]),
         "window": int(window),
         "source": "synthetic_pose",
         "seed": int(seed),
+        "rack_normalized": bool(rack_normalize),
         "steps": [{"step_id": k, "windows": v} for k, v in per_step.items()],
     }
     (out / "metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    logger.info("Wrote %s  X=%s y=%s groups=%s", out, X.shape, y.shape, groups.shape)
+    logger.info("Wrote %s  X=%s y=%s", out, X.shape, y.shape)
     return meta
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    generate_dataset("dataset/skeleton_sequences", n_sequences_per_step=48)
-    generate_dataset("dataset/skeleton_sequences_test", n_sequences_per_step=16, seed=99)
+    # Rack-normalized by default: matches RACK_FRAME_NORMALIZE=True at inference.
+    generate_dataset("dataset/skeleton_sequences", n_sequences_per_step=48, rack_normalize=True)
+    generate_dataset("dataset/skeleton_sequences_test", n_sequences_per_step=16, seed=99,
+                     rack_normalize=True)

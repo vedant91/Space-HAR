@@ -1,0 +1,1314 @@
+<title>Orientation-Agnostic HMR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #EDF0F2;
+    --surface:     #FFFFFF;
+    --surface-alt: #E3E9EC;
+    --ink:         #12191D;
+    --ink-soft:    #55636B;
+    --ink-faint:   #8A959B;
+    --rule:        #CFD8DE;
+    --rule-strong: #A9B6BE;
+    --accent:      #1E6F8C;
+    --accent-soft: #D7E6EC;
+    --bad:         #C2410C;
+    --bad-soft:    #F7E3D8;
+    --ok:          #15706B;
+    --ok-soft:     #D8EAE7;
+
+    --display: 'Archivo', system-ui, sans-serif;
+    --body:    'Source Serif 4', Georgia, serif;
+    --mono:    'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #101619;
+      --surface:     #161E22;
+      --surface-alt: #1D272C;
+      --ink:         #E4EAED;
+      --ink-soft:    #9DAAB2;
+      --ink-faint:   #6B7880;
+      --rule:        #2A363C;
+      --rule-strong: #3D4B52;
+      --accent:      #5FB2CF;
+      --accent-soft: #17323D;
+      --bad:         #E8864F;
+      --bad-soft:    #3A241A;
+      --ok:          #4FB3AB;
+      --ok-soft:     #14302E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #101619;
+    --surface:     #161E22;
+    --surface-alt: #1D272C;
+    --ink:         #E4EAED;
+    --ink-soft:    #9DAAB2;
+    --ink-faint:   #6B7880;
+    --rule:        #2A363C;
+    --rule-strong: #3D4B52;
+    --accent:      #5FB2CF;
+    --accent-soft: #17323D;
+    --bad:         #E8864F;
+    --bad-soft:    #3A241A;
+    --ok:          #4FB3AB;
+    --ok-soft:     #14302E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding-block: 56px 40px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 6vw, 3.6rem);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+  .standfirst {
+    font-size: clamp(1.02rem, 2.4vw, 1.2rem);
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin-top: 28px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- quote of the requirement ---------- */
+  .requirement {
+    margin: 40px 0 0;
+    padding: 24px 26px;
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+  }
+  .requirement p { margin: 0; font-size: 1.05rem; }
+  .requirement .src {
+    display: block;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- sections ---------- */
+  section { padding-block: 58px 0; }
+
+  .sec-head {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    gap: 0 18px;
+    align-items: start;
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-bottom: 26px;
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    padding-top: 9px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sec-head h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1.45rem, 3.6vw, 2.05rem);
+    line-height: 1.12;
+    letter-spacing: -0.018em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sec-head .dek {
+    grid-column: 2;
+    margin: 10px 0 0;
+    color: var(--ink-soft);
+    max-width: 60ch;
+  }
+
+  .body-col { max-width: 68ch; margin-left: 76px; }
+  @media (max-width: 720px) {
+    .sec-head { grid-template-columns: 34px 1fr; gap: 0 12px; }
+    .sec-head .dek { grid-column: 2; }
+    .body-col { margin-left: 0; }
+  }
+
+  p { margin: 0 0 18px; }
+  .body-col > :last-child { margin-bottom: 0; }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.08rem;
+    letter-spacing: -0.004em;
+    margin: 34px 0 12px;
+  }
+  h3:first-child { margin-top: 0; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--surface-alt);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  a { color: var(--accent); }
+
+  .lede { font-size: 1.1rem; color: var(--ink); }
+
+  /* ---------- callouts ---------- */
+  .note {
+    margin: 26px 0;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+  }
+  .note.warn { border-left: 3px solid var(--bad); }
+  .note.good { border-left: 3px solid var(--ok); }
+  .note .tag {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 9px;
+    color: var(--ink-faint);
+  }
+  .note.warn .tag { color: var(--bad); }
+  .note.good .tag { color: var(--ok); }
+  .note p { margin: 0; font-size: 0.97rem; }
+  .note p + p { margin-top: 12px; }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 34px 0;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 22px 20px 16px;
+  }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .dgm text { font-family: var(--mono); font-size: 11px; fill: var(--ink-soft); }
+  .dgm .t-hi { fill: var(--ink); font-weight: 600; }
+  .dgm .t-bad { fill: var(--bad); font-weight: 600; }
+  .dgm .t-ok  { fill: var(--ok); font-weight: 600; }
+  .dgm .t-acc { fill: var(--accent); font-weight: 600; }
+  .dgm .s-rule { stroke: var(--rule-strong); fill: none; stroke-width: 1.2; }
+  .dgm .s-ink  { stroke: var(--ink); fill: none; stroke-width: 1.6; }
+  .dgm .s-bad  { stroke: var(--bad); fill: none; stroke-width: 1.8; }
+  .dgm .s-ok   { stroke: var(--ok); fill: none; stroke-width: 1.8; }
+  .dgm .s-acc  { stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .dgm .f-surf { fill: var(--surface-alt); stroke: var(--rule-strong); stroke-width: 1; }
+  .dgm .f-bad  { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.2; }
+  .dgm .f-ok   { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.2; }
+  .dgm .f-acc  { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+  .dgm .dash   { stroke-dasharray: 4 3; }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; margin: 28px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    min-width: 440px;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 14px 9px 0;
+  }
+  td {
+    padding: 10px 14px 10px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+  td.num { text-align: right; padding-right: 20px; }
+  .v-bad { color: var(--bad); font-weight: 600; }
+  .v-ok  { color: var(--ok);  font-weight: 600; }
+
+  /* ---------- math block ---------- */
+  .math {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.85;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 18px 20px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .math .cmt { color: var(--ink-faint); }
+  .math .hl { color: var(--accent); font-weight: 600; }
+
+  /* ---------- feature vector breakdown ---------- */
+  .fv { margin: 28px 0; border: 1px solid var(--rule); background: var(--surface); }
+  .fv-row {
+    display: grid;
+    grid-template-columns: 52px 1fr 88px;
+    gap: 14px;
+    align-items: baseline;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.93rem;
+  }
+  .fv-row:last-child { border-bottom: 0; }
+  .fv-row.total { background: var(--surface-alt); font-weight: 600; }
+  .fv-dim {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .fv-src { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+  .fv-row.key { background: var(--accent-soft); }
+  .fv-row.key .fv-what { font-weight: 600; }
+  @media (max-width: 560px) {
+    .fv-row { grid-template-columns: 46px 1fr; }
+    .fv-src { grid-column: 2; text-align: left; margin-top: 2px; }
+  }
+
+  /* ---------- build list ---------- */
+  .build { margin: 26px 0; display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .build-item { background: var(--surface); padding: 16px 18px; }
+  .build-item .path {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+    word-break: break-all;
+  }
+  .build-item p { margin: 0; font-size: 0.93rem; color: var(--ink-soft); }
+  .build-item .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    margin-left: 8px;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-faint);
+    vertical-align: 2px;
+  }
+  .build-item .badge.new { border-color: var(--ok); color: var(--ok); }
+  .build-item .badge.mod { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- phases ---------- */
+  .phase {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    gap: 20px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .phase:last-of-type { border-bottom: 0; }
+  .phase-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-top: 3px;
+  }
+  .phase h4 {
+    font-family: var(--display);
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .phase p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-soft); }
+  .phase .cost {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+  .gate {
+    margin: 4px 0 0;
+    padding: 12px 16px;
+    background: var(--accent-soft);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .gate b { color: var(--accent); }
+  @media (max-width: 560px) {
+    .phase { grid-template-columns: 1fr; gap: 8px; }
+  }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 26px;
+    border-top: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    line-height: 1.8;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">ISRO BAS · Human Activity Recognition · Optional Challenge</p>
+    <h1>Tracking a body that has no&nbsp;up</h1>
+    <p class="standfirst">
+      Why standard pose models collapse in microgravity, why the fix is a choice
+      of rotation representation before it is a choice of model, and the
+      end-to-end architecture for orientation-agnostic 3D Human Mesh Recovery
+      measured against the payload rack rather than the floor.
+    </p>
+    <div class="meta-row">
+      <span><b>Repo</b> sih-har-isro</span>
+      <span><b>Branch</b> main</span>
+      <span><b>Status</b> HMR stubbed, disabled</span>
+      <span><b>Chance floor</b> 0.125</span>
+    </div>
+  </header>
+
+  <div class="requirement">
+    <p>
+      “Another challenge is that standard 2D or ground-based 3D posture models
+      fail because astronauts do not have a fixed ‘up’ or ‘down’ orientation.
+      The AI model should use orientation-agnostic 3D Human Mesh Recovery (HMR)
+      to track the astronaut’s body relative to the payload rack, not the floor.”
+    </p>
+    <span class="src">Problem statement — optional challenge</span>
+  </div>
+
+  <!-- ===================== 01 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">01</div>
+      <h2>The requirement contains three claims, not one</h2>
+      <p class="dek">
+        They have different answers, and conflating them is why this challenge
+        usually gets handled badly.
+      </p>
+    </div>
+    <div class="body-col">
+      <p class="lede">
+        Read closely and the statement asserts a <b>failure</b>, demands a
+        <b>reference frame</b>, and prescribes a <b>method</b>. Only the first
+        two are requirements. The third is a suggested means.
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th style="width:42px">#</th><th>Claim</th><th>Kind</th><th>Our status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>2D and ground-based 3D pose models fail without a fixed up</td>
+              <td>Assertion</td>
+              <td class="v-ok">Confirmed, measured</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Track the body relative to the payload rack, not the floor</td>
+              <td>Requirement</td>
+              <td class="v-ok">Done, in 2D</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Use orientation-agnostic 3D HMR to do it</td>
+              <td>Prescribed method</td>
+              <td class="v-bad">Stubbed, disabled</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Claim 1 we tested rather than assumed. Claim 2 is satisfied today by a
+        2D solution. Claim 3 is the gap, and this document is the architecture
+        and plan for closing it — including an honest account of what it buys
+        and what it does not.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 02 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">02</div>
+      <h2>What actually fails, measured</h2>
+      <p class="dek">
+        The failure mode is worse than degraded accuracy. The detector stops
+        returning anything at all.
+      </p>
+    </div>
+    <div class="body-col">
+      <p>
+        We rendered the same protocol at a range of crew roll angles and counted
+        how often MediaPipe returned a pose at all. This is detection rate, not
+        joint accuracy — the question is whether the system sees a person.
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Crew roll</th>
+              <th class="num">MediaPipe alone</th>
+              <th class="num">With upright_pose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>0°</td><td class="num">19/20 &nbsp; 95%</td><td class="num">19/20 &nbsp; 95%</td></tr>
+            <tr><td>90°</td><td class="num v-bad">7/20 &nbsp; 35%</td><td class="num v-ok">20/20 &nbsp; 100%</td></tr>
+            <tr><td>135°</td><td class="num v-bad">5/20 &nbsp; 25%</td><td class="num v-ok">20/20 &nbsp; 100%</td></tr>
+            <tr><td>180°</td><td class="num v-bad">12/20 &nbsp; 60%</td><td class="num v-ok">19/20 &nbsp; 95%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">Why post-processing cannot save you</span>
+        <p>
+          At 135° of roll the pose estimator returns <b>nothing</b> on three
+          quarters of frames. There are no landmarks to normalise, smooth,
+          re-project or reason about. Any architecture that assumes it will
+          receive noisy-but-present landmarks is solving the wrong problem.
+        </p>
+      </div>
+
+      <h3>Two distinct failures hide in one sentence</h3>
+      <p>
+        <b>Failure A — the detector's prior.</b> Pose models are trained on
+        photographs of people who are standing, sitting or lying on a planet.
+        The network encodes “heads are near the top” as a prior. Rotate the
+        person and the prior fights the evidence.
+      </p>
+      <p>
+        <b>Failure B — the reference frame.</b> Even with perfect landmarks,
+        “hand 1.2 m above the floor” is meaningless when there is no floor. The
+        only stable reference in the module is the equipment itself.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== 03 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">03</div>
+      <h2>What we already solved, and its exact ceiling</h2>
+      <p class="dek">
+        Both failures have shipped fixes. One of them only covers half the
+        rotation space, and that half is the part nobody has tested.
+      </p>
+    </div>
+    <div class="body-col">
+      <p>
+        <b>Failure A is answered by <code>pipeline/upright_pose.py</code>.</b>
+        Rather than asking the pose model to cope with an unusual orientation,
+        we remove the orientation. The payload rack's own roll is read from the
+        HSV detector's minimum-area rectangle, the entire frame is rotated until
+        the rack is level, MediaPipe runs on the straightened image, and the
+        returned landmarks are rotated back into original image coordinates.
+      </p>
+      <p>
+        <b>Failure B is answered by <code>pipeline/rack_frame.py</code>.</b>
+        Landmarks are re-expressed in the rack's reference frame, so the system
+        reasons about hand-to-container and body-to-rack instead of
+        head-to-sky and feet-to-floor. That is requirement 2, satisfied.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="dgm" viewBox="0 0 760 240" role="img" aria-label="Rotations split into in-plane roll, which image rotation cancels, and out-of-plane pitch and yaw, which it cannot.">
+        <!-- left: roll -->
+        <text x="10" y="18" class="t-hi">IN-PLANE — roll about the camera axis</text>
+        <rect x="10" y="30" width="150" height="112" class="f-surf"/>
+        <g transform="translate(85,86) rotate(35)">
+          <circle cx="0" cy="-26" r="9" class="s-ink"/>
+          <line x1="0" y1="-17" x2="0" y2="14" class="s-ink"/>
+          <line x1="-20" y1="-4" x2="20" y2="-4" class="s-ink"/>
+          <line x1="0" y1="14" x2="-13" y2="38" class="s-ink"/>
+          <line x1="0" y1="14" x2="13" y2="38" class="s-ink"/>
+        </g>
+        <text x="85" y="160" text-anchor="middle">person rolled 35°</text>
+
+        <path d="M173 86 L207 86" class="s-acc"/>
+        <path d="M200 81 L207 86 L200 91" class="s-acc"/>
+        <text x="190" y="72" text-anchor="middle" class="t-acc">rotate</text>
+        <text x="190" y="108" text-anchor="middle" class="t-acc">image</text>
+
+        <rect x="220" y="30" width="150" height="112" class="f-ok"/>
+        <g transform="translate(295,86)">
+          <circle cx="0" cy="-26" r="9" class="s-ink"/>
+          <line x1="0" y1="-17" x2="0" y2="14" class="s-ink"/>
+          <line x1="-20" y1="-4" x2="20" y2="-4" class="s-ink"/>
+          <line x1="0" y1="14" x2="-13" y2="38" class="s-ink"/>
+          <line x1="0" y1="14" x2="13" y2="38" class="s-ink"/>
+        </g>
+        <text x="295" y="160" text-anchor="middle" class="t-ok">detector is happy — 20/20</text>
+
+        <!-- divider -->
+        <line x1="400" y1="20" x2="400" y2="200" class="s-rule dash"/>
+
+        <!-- right: pitch/yaw -->
+        <text x="420" y="18" class="t-hi">OUT-OF-PLANE — pitch and yaw</text>
+        <rect x="420" y="30" width="150" height="112" class="f-surf"/>
+        <g transform="translate(495,90)">
+          <ellipse cx="0" cy="-20" rx="11" ry="7" class="s-ink"/>
+          <line x1="0" y1="-13" x2="0" y2="10" class="s-ink"/>
+          <line x1="-14" y1="-2" x2="14" y2="-6" class="s-ink"/>
+          <line x1="0" y1="10" x2="-8" y2="30" class="s-ink"/>
+          <line x1="0" y1="10" x2="9" y2="28" class="s-ink"/>
+        </g>
+        <text x="495" y="160" text-anchor="middle">pitched 60° toward camera</text>
+
+        <path d="M583 86 L617 86" class="s-bad"/>
+        <path d="M610 81 L617 86 L610 91" class="s-bad"/>
+        <text x="600" y="72" text-anchor="middle" class="t-bad">rotate</text>
+        <text x="600" y="108" text-anchor="middle" class="t-bad">image</text>
+
+        <rect x="630" y="30" width="118" height="112" class="f-bad"/>
+        <g transform="translate(689,90)">
+          <ellipse cx="0" cy="-20" rx="11" ry="7" class="s-ink"/>
+          <line x1="0" y1="-13" x2="0" y2="10" class="s-ink"/>
+          <line x1="-14" y1="-2" x2="14" y2="-6" class="s-ink"/>
+          <line x1="0" y1="10" x2="-8" y2="30" class="s-ink"/>
+          <line x1="0" y1="10" x2="9" y2="28" class="s-ink"/>
+        </g>
+        <text x="689" y="160" text-anchor="middle" class="t-bad">identical. still foreshortened</text>
+
+        <text x="10" y="196" class="t-hi">Foreshortening is a projection effect. No rotation of the image plane can undo it.</text>
+        <text x="10" y="216">Every take in the current dataset varies roll only, so the right-hand case has never been tested.</text>
+      </svg>
+      <figcaption>
+        <b>Figure 1.</b> The <code>upright_pose</code> trick cancels rotation
+        <i>in the image plane</i>. Pitch and yaw change which parts of the body
+        the camera can see at all, and no in-plane rotation recovers that
+        information.
+      </figcaption>
+    </figure>
+
+    <div class="body-col">
+      <div class="note warn">
+        <span class="tag">The ceiling, stated plainly</span>
+        <p>
+          Our 2D solution is orientation-agnostic with respect to <b>roll</b>.
+          It is not orientation-agnostic with respect to <b>pitch and yaw</b>.
+          And because every rendered take varies roll only, we currently have
+          <b>no evidence either way</b> about how the system behaves on the
+          half of the rotation space it does not handle.
+        </p>
+        <p>
+          This is precisely the gap 3D HMR is supposed to fill, and it is why
+          the plan in section 07 starts by generating the missing data rather
+          than by installing a model.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 04 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">04</div>
+      <h2>Rotation representation decides this before the model does</h2>
+      <p class="dek">
+        An astronaut occupies the entire rotation space. Two of the three common
+        ways to write down a rotation break somewhere inside that space.
+      </p>
+    </div>
+    <div class="body-col">
+      <p class="lede">
+        A network that outputs or consumes body orientation has to encode a
+        rotation as numbers. That encoding is not a formatting detail. Get it
+        wrong and the network has to learn across a discontinuity that does not
+        exist in the physical world.
+      </p>
+
+      <h3>Euler angles: two separate defects</h3>
+      <p>
+        Three sequential rotations about three axes, for example
+        <code>R = Rz(γ) · Ry(β) · Rx(α)</code>. Compact and readable, and it
+        fails twice over.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="dgm" viewBox="0 0 760 270" role="img" aria-label="Gimbal lock diagram and the yaw wraparound discontinuity.">
+        <text x="10" y="16" class="t-hi">DEFECT 1 — gimbal lock at β = ±90°</text>
+
+        <!-- normal gimbal -->
+        <g transform="translate(110,110)">
+          <ellipse cx="0" cy="0" rx="72" ry="72" class="s-rule"/>
+          <ellipse cx="0" cy="0" rx="52" ry="52" class="s-acc"/>
+          <ellipse cx="0" cy="0" rx="32" ry="10" class="s-ink"/>
+          <circle cx="0" cy="0" r="6" class="f-surf"/>
+        </g>
+        <text x="110" y="205" text-anchor="middle">three independent axes</text>
+        <text x="110" y="222" text-anchor="middle" class="t-ok">3 degrees of freedom</text>
+
+        <text x="205" y="112" class="t-bad">β → 90°</text>
+        <path d="M200 120 L246 120" class="s-bad"/>
+        <path d="M239 115 L246 120 L239 125" class="s-bad"/>
+
+        <!-- locked gimbal -->
+        <g transform="translate(330,110)">
+          <ellipse cx="0" cy="0" rx="72" ry="72" class="s-rule"/>
+          <ellipse cx="0" cy="0" rx="52" ry="52" class="s-bad"/>
+          <ellipse cx="0" cy="0" rx="32" ry="32" class="s-bad"/>
+          <circle cx="0" cy="0" r="6" class="f-bad"/>
+        </g>
+        <text x="330" y="205" text-anchor="middle">two axes now coincide</text>
+        <text x="330" y="222" text-anchor="middle" class="t-bad">2 degrees of freedom — a rotation</text>
+        <text x="330" y="238" text-anchor="middle" class="t-bad">you can no longer express</text>
+
+        <line x1="420" y1="10" x2="420" y2="255" class="s-rule dash"/>
+
+        <text x="440" y="16" class="t-hi">DEFECT 2 — the wraparound cliff</text>
+        <!-- axes -->
+        <line x1="455" y1="180" x2="740" y2="180" class="s-rule"/>
+        <line x1="455" y1="50" x2="455" y2="180" class="s-rule"/>
+        <text x="448" y="56" text-anchor="end">+180°</text>
+        <text x="448" y="184" text-anchor="end">−180°</text>
+        <text x="596" y="205" text-anchor="middle">crew rotates smoothly through the rear</text>
+
+        <!-- the physical motion: smooth -->
+        <path d="M465 130 L560 72" class="s-ok"/>
+        <path d="M600 158 L720 108" class="s-ok"/>
+        <!-- the cliff -->
+        <line x1="580" y1="60" x2="580" y2="172" class="s-bad"/>
+        <path d="M575 66 L580 58 L585 66" class="s-bad"/>
+        <path d="M575 166 L580 174 L585 166" class="s-bad"/>
+        <text x="590" y="112" class="t-bad">359° jump</text>
+        <text x="590" y="128" class="t-bad">for 2° of motion</text>
+
+        <text x="440" y="240">The body moved two degrees. The number the network</text>
+        <text x="440" y="256">must predict moved almost the entire range.</text>
+      </svg>
+      <figcaption>
+        <b>Figure 2.</b> Gimbal lock costs a degree of freedom at a specific
+        attitude. The wraparound cliff is worse for learning: a continuous
+        physical motion produces a discontinuous target, so the loss surface
+        contains a cliff with no physical meaning.
+      </figcaption>
+    </figure>
+
+    <div class="body-col">
+      <p>
+        A crew member drifting in a module passes through these configurations
+        routinely. On Earth you can often arrange your axes so the singularity
+        sits somewhere nobody goes. In microgravity there is no such
+        somewhere.
+      </p>
+
+      <h3>Quaternions: no lock, but an ambiguous target</h3>
+      <p>
+        Four numbers on the unit sphere. Gimbal lock disappears. A different
+        problem replaces it: <code>q</code> and <code>−q</code> represent the
+        <b>same physical rotation</b>. Every orientation has two equally valid
+        encodings that look nothing alike numerically.
+      </p>
+      <div class="math">
+q  = ( 0.71,  0.00,  0.71,  0.00 )   <span class="cmt">← same rotation</span>
+−q = (−0.71, −0.00, −0.71, −0.00 )   <span class="cmt">← same rotation</span>
+
+<span class="cmt">A mean-squared-error loss sees these as maximally different.
+Two training frames one millisecond apart can land on opposite
+signs, and the network is punished for being right.</span>
+      </div>
+      <p>
+        You can patch this by canonicalising the sign, but the patch has its own
+        discontinuity at the boundary where the canonical choice flips.
+      </p>
+
+      <h3>The 6D continuous representation: what modern pose networks use</h3>
+      <p>
+        Take the 3×3 rotation matrix and keep only its <b>first two columns</b>.
+        Six numbers, no constraints, no ambiguity. The third column is redundant
+        because it is fully determined by the first two — it is their cross
+        product.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="dgm" viewBox="0 0 760 250" role="img" aria-label="Recovering an orthonormal rotation matrix from six numbers using Gram-Schmidt.">
+        <text x="10" y="16" class="t-hi">6 NUMBERS IN — arbitrary, unconstrained</text>
+
+        <rect x="10" y="30" width="180" height="76" class="f-surf"/>
+        <text x="26" y="58">a₁ = ( 0.94, 0.21, −0.03 )</text>
+        <text x="26" y="84">a₂ = ( −0.18, 0.88, 0.44 )</text>
+        <text x="100" y="124" text-anchor="middle">network output</text>
+
+        <path d="M200 68 L238 68" class="s-acc"/>
+        <path d="M231 63 L238 68 L231 73" class="s-acc"/>
+        <text x="219" y="54" text-anchor="middle" class="t-acc">Gram</text>
+        <text x="219" y="90" text-anchor="middle" class="t-acc">Schmidt</text>
+
+        <rect x="250" y="30" width="245" height="76" class="f-acc"/>
+        <text x="264" y="52">b₁ = normalise(a₁)</text>
+        <text x="264" y="72">b₂ = normalise(a₂ − (b₁·a₂) b₁)</text>
+        <text x="264" y="92">b₃ = b₁ × b₂</text>
+        <text x="372" y="124" text-anchor="middle">orthonormal by construction</text>
+
+        <path d="M505 68 L543 68" class="s-acc"/>
+        <path d="M536 63 L543 68 L536 73" class="s-acc"/>
+
+        <rect x="555" y="30" width="195" height="76" class="f-ok"/>
+        <text x="572" y="58">R = [ b₁ b₂ b₃ ]</text>
+        <text x="572" y="84" class="t-ok">a valid rotation, always</text>
+        <text x="652" y="124" text-anchor="middle">no normalisation loss needed</text>
+
+        <line x1="10" y1="150" x2="750" y2="150" class="s-rule dash"/>
+
+        <text x="10" y="176" class="t-hi">WHY IT MATTERS FOR LEARNING</text>
+        <text x="10" y="200">Every small change in orientation produces a small change in the six numbers.</text>
+        <text x="10" y="220">No cliffs, no sign flips, no lost degrees of freedom — anywhere in the rotation space.</text>
+        <text x="10" y="240" class="t-ok">That property is the whole reason it is the standard output of modern HMR networks.</text>
+      </svg>
+      <figcaption>
+        <b>Figure 3.</b> Gram-Schmidt turns any six numbers into a valid
+        rotation. The map is continuous and surjective onto the rotation group,
+        which is exactly the property Euler angles and quaternions each lack in
+        a different way.
+      </figcaption>
+    </figure>
+
+    <div class="body-col">
+      <div class="note good">
+        <span class="tag">Decision</span>
+        <p>
+          Every rotation that enters or leaves a network in this project is
+          carried as <b>6D continuous</b>. Euler angles are permitted only in
+          human-facing output — a HUD readout or a log line — where a person
+          reads the number and no gradient flows through it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 05 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">05</div>
+      <h2>The architecture</h2>
+      <p class="dek">
+        How a raw frame becomes a rack-relative 3D body, and what the classifier
+        actually receives.
+      </p>
+    </div>
+    <div class="body-col">
+      <p class="lede">
+        HMR does not measure depth. A single camera physically cannot. What it
+        does is fit a parametric human body model — SMPL, roughly ten shape
+        numbers and twenty-four joint rotations — to the image, and report the
+        body whose projection best explains those pixels. The output is a
+        plausible 3D body, not a measured one.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="dgm" viewBox="0 0 760 430" role="img" aria-label="End-to-end architecture from camera frame through HMR and rack-relative composition to the classifier.">
+        <!-- camera -->
+        <rect x="290" y="10" width="180" height="34" class="f-surf"/>
+        <text x="380" y="32" text-anchor="middle" class="t-hi">FIXED PAYLOAD CAMERA</text>
+        <line x1="380" y1="44" x2="380" y2="64" class="s-rule"/>
+
+        <!-- split -->
+        <line x1="150" y1="64" x2="610" y2="64" class="s-rule"/>
+        <line x1="150" y1="64" x2="150" y2="84" class="s-rule"/>
+        <line x1="380" y1="64" x2="380" y2="84" class="s-rule"/>
+        <line x1="610" y1="64" x2="610" y2="84" class="s-rule"/>
+
+        <!-- three branches -->
+        <rect x="60" y="84" width="180" height="58" class="f-surf"/>
+        <text x="150" y="106" text-anchor="middle" class="t-hi">HSV DETECTOR</text>
+        <text x="150" y="126" text-anchor="middle">boxes, 2D centroids</text>
+
+        <rect x="290" y="84" width="180" height="58" class="f-acc"/>
+        <text x="380" y="106" text-anchor="middle" class="t-acc">HMR NETWORK</text>
+        <text x="380" y="126" text-anchor="middle">SMPL fit to pixels</text>
+
+        <rect x="520" y="84" width="180" height="58" class="f-ok"/>
+        <text x="610" y="106" text-anchor="middle" class="t-ok">RACK CALIBRATION</text>
+        <text x="610" y="126" text-anchor="middle">measured once at install</text>
+
+        <!-- HMR outputs -->
+        <line x1="380" y1="142" x2="380" y2="162" class="s-rule"/>
+        <line x1="300" y1="162" x2="460" y2="162" class="s-rule"/>
+        <line x1="300" y1="162" x2="300" y2="182" class="s-rule"/>
+        <line x1="460" y1="162" x2="460" y2="182" class="s-rule"/>
+
+        <rect x="222" y="182" width="156" height="52" class="f-surf"/>
+        <text x="300" y="203" text-anchor="middle">24 joints × 3</text>
+        <text x="300" y="221" text-anchor="middle">root-relative metres</text>
+
+        <rect x="392" y="182" width="156" height="52" class="f-acc"/>
+        <text x="470" y="203" text-anchor="middle" class="t-acc">R_body</text>
+        <text x="470" y="221" text-anchor="middle">global orientation</text>
+
+        <!-- compose -->
+        <line x1="470" y1="234" x2="470" y2="256" class="s-acc"/>
+        <line x1="610" y1="142" x2="610" y2="256" class="s-ok"/>
+        <line x1="470" y1="256" x2="610" y2="256" class="s-ok"/>
+
+        <rect x="360" y="256" width="300" height="46" class="f-acc"/>
+        <text x="510" y="277" text-anchor="middle" class="t-acc">R_rel = R_rackᵀ · R_body   →   6D</text>
+        <text x="510" y="295" text-anchor="middle">body orientation RELATIVE TO THE RACK</text>
+
+        <!-- converge -->
+        <line x1="150" y1="142" x2="150" y2="330" class="s-rule"/>
+        <line x1="300" y1="234" x2="300" y2="330" class="s-rule"/>
+        <line x1="510" y1="302" x2="510" y2="330" class="s-acc"/>
+        <line x1="150" y1="330" x2="510" y2="330" class="s-rule"/>
+        <line x1="330" y1="330" x2="330" y2="350" class="s-rule"/>
+
+        <rect x="200" y="350" width="360" height="40" class="f-surf"/>
+        <text x="380" y="375" text-anchor="middle" class="t-hi">FEATURE VECTOR — 101 numbers per frame</text>
+
+        <line x1="380" y1="390" x2="380" y2="404" class="s-rule"/>
+        <rect x="245" y="404" width="270" height="22" class="f-ok"/>
+        <text x="380" y="420" text-anchor="middle" class="t-ok">30-FRAME WINDOW → LSTM → STEP</text>
+      </svg>
+      <figcaption>
+        <b>Figure 4.</b> The camera and the rack are both bolted down, so the
+        rack's orientation in camera coordinates is a <b>constant</b>, measured
+        once at installation rather than estimated every frame. That turns the
+        problem statement's requirement into a single matrix multiply.
+      </figcaption>
+    </figure>
+
+    <div class="body-col">
+      <h3>The composition that satisfies the requirement</h3>
+      <div class="math">
+<span class="cmt">// HMR gives the body's orientation in camera coordinates</span>
+R_body   = rotation of the crew member, from the SMPL fit
+
+<span class="cmt">// the rack is fixed and the camera is fixed, so this is calibration</span>
+R_rack   = rotation of the payload rack, measured once at install
+
+<span class="cmt">// compose to get orientation with respect to the equipment</span>
+<span class="hl">R_rel    = R_rackᵀ · R_body</span>
+
+<span class="cmt">// carry it into the network as six continuous numbers</span>
+<span class="hl">rot6d    = first two columns of R_rel</span>
+      </div>
+      <p>
+        That is the literal content of “track the astronaut's body relative to
+        the payload rack, not the floor.” Today the network has to infer
+        orientation implicitly from landmark positions. Here it is handed over
+        explicitly, in a form with no discontinuities.
+      </p>
+
+      <h3>Objects are still 2D, and the rack solves it anyway</h3>
+      <p>
+        An honest limitation: HMR reconstructs the <i>body</i>. The red and
+        yellow boxes come from HSV in two dimensions, so “is the hand in front
+        of or behind the box” is not directly answerable. But the question that
+        actually determines the protocol step is different, and it is
+        answerable.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="dgm" viewBox="0 0 760 210" role="img" aria-label="Signed perpendicular distance from the 3D hand position to the known rack plane.">
+        <!-- rack plane -->
+        <path d="M120 40 L360 76 L360 186 L120 150 Z" class="f-surf"/>
+        <text x="240" y="130" text-anchor="middle" class="t-hi">PAYLOAD RACK PLANE</text>
+        <text x="240" y="148" text-anchor="middle">known geometry: point p₀ and normal n</text>
+
+        <!-- normal -->
+        <line x1="360" y1="128" x2="452" y2="108" class="s-ok"/>
+        <path d="M444 103 L452 108 L445 114" class="s-ok"/>
+        <text x="410" y="98" class="t-ok">n</text>
+
+        <!-- hand far -->
+        <circle cx="560" cy="64" r="9" class="f-acc"/>
+        <text x="580" y="60">hand, frame 1</text>
+        <line x1="560" y1="64" x2="392" y2="102" class="s-acc dash"/>
+        <text x="470" y="76" class="t-acc">d = +0.34 m</text>
+
+        <!-- hand near -->
+        <circle cx="452" cy="152" r="9" class="f-ok"/>
+        <text x="472" y="176">hand, frame 30</text>
+        <line x1="452" y1="152" x2="392" y2="166" class="s-ok dash"/>
+        <text x="392" y="196" class="t-ok">d = +0.02 m — contact</text>
+
+        <text x="10" y="24" class="t-hi">SIGNED PERPENDICULAR DISTANCE   d = n · (x_hand − p₀)</text>
+        <text x="560" y="128">a falling d across a window is</text>
+        <text x="560" y="144" class="t-ok">reach → grasp → place</text>
+      </svg>
+      <figcaption>
+        <b>Figure 5.</b> The signed distance from each hand to the rack plane is
+        the real grasp-and-place signal, and it needs no object depth at all.
+        The rack's geometry is exact because we modelled it in the digital twin.
+      </figcaption>
+    </figure>
+
+    <div class="body-col">
+      <h3>What the classifier receives</h3>
+      <p>
+        Do not reshape HMR output into MediaPipe's 132-slot format. That is what
+        the current adapter does, and it discards the single most valuable
+        output — global orientation — while leaving nine of thirty-three slots
+        empty. Build a vector designed around what HMR actually produces.
+      </p>
+    </div>
+
+    <div class="fv">
+      <div class="fv-row">
+        <span class="fv-dim">72</span>
+        <span class="fv-what">24 SMPL joints × 3, root-relative metres — body configuration</span>
+        <span class="fv-src">HMR</span>
+      </div>
+      <div class="fv-row key">
+        <span class="fv-dim">6</span>
+        <span class="fv-what">Body rotation relative to the rack, 6D continuous — the requirement, as a number</span>
+        <span class="fv-src">HMR × calib</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-dim">6</span>
+        <span class="fv-what">Angular velocity of that rotation, finite difference across the window</span>
+        <span class="fv-src">derived</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-dim">6</span>
+        <span class="fv-what">Both hands in rack coordinates, including signed distance to the rack plane</span>
+        <span class="fv-src">HMR × twin</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-dim">9</span>
+        <span class="fv-what">Three boxes × (centroid x, centroid y, visible) — absence encoded after normalisation</span>
+        <span class="fv-src">HSV</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-dim">2</span>
+        <span class="fv-what">Image-space distance from each projected hand to the nearest visible box</span>
+        <span class="fv-src">HMR × HSV</span>
+      </div>
+      <div class="fv-row total">
+        <span class="fv-dim">101</span>
+        <span class="fv-what">Per frame, stacked into a 30-frame window for the sequence model</span>
+        <span class="fv-src">—</span>
+      </div>
+    </div>
+
+    <div class="body-col">
+      <div class="note warn">
+        <span class="tag">The trap this design exists to avoid</span>
+        <p>
+          The current adapter emits the same 132 numbers as MediaPipe, which
+          means flipping <code>HMR_BACKEND</code> would feed root-relative
+          metres into slots a trained model learned as image coordinates.
+          Nothing would throw. Accuracy would simply fall, and the cause would
+          look like anything except a configuration flag.
+        </p>
+        <p>
+          A distinct feature layout with a distinct dimension makes that
+          mistake <b>impossible to make silently</b>: the model refuses to load
+          against the wrong feature source.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 06 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">06</div>
+      <h2>What we build</h2>
+      <p class="dek">
+        Concrete files. Two exist and change; the rest are new.
+      </p>
+    </div>
+
+    <div class="build">
+      <div class="build-item">
+        <span class="path">pipeline/rotation.py <span class="badge new">new</span></span>
+        <p>
+          The rotation vocabulary, in one place: matrix to 6D, 6D to matrix via
+          Gram-Schmidt, rack-relative composition, and the Euler conversion used
+          only for human-readable output. Everything else imports from here so
+          no second convention can appear.
+        </p>
+      </div>
+      <div class="build-item">
+        <span class="path">pipeline/rack_calibration.py <span class="badge new">new</span></span>
+        <p>
+          Measure and store the rack's pose in camera coordinates once, at
+          install. Loads a JSON calibration; refuses to run with a stale one
+          when the camera has moved. In training this comes free from the
+          digital twin, which knows exactly where the rack is.
+        </p>
+      </div>
+      <div class="build-item">
+        <span class="path">pipeline/hmr_backend.py <span class="badge mod">modify</span></span>
+        <p>
+          Stop impersonating MediaPipe. Return the SMPL joints, the global
+          rotation and the weak-perspective camera as a structured result
+          instead of flattening into 132 slots. Keep the existing graceful
+          fallback when no HMR package is installed.
+        </p>
+      </div>
+      <div class="build-item">
+        <span class="path">pipeline/features.py <span class="badge mod">modify</span></span>
+        <p>
+          Already planned as the single feature builder shared by training and
+          inference. Gains a second layout: the 101-dim HMR vector alongside the
+          existing 143-dim 2D vector, with the active layout recorded in the
+          checkpoint so a mismatch fails loudly at load.
+        </p>
+      </div>
+      <div class="build-item">
+        <span class="path">blender/render_dataset.py <span class="badge mod">modify</span></span>
+        <p>
+          Add pitch and yaw takes. Yaw is nearly free — <code>facing_deg</code>
+          is already plumbed through <code>build_scene.py</code> and simply
+          never set. Pitch needs the astronaut builder's hardcoded zero X
+          rotation opened up.
+        </p>
+      </div>
+      <div class="build-item">
+        <span class="path">tests/test_rotation.py <span class="badge new">new</span></span>
+        <p>
+          Round-trip property tests: matrix → 6D → matrix recovers the original
+          to numerical tolerance, across the full rotation space including the
+          attitudes where Euler and quaternions misbehave. Cheap to write,
+          and it is the foundation everything else stands on.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 07 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">07</div>
+      <h2>The plan, with gates</h2>
+      <p class="dek">
+        Each phase has to earn the next one. The first gate costs under an hour
+        and can cancel the remaining four phases.
+      </p>
+    </div>
+    <div class="body-col">
+      <p>
+        HMR is expensive: a heavy dependency, a model on a 6 GB card, latency in
+        the live loop, and a retraining cycle. It should be adopted because a
+        measurement demanded it, not because a document suggested it.
+      </p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 0</div>
+      <div>
+        <h4>Generate the missing half of the rotation space</h4>
+        <p>
+          Add pitch and yaw variation to the render plan. Yaw is one line —
+          <code>facing_deg</code> is plumbed end to end and never set. Pitch
+          needs a scene-API change where the X rotation is hardcoded to zero.
+          Tag them so they can be held out separately.
+        </p>
+        <p class="cost">human ~4 h · CC ~30 min · no additional GPU hours</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 1</div>
+      <div>
+        <h4>Measure whether the 2D stack actually breaks</h4>
+        <p>
+          Run the existing <code>upright_pose</code> and <code>rack_frame</code>
+          path over the new pitch and yaw takes. Report detection rate and
+          held-out step accuracy, exactly as the roll table in section 02.
+        </p>
+        <p class="cost">human ~2 h · CC ~20 min</p>
+        <div class="gate">
+          <b>GATE.</b> If 2D holds up at pitch and yaw, HMR is optional polish.
+          Ship the measured 2D solution, document the negative result, and stop
+          here. If 2D degrades, HMR has a measured job and the remaining phases
+          are justified work.
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 2</div>
+      <div>
+        <h4>Backend and contract</h4>
+        <p>
+          Install an HMR package, prove it runs offline on the RTX 3050, then
+          verify the SMPL joint mapping empirically rather than by reading the
+          table — this mapping has been wrong once already. Pin the coordinate
+          and visibility conventions in writing.
+        </p>
+        <p class="cost">human ~1 day · CC ~2 h · agents: hmr-env, hmr-contract</p>
+        <div class="gate">
+          <b>RISK.</b> SMPL models human body shape. The crew wears a pressure
+          suit with roughly 7 cm of padding, which already distorts MediaPipe by
+          101 px. An EVA suit is out of distribution for models trained on
+          ordinary photographs. Measure this before trusting anything downstream.
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 3</div>
+      <div>
+        <h4>Rotation module, calibration, and the 101-dim vector</h4>
+        <p>
+          Build <code>rotation.py</code> with its round-trip tests first, then
+          the rack calibration, then the feature layout. Add an HMR pose source
+          to the sequence builder so training and serving see the same features.
+          Retrain.
+        </p>
+        <p class="cost">human ~2 days · CC ~1.5 h · agent: hmr-training</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 4</div>
+      <div>
+        <h4>The comparison that decides it</h4>
+        <p>
+          HMR against 2D on identical splits, identical windows, including the
+          pitch and yaw takes. Latency and VRAM measured alongside, because a
+          model that wins on accuracy and loses the real-time budget has not
+          won.
+        </p>
+        <p class="cost">human ~1 day · CC ~1 h · agents: hmr-eval, hmr-perf</p>
+        <div class="gate">
+          <b>GATE.</b> HMR ships only if it beats 2D on the held-out number
+          <i>and</i> fits the latency budget. A negative result here is a
+          finding worth publishing, not a failure worth hiding.
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-id">PHASE 5</div>
+      <div>
+        <h4>Integration behind a flag</h4>
+        <p>
+          Wire it in with 2D as the permanent fallback. A mid-session HMR
+          failure degrades to 2D visibly and without a crash; a checkpoint
+          trained on one feature source refuses to load against the other; the
+          dashboard states which backend is live.
+        </p>
+        <p class="cost">human ~1 day · CC ~45 min · agent: hmr-integration</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 08 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="sec-num">08</div>
+      <h2>What we would say about this</h2>
+      <p class="dek">
+        The defensible position, whichever way the gates fall.
+      </p>
+    </div>
+    <div class="body-col">
+      <p>
+        The problem statement predicts that ground-referenced pose models fail
+        in microgravity. We tested the prediction rather than accepting it:
+        MediaPipe alone detects a crew member rolled 135° in five frames out of
+        twenty. We solved it by canonicalising the image using the payload
+        rack's own roll before pose estimation, taking detection to twenty out
+        of twenty, and by expressing every landmark in the rack's reference
+        frame rather than the world's.
+      </p>
+      <p>
+        3D HMR extends that to out-of-plane attitude, where image rotation
+        cannot help, and it carries body orientation relative to the rack as an
+        explicit continuous input rather than something the network must infer.
+        It is implemented behind a flag with the joint mapping verified, and it
+        ships if and only if it beats the 2D path on the same held-out takes
+        within the edge latency budget.
+      </p>
+      <div class="note good">
+        <span class="tag">Why this is the stronger answer</span>
+        <p>
+          An unmeasured HMR integration demonstrates that you read the problem
+          statement. A measured comparison, with a stated rotation
+          representation and a gate that can reject your own work, demonstrates
+          that you understood it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    sih-har-isro · docs/hmr-architecture.html<br>
+    Companion to docs/designs/step-classifier-generalisation.md and EXPLANATION.md<br>
+    Figures in section 02 are measured; figures in sections 05 and 07 are design and estimate.
+  </footer>
+
+</div>

@@ -373,35 +373,27 @@ def run(args) -> dict:
     frames, n_frames, fps, gt_pose, labels, title, warn = _frames_from(
         take, video, args.camera)
 
+    # An explicit --model is served with the contract it records (layout,
+    # sample rate, rack normalisation), so the pipeline builds exactly the
+    # inputs that checkpoint was trained on. Without --model the pipeline
+    # loads the promoted model and refuses to start if it does not match.
     pipe = HARPipeline(source=0, headless=True, enable_recording=False,
-                       enable_streaming=False, enable_voice=False)
+                       enable_streaming=False, enable_voice=False,
+                       lstm_path=args.model or None)
     _HSV_DRAW.fn = pipe.hsv_detector.draw
 
-    # The deployed config (complexity 0, downscale 2) is NOT the config the
-    # sequences were built under (tools/build_sequences.py: complexity 1,
-    # downscale 1). That is a train/serve skew, and it is worth being able to
-    # show either side of it rather than pretending it isn't there.
-    if args.pose_complexity is not None or args.pose_downscale is not None:
-        from pipeline.har_pipeline import OptimizedMPWrapper
-        from config.experiment_config import (MEDIAPIPE_MODEL_COMPLEXITY,
-                                              MEDIAPIPE_DOWNSCALE)
-        cx = MEDIAPIPE_MODEL_COMPLEXITY if args.pose_complexity is None else args.pose_complexity
-        ds = MEDIAPIPE_DOWNSCALE if args.pose_downscale is None else args.pose_downscale
-        pipe.mp_wrapper.close()
-        pipe.mp_wrapper = OptimizedMPWrapper(complexity=cx, min_det_conf=0.3,
-                                             min_trk_conf=0.3, downscale=ds)
+    # Pose settings are not overridable here any more: training, scoring and
+    # the live loop share one config value (config.MEDIAPIPE_MODEL_COMPLEXITY,
+    # POSE_INPUT_WIDTH), so there is no train/serve pose skew left to show.
 
-    # Swap in the requested checkpoint. HARPipeline picks models/lstm_classifier
-    # (ONNX) by default; that is the model logs/RESULTS.md measures at chance,
-    # so which one is running has to be a visible, chosen thing.
+    # Which model is running has to be a visible, chosen thing: the shipped one
+    # is the model logs/RESULTS.md measures at chance.
     model_label = "models/lstm_classifier.onnx (shipped)"
     if args.model:
-        from tools.evaluate_real import LSTMRunner
-        runner = LSTMRunner(args.model)
-        pipe.lstm_ort_sess = None
-        pipe.lstm_model = runner.model
-        pipe._lstm_label_map = runner.idx_to_label
-        model_label = f"{Path(args.model).name} (val {runner.train_val_acc:.2f})"
+        import torch
+        val = torch.load(args.model, map_location="cpu", weights_only=False).get("val_acc", 0.0)
+        model_label = f"{Path(args.model).name} (val {val:.2f})"
+    model_label += f"  |  {pipe.feature_layout}, {1000.0 * pipe.sample_every / 30:.0f} ms samples"
     if args.rack_normalize:
         pipe.rack_normalizer = RackFrameNormalizer()
         model_label += " +rack"
@@ -498,7 +490,8 @@ def run(args) -> dict:
             # No model in this path at all - the state machine is driven by the
             # renderer's own step ids. Watermarked; never presented as output.
             sm.feed_prediction(truth, 0.99)
-        elif truth and len(pipe.skeleton_buffer) >= SEQUENCE_WINDOW:
+        elif truth and res["sampled"] and pipe.skeleton_buffer.full:
+            # once per prediction (per sample), not once per camera frame
             acc["n"] += 1
             acc["correct"] += int(pred[0] == truth)
 
@@ -581,12 +574,6 @@ def main():
     ap.add_argument("--mp4", default=None, help="Also encode the frames to this .mp4")
     ap.add_argument("--model", default=None,
                     help="LSTM .pt checkpoint (default: whatever HARPipeline loads)")
-    ap.add_argument("--pose-complexity", type=int, default=None,
-                    help="Override MediaPipe complexity (deployed default 0; "
-                         "the training sequences were built at 1)")
-    ap.add_argument("--pose-downscale", type=int, default=None,
-                    help="Override MediaPipe downscale (deployed default 2; "
-                         "the training sequences were built at 1)")
     ap.add_argument("--rack-normalize", action="store_true",
                     help="Rack-frame normalise pose before the classifier "
                          "(match models/*_rack.pt)")

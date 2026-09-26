@@ -144,6 +144,12 @@ def setup_showcase_render(scene: bpy.types.Scene,
     setup_render(scene, resolution=resolution, samples=samples,
                  view_transform="AgX", quality="showcase")
 
+    # Dataset renders preserve physical exposure so the HSV colour contract is
+    # measurable. Presentation renders have a different job: the white suit,
+    # experiment rack and hand motions must be immediately readable on a room
+    # projector, not disappear into the module interior.
+    scene.view_settings.exposure = 0.85
+
     # The AgX look names are not stable across Blender versions - 5.2 offers
     # "AgX - Base Contrast" where earlier builds had "AgX - Medium Contrast",
     # and assigning a missing enum member is a hard TypeError that kills the

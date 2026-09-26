@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISRO BAS — 3D Space HAR Simulation</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'Courier New',monospace; }
+#canvas3d { display:block; width:100vw; height:100vh; }
+
+/* ── HUD Layer ── */
+#hud {
+  position:fixed; inset:0; pointer-events:none; z-index:10;
+}
+
+/* Top bar */
+#topBar {
+  position:absolute; top:0; left:0; right:0; height:44px;
+  background:rgba(4,10,20,0.92); border-bottom:1px solid rgba(0,240,255,0.2);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px; backdrop-filter:blur(8px);
+}
+.tb-title { color:#00f0ff; font-size:11px; font-weight:bold; letter-spacing:2px; }
+.tb-badges { display:flex; gap:10px; align-items:center; }
+.badge {
+  padding:3px 10px; border-radius:3px; font-size:9px; letter-spacing:1px; font-weight:bold;
+  border:1px solid; transition:all 0.4s;
+}
+.badge-g   { background:rgba(0,255,157,0.08); border-color:rgba(0,255,157,0.3); color:#00ff9d; }
+.badge-har { background:rgba(0,240,255,0.08); border-color:rgba(0,240,255,0.3); color:#00f0ff; }
+.badge-warn{ background:rgba(255,56,96,0.12); border-color:rgba(255,56,96,0.4); color:#ff3860; animation:pulse 0.7s infinite alternate; }
+@keyframes pulse { from{opacity:1} to{opacity:0.5} }
+#metClock { color:#4a6a8a; font-size:10px; }
+
+/* Left: scenario & step panel */
+#leftPanel {
+  position:absolute; left:14px; top:56px; width:240px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.lp-card {
+  background:rgba(4,10,20,0.88); border:1px solid rgba(0,240,255,0.12);
+  border-radius:6px; padding:10px 12px; backdrop-filter:blur(6px);
+}
+.lp-title { color:#00f0ff; font-size:8px; letter-spacing:2px; text-transform:uppercase; margin-bottom:7px; display:flex; align-items:center; gap:5px; }
+.lp-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+/* Scenario status */
+#scenarioLabel { color:#ffb700; font-size:11px; font-weight:bold; margin-bottom:4px; }
+#scenarioDesc { color:#4a7a9a; font-size:9px; line-height:1.5; }
+
+/* Narration box */
+#narration {
+  position:absolute; bottom:70px; left:50%; transform:translateX(-50%);
+  min-width:420px; max-width:640px;
+  background:rgba(4,10,24,0.96); border:1px solid rgba(0,240,255,0.25);
+  border-radius:8px; padding:12px 18px; text-align:center;
+  backdrop-filter:blur(10px); transition:opacity 0.5s;
+}
+#narrationStep { color:#4a6a8a; font-size:9px; letter-spacing:2px; margin-bottom:4px; }
+#narrationText { color:#d0e8ff; font-size:12px; font-weight:bold; letter-spacing:0.5px; }
+#narrationSub  { color:#4a6a8a; font-size:9px; margin-top:4px; }
+
+/* Right: Gravity panel */
+#rightPanel {
+  position:absolute; right:14px; top:56px; width:220px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.rp-row { display:flex; justify-content:space-between; font-size:9px; padding:2px 0; }
+.rp-label { color:#3a5a7a; }
+.rp-val   { font-weight:bold; font-size:9px; }
+
+/* G-meter */
+#gMeter { height:5px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden; margin:4px 0; border:1px solid rgba(255,255,255,0.04); }
+#gFill  { height:100%; border-radius:3px; transition:width 0.3s, background 0.3s; }
+
+/* IMU oscilloscope */
+#oscWrap { margin-top:6px; }
+#oscCanvas2 { width:100%; height:44px; border-radius:3px; background:rgba(0,20,10,0.4); border:1px solid rgba(0,100,50,0.15); display:block; }
+
+/* Step tracker */
+.step-row {
+  display:flex; align-items:center; gap:7px; padding:3px 0;
+  font-size:9px; transition:all 0.3s;
+}
+.step-pip { width:7px; height:7px; border-radius:50%; flex-shrink:0; border:1px solid rgba(255,255,255,0.15); transition:all 0.3s; }
+.step-name { flex:1; }
+
+/* HAR Detection box */
+#harBox {
+  position:absolute; right:14px; bottom:70px; width:220px;
+  background:rgba(4,10,20,0.9); border:1px solid rgba(0,240,255,0.2);
+  border-radius:6px; padding:10px 12px; backdrop-filter:blur(6px);
+  transition:border-color 0.4s;
+}
+#harLabel { font-size:8px; letter-spacing:2px; color:#00f0ff; margin-bottom:8px; }
+#harActivity { font-size:14px; font-weight:bold; color:#00f0ff; margin-bottom:4px; transition:color 0.3s; }
+#harConf { font-size:9px; color:#3a5a7a; margin-bottom:8px; }
+#harBarTrack { height:4px; background:rgba(255,255,255,0.05); border-radius:2px; overflow:hidden; }
+#harBarFill  { height:100%; border-radius:2px; transition:width 0.4s, background 0.4s; background:#00f0ff; }
+#harAlert    { font-size:9px; color:#ff3860; margin-top:8px; display:none; padding:5px 8px; background:rgba(255,56,96,0.08); border:1px solid rgba(255,56,96,0.25); border-radius:3px; }
+
+/* Bottom bar */
+#bottomBar {
+  position:absolute; bottom:0; left:0; right:0; height:52px;
+  background:rgba(4,10,20,0.95); border-top:1px solid rgba(0,240,255,0.12);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; backdrop-filter:blur(6px);
+}
+.bb-item { display:flex; gap:6px; align-items:center; font-size:9px; }
+.bb-label { color:#3a5a7a; }
+.bb-val   { color:#00f0ff; font-weight:bold; }
+#scenarioBar { display:flex; gap:6px; }
+.sc-dot { width:28px; height:4px; border-radius:2px; background:rgba(255,255,255,0.1); transition:background 0.4s; }
+.sc-dot.active { background:#00f0ff; box-shadow:0 0 6px #00f0ff80; }
+.sc-dot.done   { background:#00ff9d; }
+
+/* Progress bar top */
+#progBar { position:absolute; top:44px; left:0; right:0; height:2px; background:rgba(255,255,255,0.03); }
+#progFill { height:100%; background:linear-gradient(90deg,#00f0ff,#00ff9d); transition:width 1s linear; box-shadow:0 0 6px #00f0ff60; }
+</style>
+</head>
+<body>
+<canvas id="canvas3d"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="progBar"><div id="progFill" style="width:0%"></div></div>
+
+  <!-- Top Bar -->
+  <div id="topBar">
+    <div class="tb-title">⬡ ISRO · BAS SPACE HAR — 3D LIVE SIMULATION · DESTINY LAB MODULE</div>
+    <div class="tb-badges">
+      <span id="metClock">MET: T+00:00:00</span>
+      <span class="badge badge-g" id="badgeG">🛸 0.0000 g — MICROGRAVITY</span>
+      <span class="badge badge-har" id="badgeHar">✓ HAR ACTIVE</span>
+    </div>
+  </div>
+
+  <!-- Left Panel -->
+  <div id="leftPanel">
+    <!-- Scenario -->
+    <div class="lp-card">
+      <div class="lp-title"><div class="lp-dot" style="background:#ffb700;box-shadow:0 0 5px #ffb700"></div>ACTIVE SCENARIO</div>
+      <div id="scenarioLabel">SCENARIO 1</div>
+      <div id="scenarioDesc">Astronaut performs 8-step protocol — opens container, extracts RED payload, transfers to Zone A</div>
+    </div>
+    <!-- Steps -->
+    <div class="lp-card">
+      <div class="lp-title"><div class="lp-dot" style="background:#00f0ff;box-shadow:0 0 5px #00f0ff"></div>HAR STEP PROTOCOL</div>
+      <div id="stepList"></div>
+    </div>
+    <!-- Camera -->
+    <div class="lp-card">
+      <div class="lp-title"><div class="lp-dot" style="background:#b06aff;box-shadow:0 0 5px #b06aff"></div>ACTIVE CAMERA</div>
+      <div id="cameraLabel" style="color:#b06aff;font-size:10px;font-weight:bold">ORBITAL WIDE</div>
+      <div style="font-size:8px;color:#3a5a7a;margin-top:3px" id="cameraDesc">Tracking astronaut approach</div>
+    </div>
+  </div>
+
+  <!-- Narration -->
+  <div id="narration">
+    <div id="narrationStep">SIMULATION INITIALISING</div>
+    <div id="narrationText">Loading ISS Destiny Lab Module…</div>
+    <div id="narrationSub">Gravity Detector: MICROGRAVITY CONFIRMED</div>
+  </div>
+
+  <!-- Right Panel -->
+  <div id="rightPanel">
+    <!-- Gravity -->
+    <div class="lp-card">
+      <div class="lp-title"><div class="lp-dot" style="background:#00ff9d;box-shadow:0 0 5px #00ff9d"></div>GRAVITY DETECTOR</div>
+      <div style="font-size:22px;font-weight:bold;margin-bottom:3px;transition:color 0.3s" id="gVal">0.0000 g</div>
+      <div style="font-size:9px;color:#3a5a7a;margin-bottom:6px" id="gStatus">MICROGRAVITY — STABLE</div>
+      <div id="gMeter"><div id="gFill" style="width:0.3%;background:linear-gradient(90deg,#00ff9d,#00f0ff)"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#2a4a5a;margin-top:2px"><span>0 g</span><span>1 g</span></div>
+      <div style="margin-top:8px">
+        <div class="rp-row"><span class="rp-label">STABILITY</span><span class="rp-val" id="gStab" style="color:#00ff9d">STABLE</span></div>
+        <div class="rp-row"><span class="rp-label">MODE</span><span class="rp-val" id="gMode" style="color:#00f0ff">RACK_FRAME</span></div>
+        <div class="rp-row"><span class="rp-label">HAR GATE</span><span class="rp-val" id="gGate" style="color:#00ff9d">OPEN ✓</span></div>
+        <div class="rp-row"><span class="rp-label">JITTER RMS</span><span class="rp-val" id="gJitter" style="color:#3a5a7a">0.00000</span></div>
+      </div>
+      <div id="oscWrap">
+        <div style="font-size:8px;color:#2a4a5a;margin-top:6px;margin-bottom:3px">IMU AXES (Ax·Ay·Az)</div>
+        <canvas id="oscCanvas2"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- HAR Detection Box -->
+  <div id="harBox">
+    <div id="harLabel">▷ REAL-TIME HAR DETECTION</div>
+    <div id="harActivity">APPROACHING</div>
+    <div id="harConf">Confidence: 0.0% · Step: 0/8</div>
+    <div id="harBarTrack"><div id="harBarFill" style="width:0%"></div></div>
+    <div id="harAlert">⚠ WRONG PAYLOAD DETECTED<br>Expected: RED MODULE · Detected: YELLOW<br>→ Alert sent to astronaut</div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div id="bottomBar">
+    <div style="display:flex;gap:20px">
+      <div class="bb-item"><span class="bb-label">FPS</span><span class="bb-val" id="bbFps">60</span></div>
+      <div class="bb-item"><span class="bb-label">LATENCY</span><span class="bb-val" id="bbLat">8.2 ms</span></div>
+      <div class="bb-item"><span class="bb-label">POSE</span><span class="bb-val">MEDIAPIPE 33-JOINT</span></div>
+      <div class="bb-item"><span class="bb-label">DETECT</span><span class="bb-val">HSV + LSTM</span></div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:9px;color:#2a4a5a;letter-spacing:1px;margin-bottom:4px">SCENARIO PROGRESS</div>
+      <div id="scenarioBar">
+        <div class="sc-dot active" id="sc0"></div>
+        <div class="sc-dot" id="sc1"></div>
+      </div>
+    </div>
+    <div style="font-size:8px;color:#1a3a4a;letter-spacing:1px;text-align:right">
+      ISRO · BHARATIYA ANTARIKSH STATION<br>HAR MONITORING v3.0 · GRAVITY-AWARE
+    </div>
+  </div>
+</div>
+
+<!-- Three.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENE SETUP
+// ══════════════════════════════════════════════════════════════════════════════
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputEncoding = THREE.sRGBEncoding;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000408);
+scene.fog = new THREE.FogExp2(0x000408, 0.04);
+
+const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
+camera.position.set(0, 2, 12);
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const mat  = (col, rough=0.7, met=0.0) => new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: met });
+const matt = (col, op, rough=0.5) => new THREE.MeshStandardMaterial({ color: col, roughness: rough, transparent: true, opacity: op });
+function addMesh(geo, material, parent, x=0, y=0, z=0) {
+  const m = new THREE.Mesh(geo, material); m.position.set(x,y,z);
+  m.castShadow = true; m.receiveShadow = true;
+  (parent || scene).add(m); return m;
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerp3(v, target, t) { v.x = lerp(v.x, target.x, t); v.y = lerp(v.y, target.y, t); v.z = lerp(v.z, target.z, t); }
+function easeInOut(t) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
+function clamp01(t) { return Math.max(0, Math.min(1, t)); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LIGHTING
+// ══════════════════════════════════════════════════════════════════════════════
+// Ambient (ISS cool white)
+scene.add(new THREE.AmbientLight(0x8090b0, 0.35));
+
+// Main fluorescent ceiling strip
+const fl1 = new THREE.RectAreaLight(0xd0e0ff, 6, 4, 0.3);
+fl1.position.set(0, 4.1, 0); fl1.rotation.x = -Math.PI/2; scene.add(fl1);
+
+// Equipment rack fill lights
+const rack1 = new THREE.PointLight(0x608090, 1.5, 8); rack1.position.set(-5, 2, 0); scene.add(rack1);
+const rack2 = new THREE.PointLight(0x608090, 1.5, 8); rack2.position.set( 5, 2, 0); scene.add(rack2);
+
+// Spotlights on container area
+const spot1 = new THREE.SpotLight(0xd0e8ff, 3, 10, Math.PI/6, 0.4); 
+spot1.position.set(0, 4, -2); spot1.target.position.set(0, 0, -2);
+spot1.castShadow = true; scene.add(spot1); scene.add(spot1.target);
+
+// Helmet headlamp (tracks astronaut)
+const headlamp = new THREE.SpotLight(0xffffff, 2, 5, Math.PI/8, 0.6);
+headlamp.castShadow = false; scene.add(headlamp); scene.add(headlamp.target);
+
+// Earth glow from porthole
+const earthGlow = new THREE.PointLight(0x4080ff, 1.2, 12); earthGlow.position.set(-6, 1, -3); scene.add(earthGlow);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ISS MODULE INTERIOR
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Floor ──
+{
+  const floorGeo = new THREE.PlaneGeometry(12, 18);
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x2a3040, roughness:0.9, metalness:0.1 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2; floor.position.y = -2; floor.receiveShadow = true; scene.add(floor);
+  // Floor grid lines (foothold restraints)
+  const gridHelper = new THREE.GridHelper(12, 24, 0x3a4a60, 0x2a3a50);
+  gridHelper.position.y = -1.99; scene.add(gridHelper);
+}
+
+// ── Ceiling ──
+{
+  const ceilGeo = new THREE.PlaneGeometry(12, 18);
+  const ceilMat = new THREE.MeshStandardMaterial({ color:0xc8d0dc, roughness:0.8, metalness:0.1 });
+  const ceil = new THREE.Mesh(ceilGeo, ceilMat);
+  ceil.rotation.x = Math.PI/2; ceil.position.y = 4.2; ceil.receiveShadow = true; scene.add(ceil);
+
+  // Fluorescent light strip (glowing tube)
+  const tubeGeo = new THREE.BoxGeometry(4, 0.08, 0.2);
+  const tubeMat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xd0e8ff, emissiveIntensity:2 });
+  const tube = new THREE.Mesh(tubeGeo, tubeMat); tube.position.set(0, 4.12, 0); scene.add(tube);
+}
+
+// ── Walls ──
+function makeWall(x, y, z, rx, ry, w, h, col) {
+  const g = new THREE.PlaneGeometry(w, h);
+  const m = new THREE.MeshStandardMaterial({ color: col, roughness:0.85, metalness:0.05, side: THREE.FrontSide });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.set(x,y,z); mesh.rotation.set(rx, ry, 0); mesh.receiveShadow = true; scene.add(mesh);
+  return mesh;
+}
+makeWall(-6, 1.1, 0, 0, Math.PI/2, 18, 6.2, 0x5a6272);   // left
+makeWall( 6, 1.1, 0, 0,-Math.PI/2, 18, 6.2, 0x5a6272);   // right
+makeWall(0, 1.1,-9, 0, 0, 12, 6.2, 0x4a5262);            // back
+
+// ── Equipment Racks (left & right) ──
+function makeRack(x) {
+  const g = new THREE.Group(); scene.add(g);
+  // Main rack body
+  const body = addMesh(new THREE.BoxGeometry(1.4, 5.8, 3), mat(0x4a5060, 0.85, 0.2), g, x, 0.9, -1);
+  // Rack slots
+  for (let i = 0; i < 7; i++) {
+    const slot = addMesh(new THREE.BoxGeometry(1.35, 0.55, 2.9), mat(0x3a4050, 0.9, 0.1), g, x, -1.2 + i*0.82, -1);
+    // LED on each slot
+    const led = addMesh(new THREE.SphereGeometry(0.05), new THREE.MeshStandardMaterial({
+      color: i===5 ? 0xff4040 : 0x00ff88, emissive: i===5 ? 0xff4040 : 0x00ff88, emissiveIntensity: 2
+    }), g, x + (x<0?0.55:-0.55), -1.2 + i*0.82, -0.35);
+  }
+  // Handrail
+  addMesh(new THREE.CylinderGeometry(0.05,0.05,3.5), mat(0xb0b8c0, 0.4, 0.8), g, x, 0.9, 0.8);
+  return g;
+}
+makeRack(-5.4); makeRack(5.4);
+
+// ── Porthole window (left wall) ──
+{
+  // Frame ring
+  const frameGeo = new THREE.TorusGeometry(0.75, 0.12, 12, 36);
+  addMesh(frameGeo, mat(0xa0a8b4, 0.4, 0.6), null, -5.9, 1.5, -4);
+
+  // Glass (slightly transparent blue)
+  const glassGeo = new THREE.CircleGeometry(0.65, 36);
+  const glassMat = new THREE.MeshStandardMaterial({ color:0x0a1a3a, roughness:0.05, metalness:0.1, transparent:true, opacity:0.7 });
+  const glass = new THREE.Mesh(glassGeo, glassMat); glass.rotation.y = Math.PI/2; glass.position.set(-5.88, 1.5, -4); scene.add(glass);
+
+  // Earth sphere (visible through porthole)
+  const earthGeo = new THREE.SphereGeometry(3.5, 32, 32);
+  const earthMat = new THREE.MeshStandardMaterial({ color:0x1a5090, roughness:0.8, emissive:0x082040, emissiveIntensity:0.3 });
+  const earth = new THREE.Mesh(earthGeo, earthMat); earth.position.set(-20, 0, -4); scene.add(earth);
+  // Cloud patches
+  for (let c = 0; c < 8; c++) {
+    const cg = new THREE.SphereGeometry(0.8+Math.random()*0.5, 8, 8);
+    const cm = matt(0xffffff, 0.4+Math.random()*0.3);
+    const cl = new THREE.Mesh(cg, cm);
+    const angle = Math.random()*Math.PI*2, lat = (Math.random()-0.5)*2;
+    cl.position.set(earth.position.x + Math.cos(angle)*3.6, earth.position.y + lat*3.2, -4 + Math.sin(angle)*3.6);
+    scene.add(cl);
+  }
+  scene.earthMesh = earth;
+}
+
+// ── ISRO Mission patch on wall ──
+{
+  const patchGeo = new THREE.CircleGeometry(0.35, 32);
+  const patchMat = new THREE.MeshStandardMaterial({ color:0x0a0a20, roughness:0.8 });
+  addMesh(patchGeo, patchMat, null, -5.88, 2.8, -1);
+  // Tricolor segments
+  const cols = [0xff9933, 0xffffff, 0x138808, 0x00008b];
+  cols.forEach((c, i) => {
+    const seg = new THREE.Mesh(new THREE.CircleGeometry(0.30, 8, i*Math.PI/2, Math.PI/2), mat(c, 0.9));
+    seg.rotation.y = Math.PI/2; seg.position.set(-5.87, 2.8, -1); scene.add(seg);
+  });
+}
+
+// ── Stars (background) ──
+{
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = [];
+  for (let i = 0; i < 1200; i++) {
+    const theta = Math.random()*Math.PI*2, phi = Math.acos(2*Math.random()-1);
+    const r = 80 + Math.random()*40;
+    starPos.push(r*Math.sin(phi)*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta), r*Math.cos(phi));
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:0.3, transparent:true, opacity:0.8 })));
+}
+
+// ── Floating dust particles (microgravity) ──
+const dustParticles = [];
+{
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPos = [];
+  for (let i = 0; i < 80; i++) {
+    const x = (Math.random()-0.5)*10, y = (Math.random()-0.5)*5, z = (Math.random()-0.5)*14;
+    dustPos.push(x, y, z);
+    dustParticles.push({ x, y, z, vx:(Math.random()-.5)*.003, vy:(Math.random()-.5)*.002, vz:(Math.random()-.5)*.003 });
+  }
+  dustGeo.setAttribute('position', new THREE.Float32BufferAttribute(dustPos, 3));
+  const dustMesh = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color:0xc0c8d4, size:0.04, transparent:true, opacity:0.5 }));
+  scene.add(dustMesh);
+  scene.dustMesh = dustMesh; scene.dustGeo = dustGeo;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXPERIMENT CONTAINER (white box)
+// ══════════════════════════════════════════════════════════════════════════════
+const containerGroup = new THREE.Group();
+scene.add(containerGroup);
+containerGroup.position.set(0, -1, -4);
+
+// Main body
+const containerBody = addMesh(
+  new THREE.BoxGeometry(1.4, 0.9, 1.0),
+  new THREE.MeshStandardMaterial({ color:0xeef2f8, roughness:0.4, metalness:0.1 }),
+  containerGroup, 0, 0, 0
+);
+
+// Lid (separate for animation)
+const lidGroup = new THREE.Group();
+containerGroup.add(lidGroup);
+lidGroup.position.set(0, 0.45, -0.5);   // pivot at back edge
+const lidMesh = addMesh(
+  new THREE.BoxGeometry(1.4, 0.08, 1.0),
+  new THREE.MeshStandardMaterial({ color:0xe0e8f0, roughness:0.4, metalness:0.15 }),
+  lidGroup, 0, 0, 0.5
+);
+
+// Interior visible when open
+const interiorMesh = addMesh(
+  new THREE.BoxGeometry(1.35, 0.78, 0.95),
+  new THREE.MeshStandardMaterial({ color:0x1a2030, roughness:0.9 }),
+  containerGroup, 0, -0.04, 0
+);
+
+// ISRO label on container face
+const labelGeo = new THREE.PlaneGeometry(1.2, 0.25);
+const labelMat = new THREE.MeshStandardMaterial({ color:0x1a2a3a, roughness:0.8 });
+addMesh(labelGeo, labelMat, containerGroup, 0, 0.1, 0.51);
+
+// Stripes
+for (let s = 0; s < 3; s++) {
+  const sg = new THREE.BoxGeometry(1.35, 0.06, 0.01);
+  const sm = mat(s%2===0 ? 0xff6620 : 0x2060cc, 0.9);
+  addMesh(sg, sm, containerGroup, 0, -0.25 + s*0.2, 0.505);
+}
+
+// ── RED payload box ──
+const redGroup = new THREE.Group();
+containerGroup.add(redGroup);
+redGroup.position.set(-0.28, 0.05, 0);
+const redMesh = addMesh(
+  new THREE.BoxGeometry(0.42, 0.38, 0.42),
+  new THREE.MeshStandardMaterial({ color:0xff2840, roughness:0.5, metalness:0.2, emissive:0x440010, emissiveIntensity:0.3 }),
+  redGroup, 0, 0, 0
+);
+// Red box label
+addMesh(new THREE.PlaneGeometry(0.35, 0.12), mat(0xffffff, 0.6), redGroup, 0, 0.06, 0.215);
+
+// ── YELLOW payload box ──
+const yelGroup = new THREE.Group();
+containerGroup.add(yelGroup);
+yelGroup.position.set(0.28, 0.05, 0);
+addMesh(
+  new THREE.BoxGeometry(0.42, 0.38, 0.42),
+  new THREE.MeshStandardMaterial({ color:0xffcc00, roughness:0.5, metalness:0.2, emissive:0x443300, emissiveIntensity:0.3 }),
+  yelGroup, 0, 0, 0
+);
+
+// Placement zones (left and right)
+function makePlacementZone(x) {
+  const g = new THREE.Group(); scene.add(g); g.position.set(x, -1.4, -4);
+  const pad = addMesh(new THREE.BoxGeometry(0.7, 0.04, 0.7), mat(0x1a2a3a, 0.9), g, 0, 0, 0);
+  // Corner markers
+  const cornersX = [-0.3, 0.3], cornersZ = [-0.3, 0.3];
+  cornersX.forEach(cx => cornersZ.forEach(cz => {
+    addMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15), mat(x < 0 ? 0x00f0ff : 0xffcc00, 0.6), g, cx, 0.08, cz);
+  }));
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.12), mat(x<0?0x003a4a:0x3a3000, 0.8));
+  label.rotation.x = -Math.PI/2; label.position.set(0, 0.03, 0); g.add(label);
+  return g;
+}
+const zoneA = makePlacementZone(-2.2);
+const zoneB = makePlacementZone( 2.2);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ASTRONAUT (3D geometric figure)
+// ══════════════════════════════════════════════════════════════════════════════
+const SUIT_COL  = 0xb8c0d0;
+const SUIT_DARK = 0x8090a0;
+const VISOR_COL = 0xc8a020;
+const GLOVE_COL = 0x9098a8;
+const BOOT_COL  = 0x3a4050;
+
+function makeLimb(rx, ry, rz, length, parent, ox=0, oy=0, oz=0) {
+  const g = new THREE.Group(); parent.add(g);
+  g.position.set(ox, oy, oz);
+  // Limb tube
+  const tube = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.085, length, 6, 10),
+    new THREE.MeshStandardMaterial({ color:SUIT_COL, roughness:0.7, metalness:0.1 })
+  );
+  tube.position.y = -length/2; g.add(tube);
+  g.rotation.set(rx, ry, rz);
+  return g;
+}
+
+const astronaut = new THREE.Group();
+scene.add(astronaut);
+astronaut.position.set(0, -0.3, 8);   // starts far back
+
+// Torso (main suit body)
+const torso = new THREE.Group(); astronaut.add(torso);
+addMesh(new THREE.BoxGeometry(0.68, 0.72, 0.44),
+  new THREE.MeshStandardMaterial({ color:SUIT_COL, roughness:0.7, metalness:0.1 }), torso, 0, 0, 0);
+
+// PLSS backpack
+addMesh(new THREE.BoxGeometry(0.46, 0.54, 0.18),
+  new THREE.MeshStandardMaterial({ color:0x8090a0, roughness:0.8, metalness:0.15 }), torso, 0, 0, -0.3);
+
+// Chest status panel
+const panelMat = new THREE.MeshStandardMaterial({ color:0x0a1a2a, roughness:0.9, emissive:0x001020, emissiveIntensity:0.5 });
+addMesh(new THREE.BoxGeometry(0.28, 0.22, 0.01), panelMat, torso, 0, 0.05, 0.22);
+
+// Chest LED (green)
+const chestLed = new THREE.Mesh(new THREE.SphereGeometry(0.025), new THREE.MeshStandardMaterial({ color:0x00ff88, emissive:0x00ff88, emissiveIntensity:3 }));
+chestLed.position.set(0.1, 0.05, 0.23); torso.add(chestLed);
+
+// Torso point light (suit glow)
+const suitLight = new THREE.PointLight(0x80c0ff, 0.4, 2);
+suitLight.position.set(0, 0, 0.5); torso.add(suitLight);
+
+// Neck ring
+addMesh(new THREE.CylinderGeometry(0.12, 0.14, 0.1, 16),
+  new THREE.MeshStandardMaterial({ color:0x7080a0, roughness:0.5, metalness:0.5 }), torso, 0, 0.41, 0);
+
+// HELMET
+const helmetGroup = new THREE.Group(); torso.add(helmetGroup); helmetGroup.position.set(0, 0.72, 0);
+
+// Helmet shell
+addMesh(new THREE.SphereGeometry(0.24, 24, 24),
+  new THREE.MeshStandardMaterial({ color:SUIT_COL, roughness:0.5, metalness:0.25 }), helmetGroup);
+
+// Visor (gold, partially transparent)
+const visorMat = new THREE.MeshStandardMaterial({ color:VISOR_COL, roughness:0.1, metalness:0.8, transparent:true, opacity:0.85 });
+const visorGeo = new THREE.SphereGeometry(0.22, 24, 24, 0, Math.PI*2, 0, Math.PI*0.45);
+const visor = new THREE.Mesh(visorGeo, visorMat);
+visor.position.set(0, -0.02, 0.04); visor.rotation.x = 0.25; helmetGroup.add(visor);
+
+// Headlamp
+const lampMat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:3 });
+addMesh(new THREE.CylinderGeometry(0.04,0.04,0.04,12), lampMat, helmetGroup, -0.15, 0.08, 0.18);
+
+// ── Arms ──
+const leftShoulderPivot  = new THREE.Group(); torso.add(leftShoulderPivot);  leftShoulderPivot.position.set(-0.40, 0.26, 0);
+const rightShoulderPivot = new THREE.Group(); torso.add(rightShoulderPivot); rightShoulderPivot.position.set( 0.40, 0.26, 0);
+
+function makeArm(parent, side) {
+  // Upper arm
+  const upper = new THREE.Group(); parent.add(upper);
+  addMesh(new THREE.CapsuleGeometry(0.08, 0.34, 6, 8), mat(SUIT_COL, 0.7, 0.1), upper, 0, -0.17, 0);
+  // Elbow joint
+  const elbowPivot = new THREE.Group(); upper.add(elbowPivot); elbowPivot.position.set(0, -0.38, 0);
+  addMesh(new THREE.SphereGeometry(0.09, 12, 12), mat(SUIT_DARK, 0.6, 0.2), elbowPivot);
+  // Forearm
+  const forearm = new THREE.Group(); elbowPivot.add(forearm);
+  addMesh(new THREE.CapsuleGeometry(0.075, 0.30, 6, 8), mat(SUIT_COL, 0.7, 0.1), forearm, 0, -0.15, 0);
+  // Glove
+  const glovePivot = new THREE.Group(); forearm.add(glovePivot); glovePivot.position.set(0, -0.33, 0);
+  addMesh(new THREE.SphereGeometry(0.1, 12, 12), new THREE.MeshStandardMaterial({ color:GLOVE_COL, roughness:0.65, metalness:0.1 }), glovePivot);
+  // Wrist ring
+  addMesh(new THREE.TorusGeometry(0.1, 0.02, 8, 18), mat(0x8090a8, 0.4, 0.6), glovePivot, 0, 0.01, 0);
+  return { upper, elbowPivot, forearm, glovePivot };
+}
+
+const leftArm  = makeArm(leftShoulderPivot,  'L');
+const rightArm = makeArm(rightShoulderPivot, 'R');
+
+// ── Hips / Legs ──
+const hipsGroup = new THREE.Group(); torso.add(hipsGroup); hipsGroup.position.set(0, -0.42, 0);
+addMesh(new THREE.BoxGeometry(0.56, 0.2, 0.36), mat(SUIT_COL, 0.7, 0.1), hipsGroup);
+
+const leftLegPivot  = new THREE.Group(); hipsGroup.add(leftLegPivot);  leftLegPivot.position.set(-0.18, -0.1, 0);
+const rightLegPivot = new THREE.Group(); hipsGroup.add(rightLegPivot); rightLegPivot.position.set( 0.18, -0.1, 0);
+
+function makeLeg(parent) {
+  // Upper leg
+  const upper = new THREE.Group(); parent.add(upper);
+  addMesh(new THREE.CapsuleGeometry(0.09, 0.36, 6, 8), mat(SUIT_COL, 0.7, 0.1), upper, 0, -0.18, 0);
+  // Knee
+  const kneePivot = new THREE.Group(); upper.add(kneePivot); kneePivot.position.set(0, -0.4, 0);
+  addMesh(new THREE.SphereGeometry(0.11, 12, 12), mat(SUIT_DARK, 0.6, 0.2), kneePivot);
+  // Knee pad
+  addMesh(new THREE.BoxGeometry(0.2, 0.12, 0.14), mat(SUIT_DARK, 0.85), kneePivot, 0, 0, 0.08);
+  // Lower leg
+  const lower = new THREE.Group(); kneePivot.add(lower);
+  addMesh(new THREE.CapsuleGeometry(0.082, 0.32, 6, 8), mat(SUIT_COL, 0.7), lower, 0, -0.16, 0);
+  // Boot
+  const bootPivot = new THREE.Group(); lower.add(bootPivot); bootPivot.position.set(0, -0.35, 0);
+  addMesh(new THREE.BoxGeometry(0.18, 0.14, 0.28), new THREE.MeshStandardMaterial({ color:BOOT_COL, roughness:0.9 }), bootPivot, 0, 0, 0.05);
+  // Foot restraint loop
+  addMesh(new THREE.TorusGeometry(0.08, 0.015, 6, 16), mat(0x5060708, 0.6, 0.4), bootPivot, 0, -0.04, 0);
+  return { upper, kneePivot, lower };
+}
+
+const leftLeg  = makeLeg(leftLegPivot);
+const rightLeg = makeLeg(rightLegPivot);
+
+// Tether line (yellow safety cable)
+const tetherCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0.3, 0.2, 0), new THREE.Vector3(1.2, 0.8, 0.5), new THREE.Vector3(5.4, 0.8, -1)
+]);
+const tetherGeo = new THREE.TubeGeometry(tetherCurve, 24, 0.012, 6, false);
+const tether = new THREE.Mesh(tetherGeo, new THREE.MeshStandardMaterial({ color:0xffdd00, roughness:0.8, transparent:true, opacity:0.7 }));
+astronaut.add(tether);
+
+// Held object (invisible initially)
+const heldRedMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(0.42, 0.38, 0.42),
+  new THREE.MeshStandardMaterial({ color:0xff2840, roughness:0.5, metalness:0.2, emissive:0x440010, emissiveIntensity:0.4 })
+);
+heldRedMesh.visible = false;
+scene.add(heldRedMesh);
+
+const heldYelMesh = new THREE.Mesh(
+  new THREE.BoxGeometry(0.42, 0.38, 0.42),
+  new THREE.MeshStandardMaterial({ color:0xffcc00, roughness:0.5, metalness:0.2, emissive:0x443300, emissiveIntensity:0.4 })
+);
+heldYelMesh.visible = false;
+scene.add(heldYelMesh);
+
+// Glow sphere on held object
+const heldGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(0.35, 16, 16),
+  new THREE.MeshBasicMaterial({ color:0xff3050, transparent:true, opacity:0.08 })
+);
+scene.add(heldGlow);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CAMERA RIGS & POSITIONS
+// ══════════════════════════════════════════════════════════════════════════════
+const camTarget = new THREE.Vector3(0, 0, 0);
+const camPos    = new THREE.Vector3(0, 2, 12);
+
+const cameraRigs = {
+  WIDE:     { pos: new THREE.Vector3(3, 2.5, 10),  look: new THREE.Vector3(0, 0, -2),  name:'ORBITAL WIDE', desc:'Full scene overview' },
+  APPROACH: { pos: new THREE.Vector3(2, 1.5, 7),   look: new THREE.Vector3(0, 0, 0),   name:'APPROACH CAM', desc:'Tracking astronaut approach' },
+  CLOSE_L:  { pos: new THREE.Vector3(1.5, 0.5, 1), look: new THREE.Vector3(0, -0.5,-3),name:'CLOSE SHOT',   desc:'Container interaction' },
+  HAND_L:   { pos: new THREE.Vector3(-0.5, 0, 0),  look: new THREE.Vector3(0,-1,-4),   name:'HAND CAM',     desc:'Left-hand payload extraction' },
+  HAND_R:   { pos: new THREE.Vector3(0.5, 0, 0),   look: new THREE.Vector3(0,-1,-4),   name:'HAND CAM R',   desc:'Right-hand payload handling' },
+  SIDE:     { pos: new THREE.Vector3(-5, 1, -2),   look: new THREE.Vector3(0, -1, -4), name:'SIDE VIEW',    desc:'Side elevation tracking' },
+  TOP:      { pos: new THREE.Vector3(0, 5, -3),    look: new THREE.Vector3(0, -1, -4), name:'TOP-DOWN',     desc:'Overhead placement view' },
+  CHEST:    { pos: new THREE.Vector3(0.6, 1.2, 3), look: new THREE.Vector3(0, 0, -4),  name:'CHEST CAM',    desc:'Astronaut POV' },
+};
+let currentRig = 'WIDE';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMATION STATE MACHINE
+// ══════════════════════════════════════════════════════════════════════════════
+const STEPS = [
+  { id:1, name:'Approach Container',   color:'#00f0ff' },
+  { id:2, name:'Open Lid',             color:'#00f0ff' },
+  { id:3, name:'Inspect Interior',     color:'#60d0ff' },
+  { id:4, name:'Extract RED Payload',  color:'#ff4060' },
+  { id:5, name:'Secure RED Module',    color:'#ff4060' },
+  { id:6, name:'Transfer to Zone A',   color:'#ff7040' },
+  { id:7, name:'Confirm Placement',    color:'#00ff9d' },
+  { id:8, name:'Protocol Complete',    color:'#00ff9d' },
+];
+
+let scenario     = 0;  // 0 = correct, 1 = wrong pick + correction
+let phase        = 0;  // 0-7 per scenario
+let phaseT       = 0;  // 0..1 within current phase
+let phaseLen     = 4.0; // seconds per phase (variable)
+let totalTime    = 0;
+let simTime      = 0;
+let wrongAlert   = false;  // scenario 2 wrong pick flag
+let activeStep   = 0;
+
+const PHASE_DURATIONS = [
+  [3.5, 3.0, 2.5, 3.5, 2.5, 4.0, 2.5, 3.0],  // scenario 1
+  [3.5, 3.0, 2.5, 3.0, 2.5, 4.0, 2.5, 3.0],  // scenario 2
+];
+const PHASE_CAMS = [
+  ['WIDE','APPROACH','CLOSE_L','HAND_L','SIDE','HAND_L','TOP','WIDE'],
+  ['WIDE','APPROACH','CLOSE_L','HAND_R','SIDE','HAND_L','TOP','WIDE'],
+];
+const PHASE_NARRATIONS = [
+  [
+    ['STEP 1 / 8','Astronaut floats toward experiment container in microgravity','Gravity: 0.0001 g — STABLE — HAR Ready'],
+    ['STEP 2 / 8','Astronaut opens container lid — HSV detector acquires white box','Lid kinematic: opening — Rack-frame normalisation ACTIVE'],
+    ['STEP 3 / 8','Astronaut inspects interior — two payload modules detected','RED MODULE (left) · YELLOW MODULE (right) — HSV confirmed'],
+    ['STEP 4 / 8','LEFT hand extracts RED payload — HAR classifies: EXTRACT_RED','LSTM confidence: 94% · State machine: IN_PROGRESS'],
+    ['STEP 5 / 8','Astronaut secures RED module in both hands','Grip confirmed · Both wrists near payload · HAR: SECURE'],
+    ['STEP 6 / 8','RED module transferred to Zone A — perfect micro-g drift','Microgravity trajectory confirmed · Latch incoming'],
+    ['STEP 7 / 8','RED module latched in Zone A — placement verified','HSV: RED in Zone A ✓ · State machine: COMPLETED'],
+    ['STEP 8 / 8','Protocol COMPLETE — all steps verified by HAR system','Experiment duration: nominal · Voice alert: WELL DONE'],
+  ],
+  [
+    ['STEP 1 / 8','Astronaut approaches container — gravity confirmed stable','Gravity: 0.0001 g — MICROGRAVITY — HAR ENABLED'],
+    ['STEP 2 / 8','Container opened — HAR pipeline armed for extraction step','HSV white box confirmed · State machine: STEP 3 EXPECTED'],
+    ['STEP 3 / 8','Astronaut inspects — WRONG payload grasped: YELLOW MODULE','⚠ HAR ALERT: Expected RED — Detected YELLOW — HOLD ISSUED'],
+    ['WRONG PICK!','⚠ HAR DETECTS WRONG MODULE — Alerting astronaut','LSTM: 91% YELLOW_EXTRACT · State machine: OUT_OF_SEQUENCE'],
+    ['CORRECTION','Astronaut responds — returns YELLOW — reaches for RED','Recovery sequence activated · HAR: monitoring correction'],
+    ['STEP 6 / 8','Correct RED module extracted and transferred to Zone A','HAR: EXTRACT_RED confirmed · Confidence 96% · RECOVERED'],
+    ['STEP 7 / 8','RED module secured in Zone A — protocol back on track','Sequence recovery confirmed · Voice: CORRECTION NOTED'],
+    ['STEP 8 / 8','Protocol COMPLETE after correction — HAR system verified','Recovery scenario: PASSED · All 8 steps logged'],
+  ],
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BUILD STEP LIST IN HUD
+// ══════════════════════════════════════════════════════════════════════════════
+function buildStepList() {
+  const list = document.getElementById('stepList');
+  list.innerHTML = '';
+  STEPS.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'step-row'; row.id = `sr${s.id}`;
+    row.innerHTML = `<div class="step-pip" id="sp${s.id}"></div><span class="step-name" id="sn${s.id}" style="color:#2a3a4a">${s.id}. ${s.name}</span>`;
+    list.appendChild(row);
+  });
+}
+buildStepList();
+
+function updateStepList(active) {
+  STEPS.forEach(s => {
+    const pip = document.getElementById(`sp${s.id}`);
+    const nm  = document.getElementById(`sn${s.id}`);
+    if (!pip || !nm) return;
+    if (s.id < active) {
+      pip.style.background = '#00ff9d'; pip.style.boxShadow = '0 0 5px #00ff9d'; pip.style.borderColor = '#00ff9d';
+      nm.style.color = '#2a5a3a'; nm.style.fontWeight = 'normal';
+    } else if (s.id === active) {
+      pip.style.background = s.color; pip.style.boxShadow = `0 0 8px ${s.color}`; pip.style.borderColor = s.color;
+      nm.style.color = s.color; nm.style.fontWeight = 'bold';
+    } else {
+      pip.style.background = 'transparent'; pip.style.boxShadow = 'none'; pip.style.borderColor = 'rgba(255,255,255,0.1)';
+      nm.style.color = '#1a2a3a'; nm.style.fontWeight = 'normal';
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POSE ANIMATION HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function setArm(shoulder, elbow, wrist, sr, se) {
+  shoulder.rotation.set(sr.x||0, sr.y||0, sr.z||0);
+  elbow.rotation.set(se.x||0, se.y||0, se.z||0);
+}
+
+const poses = {
+  idle: () => {
+    leftShoulderPivot.rotation.set(0.1, 0, 0.2);
+    leftArm.upper.rotation.set(0.1, 0, 0);
+    leftArm.elbowPivot.rotation.set(0.3, 0, 0);
+    rightShoulderPivot.rotation.set(0.1, 0,-0.2);
+    rightArm.upper.rotation.set(0.1, 0, 0);
+    rightArm.elbowPivot.rotation.set(0.3, 0, 0);
+    leftLegPivot.rotation.set(0.1, 0, 0);
+    rightLegPivot.rotation.set(0.1, 0, 0);
+    torso.rotation.set(0.05, 0, 0);
+  },
+  approach: (t) => {
+    const bob = Math.sin(t * Math.PI * 4) * 0.03;
+    astronaut.position.y = -0.3 + bob;
+    leftShoulderPivot.rotation.set(0.2 + Math.sin(t*4)*0.15, 0, 0.3);
+    rightShoulderPivot.rotation.set(0.2 - Math.sin(t*4)*0.15, 0,-0.3);
+    leftLegPivot.rotation.set(-0.15 + Math.sin(t*4)*0.12, 0, 0);
+    rightLegPivot.rotation.set(-0.15 - Math.sin(t*4)*0.12, 0, 0);
+    torso.rotation.set(0.08, 0, Math.sin(t*4)*0.04);
+  },
+  openLid: (t) => {
+    // Lean forward, both hands reach to lid
+    torso.rotation.x = 0.3 + t*0.2;
+    leftShoulderPivot.rotation.set(-0.6 - t*0.5, 0, 0.2);
+    leftArm.elbowPivot.rotation.set(-0.8 - t*0.4, 0, 0);
+    rightShoulderPivot.rotation.set(-0.6 - t*0.5, 0,-0.2);
+    rightArm.elbowPivot.rotation.set(-0.8 - t*0.4, 0, 0);
+  },
+  inspect: (t) => {
+    torso.rotation.x = 0.35;
+    leftShoulderPivot.rotation.set(-0.4, 0, 0.3);
+    leftArm.elbowPivot.rotation.set(-0.6, 0, 0);
+    rightShoulderPivot.rotation.set(-0.4+Math.sin(t*3)*0.15, 0,-0.3+Math.cos(t*2)*0.1);
+    rightArm.elbowPivot.rotation.set(-0.8, 0, 0);
+  },
+  extractLeft: (t) => {
+    // Left arm reaches down into container
+    torso.rotation.x = 0.4;
+    leftShoulderPivot.rotation.set(-0.9 - t*0.3, 0, 0.1);
+    leftArm.elbowPivot.rotation.set(-1.2, 0, 0);
+    leftArm.forearm.rotation.set(t*0.3, 0, 0);
+    rightShoulderPivot.rotation.set(0.1, 0,-0.35);
+    rightArm.elbowPivot.rotation.set(0.5, 0, 0);
+  },
+  extractRight: (t) => {
+    torso.rotation.x = 0.4;
+    rightShoulderPivot.rotation.set(-0.9 - t*0.3, 0,-0.1);
+    rightArm.elbowPivot.rotation.set(-1.2, 0, 0);
+    rightArm.forearm.rotation.set(t*0.3, 0, 0);
+    leftShoulderPivot.rotation.set(0.1, 0, 0.35);
+    leftArm.elbowPivot.rotation.set(0.5, 0, 0);
+  },
+  holdBoth: () => {
+    torso.rotation.x = 0.2;
+    leftShoulderPivot.rotation.set(-0.7, 0, 0.2);
+    leftArm.elbowPivot.rotation.set(-1.0, 0, 0);
+    rightShoulderPivot.rotation.set(-0.7, 0,-0.2);
+    rightArm.elbowPivot.rotation.set(-1.0, 0, 0);
+  },
+  transfer: (t) => {
+    // Move to the side (toward zone A)
+    leftShoulderPivot.rotation.set(-0.6, 0.1 + t*0.5, 0.3 + t*0.3);
+    leftArm.elbowPivot.rotation.set(-0.9, 0, 0);
+    rightShoulderPivot.rotation.set(-0.5, 0,-0.2);
+    rightArm.elbowPivot.rotation.set(-0.7, 0, 0);
+    torso.rotation.set(0.2, t*0.3, 0);
+  },
+  celebrateComplete: (t) => {
+    const bob = Math.sin(t*Math.PI*3)*0.05;
+    astronaut.position.y = -0.3 + bob;
+    leftShoulderPivot.rotation.set(-1.2 + Math.sin(t*3)*0.2, 0, 0.5);
+    rightShoulderPivot.rotation.set(-1.2 + Math.cos(t*3)*0.2, 0,-0.5);
+    torso.rotation.set(0, Math.sin(t*2)*0.1, 0);
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRAVITY SIMULATION
+// ══════════════════════════════════════════════════════════════════════════════
+let gravLevel  = 0.0002;
+let gravStab   = 'STABLE';
+let gravStatus = 'MICROGRAVITY';
+let gravConf   = 0.95;
+let gravJitter = 0.0012;
+
+const OSC_LEN2 = 80;
+const oscBuf = { ax: new Float32Array(OSC_LEN2), ay: new Float32Array(OSC_LEN2), az: new Float32Array(OSC_LEN2) };
+let oscIdx2 = 0;
+
+function updateGravity(phase, phaseT, isWrong) {
+  const base = 0.0014;
+  const actionJitter = (phase >= 3 && phase <= 5) ? 0.005 + Math.random()*0.003 : 0.001 + Math.random()*0.001;
+  const turbEvent = isWrong && phase === 3 ? (Math.random()<0.05 ? 0.02 : 0) : 0;
+  gravJitter = gravJitter*0.85 + (base + actionJitter + turbEvent)*0.15;
+  gravLevel  = Math.max(0.0001, gravJitter * 0.4);
+  gravStab   = gravJitter > 0.025 ? 'TURBULENT' : gravJitter > 0.006 ? 'TRANSITION' : 'STABLE';
+  gravStatus = gravJitter > 0.025 ? 'TURBULENCE' : gravJitter > 0.005 ? 'LOW_G' : 'MICROGRAVITY';
+  gravConf   = Math.min(0.99, gravConf*0.97 + (gravStab==='STABLE' ? 0.03 : 0));
+
+  const scale = 150;
+  const n = () => (Math.random()-.5)*0.003;
+  const ax = n(), ay = gravLevel*0.3 + n(), az = n();
+  oscBuf.ax[oscIdx2] = ax; oscBuf.ay[oscIdx2] = ay; oscBuf.az[oscIdx2] = az;
+  oscIdx2 = (oscIdx2+1) % OSC_LEN2;
+
+  updateGravHUD(ax, ay, az);
+}
+
+function updateGravHUD(ax, ay, az) {
+  const gCol = gravStatus==='TURBULENCE' ? '#ff3860' : gravStatus==='LOW_G' ? '#ffb700' : '#00ff9d';
+  document.getElementById('gVal').textContent = gravLevel.toFixed(4) + ' g';
+  document.getElementById('gVal').style.color = gCol;
+  document.getElementById('gStatus').textContent = gravStatus + ' — ' + gravStab;
+  document.getElementById('gFill').style.width = Math.min(100, gravLevel*100) + '%';
+  document.getElementById('gFill').style.background = `linear-gradient(90deg,${gCol},${gCol}80)`;
+  document.getElementById('gStab').textContent = gravStab;
+  document.getElementById('gStab').style.color = gCol;
+  document.getElementById('gMode').textContent = gravStatus==='MICROGRAVITY' ? 'RACK_FRAME' : 'ADAPTIVE';
+  document.getElementById('gGate').textContent = gravStab!=='TURBULENT' ? 'OPEN ✓' : 'HOLD ✗';
+  document.getElementById('gGate').style.color = gravStab!=='TURBULENT' ? '#00ff9d' : '#ff3860';
+  document.getElementById('gJitter').textContent = gravJitter.toFixed(5);
+
+  const bG = document.getElementById('badgeG');
+  bG.textContent = `${gravStatus==='TURBULENCE'?'⚡':gravStatus==='LOW_G'?'⚠':'🛸'} ${gravLevel.toFixed(4)} g — ${gravStatus}`;
+  bG.className = `badge ${gravStatus==='TURBULENCE'?'badge-warn':'badge-g'}`;
+
+  drawOsc();
+}
+
+function drawOsc() {
+  const cvs = document.getElementById('oscCanvas2');
+  if (!cvs) return;
+  cvs.width = cvs.offsetWidth || 190; cvs.height = cvs.offsetHeight || 44;
+  const ctx = cvs.getContext('2d');
+  const W2 = cvs.width, H2 = cvs.height;
+  ctx.clearRect(0,0,W2,H2);
+  ctx.strokeStyle='rgba(0,100,50,0.2)'; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.moveTo(0,H2/2); ctx.lineTo(W2,H2/2); ctx.stroke();
+  [
+    { buf: oscBuf.ax, col:'#ff6b6b' },
+    { buf: oscBuf.ay, col:'#51cf66' },
+    { buf: oscBuf.az, col:'#339af0' },
+  ].forEach(({buf,col}) => {
+    ctx.strokeStyle=col; ctx.lineWidth=1.2; ctx.beginPath();
+    for (let i=0;i<OSC_LEN2;i++) {
+      const di=(oscIdx2+i)%OSC_LEN2;
+      const x=i/OSC_LEN2*W2, y=H2/2 - buf[di]*H2*4;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HAR HUD
+// ══════════════════════════════════════════════════════════════════════════════
+const HAR_PHASES = [
+  ['APPROACHING','Floating toward container','#00f0ff',10],
+  ['OPENING LID','Container access sequence','#00f0ff',45],
+  ['INSPECTING','Visual payload assessment','#60d0ff',60],
+  ['EXTRACT_RED','Left-hand extraction confirmed','#ff4060',94],
+  ['SECURE_MODULE','Both hands securing payload','#ff4060',88],
+  ['TRANSFER_A','Zone A trajectory nominal','#ff7040',92],
+  ['PLACEMENT_OK','RED module latched — Zone A','#00ff9d',97],
+  ['EXP_COMPLETE','All steps confirmed — nominal','#00ff9d',99],
+];
+const HAR_WRONG = ['EXTRACT_YELLOW','⚠ WRONG PAYLOAD — Expected RED','#ff3860',91];
+
+function updateHarHUD(ph, sc2, isWrong) {
+  const data = (isWrong && ph===3) ? HAR_WRONG : (HAR_PHASES[ph] || HAR_PHASES[0]);
+  const [act, conf, col, pct] = data;
+  document.getElementById('harActivity').textContent = act;
+  document.getElementById('harActivity').style.color = col;
+  document.getElementById('harConf').textContent = `Confidence: ${pct}% · Step: ${Math.min(ph+1,8)}/8`;
+  document.getElementById('harBarFill').style.width = pct+'%';
+  document.getElementById('harBarFill').style.background = col;
+  document.getElementById('harBox').style.borderColor = isWrong&&ph===3 ? 'rgba(255,56,96,0.5)' : 'rgba(0,240,255,0.2)';
+  const alert = document.getElementById('harAlert');
+  alert.style.display = (isWrong && ph===3) ? 'block' : 'none';
+
+  document.getElementById('badgeHar').textContent = (isWrong&&ph===3) ? '⚠ WRONG PICK' : '✓ HAR ACTIVE';
+  document.getElementById('badgeHar').className = `badge ${(isWrong&&ph===3)?'badge-warn':'badge-har'}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NARRATION HUD
+// ══════════════════════════════════════════════════════════════════════════════
+function updateNarration(sc, ph) {
+  const narrs = PHASE_NARRATIONS[sc][ph];
+  document.getElementById('narrationStep').textContent = narrs[0];
+  document.getElementById('narrationText').textContent = narrs[1];
+  document.getElementById('narrationSub').textContent  = narrs[2];
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CAMERA ANIMATION
+// ══════════════════════════════════════════════════════════════════════════════
+let camCurrentPos = new THREE.Vector3(3, 2.5, 10);
+let camCurrentLook = new THREE.Vector3(0, 0, -2);
+let camShake = 0;
+
+function setCameraRig(rigName) {
+  if (currentRig === rigName) return;
+  currentRig = rigName;
+  const rig = cameraRigs[rigName];
+  document.getElementById('cameraLabel').textContent = rig.name;
+  document.getElementById('cameraDesc').textContent  = rig.desc;
+}
+
+function updateCamera(dt) {
+  const rig = cameraRigs[currentRig];
+  // Smooth camera movement
+  camCurrentPos.lerp(rig.pos, dt * 1.2);
+  camCurrentLook.lerp(rig.look, dt * 1.5);
+  // Camera shake (turbulence)
+  if (camShake > 0) {
+    const shake = camShake * 0.02;
+    camCurrentPos.x += (Math.random()-.5)*shake;
+    camCurrentPos.y += (Math.random()-.5)*shake;
+    camShake = Math.max(0, camShake - dt * 60);
+  }
+  camera.position.copy(camCurrentPos);
+  camera.lookAt(camCurrentLook);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN ANIMATION LOOP PHASES
+// ══════════════════════════════════════════════════════════════════════════════
+let phase8Started = false;
+let transitionActive = false;
+let transitionT = 0;
+
+function runPhase(ph, t, sc, dt) {
+  const et = easeInOut(t);
+  const isWrong = sc === 1;
+
+  switch(ph) {
+    case 0: { // APPROACH
+      setCameraRig('WIDE');
+      // Astronaut moves forward from z=8 to z=3
+      astronaut.position.z = lerp(8, 3, et);
+      astronaut.position.y = -0.3 + Math.sin(t*Math.PI*4)*0.025;
+      astronaut.rotation.y = 0;
+      poses.approach(t);
+      updateHarHUD(0, sc, false);
+      break;
+    }
+    case 1: { // OPEN LID
+      setCameraRig('APPROACH');
+      astronaut.position.z = lerp(3, 0.8, et);
+      astronaut.position.y = -0.3;
+      astronaut.rotation.y = 0;
+      poses.openLid(t);
+      // Lid opens
+      lidGroup.rotation.x = lerp(0, -2.5, et * 0.9);
+      updateHarHUD(1, sc, false);
+      break;
+    }
+    case 2: { // INSPECT
+      setCameraRig('CLOSE_L');
+      astronaut.position.z = 0.8;
+      astronaut.rotation.y = Math.sin(t*2)*0.05;
+      poses.inspect(t);
+      updateHarHUD(2, sc, false);
+      break;
+    }
+    case 3: { // EXTRACT
+      const isWrongPick = isWrong;
+      setCameraRig(isWrongPick ? 'HAND_R' : 'HAND_L');
+      astronaut.position.z = 0.8;
+      poses[isWrongPick ? 'extractRight' : 'extractLeft'](t);
+
+      // Move held object
+      const srcGroup = isWrongPick ? yelGroup : redGroup;
+      const held = isWrongPick ? heldYelMesh : heldRedMesh;
+      held.visible = t > 0.3;
+      if (held.visible) {
+        // Follow hand
+        const handPos = new THREE.Vector3();
+        if (isWrongPick) {
+          rightArm.glovePivot.getWorldPosition(handPos);
+        } else {
+          leftArm.glovePivot.getWorldPosition(handPos);
+        }
+        held.position.lerp(handPos, dt * 8);
+        heldGlow.position.copy(held.position);
+        heldGlow.material.color.set(isWrongPick ? 0xffcc00 : 0xff3050);
+      }
+      // Hide original from container
+      srcGroup.scale.setScalar(t > 0.35 ? 0 : 1);
+      updateHarHUD(3, sc, isWrongPick);
+      if (isWrongPick) {
+        document.getElementById('harBox').style.animation = 'pulse 0.5s infinite alternate';
+        camShake = 20;
+      }
+      break;
+    }
+    case 4: { // SECURE / CORRECTION
+      astronaut.position.z = 0.8;
+      if (isWrong) {
+        setCameraRig('SIDE');
+        // Put yellow back, pick red
+        heldYelMesh.visible = t < 0.4;
+        if (heldYelMesh.visible) {
+          // Return yellow to container
+          const target = new THREE.Vector3(0.28, -1, -4);
+          heldYelMesh.position.lerp(target, dt*4);
+          heldGlow.position.copy(heldYelMesh.position);
+        } else {
+          yelGroup.scale.setScalar(1);
+          // Pick red
+          heldRedMesh.visible = t > 0.55;
+          if (heldRedMesh.visible) {
+            const handPos = new THREE.Vector3();
+            leftArm.glovePivot.getWorldPosition(handPos);
+            heldRedMesh.position.lerp(handPos, dt*6);
+            heldGlow.position.copy(heldRedMesh.position);
+            heldGlow.material.color.set(0xff3050);
+          }
+          redGroup.scale.setScalar(t > 0.6 ? 0 : 1);
+        }
+        poses.extractLeft(clamp01(t*2 - 0.5));
+        updateHarHUD(4, sc, false);
+      } else {
+        setCameraRig('SIDE');
+        heldRedMesh.visible = true;
+        const handPos = new THREE.Vector3();
+        leftArm.glovePivot.getWorldPosition(handPos);
+        heldRedMesh.position.lerp(handPos, dt*8);
+        heldGlow.position.copy(heldRedMesh.position);
+        poses.holdBoth();
+        updateHarHUD(4, sc, false);
+      }
+      break;
+    }
+    case 5: { // TRANSFER
+      setCameraRig('HAND_L');
+      // Move astronaut toward zone A
+      astronaut.position.z = lerp(0.8, 0.5, et);
+      astronaut.position.x = lerp(0, -1.2, et);
+      astronaut.rotation.y = lerp(0, 0.4, et);
+      poses.transfer(t);
+      heldRedMesh.visible = t < 0.85;
+      if (heldRedMesh.visible) {
+        const handPos = new THREE.Vector3();
+        leftArm.glovePivot.getWorldPosition(handPos);
+        heldRedMesh.position.lerp(handPos, dt*8);
+        heldGlow.position.copy(heldRedMesh.position);
+      }
+      // Place in zone A at end
+      if (t > 0.82) {
+        heldRedMesh.visible = false;
+        heldGlow.visible = false;
+        // Place red box visible in zone A
+        if (!scene.redPlacedA) {
+          const placed = new THREE.Mesh(
+            new THREE.BoxGeometry(0.42,0.38,0.42),
+            new THREE.MeshStandardMaterial({ color:0xff2840, roughness:0.5, metalness:0.2, emissive:0x440010, emissiveIntensity:0.4 })
+          );
+          placed.position.set(-2.2, -1.25, -4); scene.add(placed);
+          const glow2 = new THREE.Mesh(new THREE.SphereGeometry(0.4,16,16),new THREE.MeshBasicMaterial({color:0x00ff9d,transparent:true,opacity:0.12}));
+          glow2.position.copy(placed.position); scene.add(glow2);
+          scene.redPlacedA = true;
+        }
+      }
+      updateHarHUD(5, sc, false);
+      break;
+    }
+    case 6: { // CONFIRM
+      setCameraRig('TOP');
+      astronaut.position.x = lerp(-1.2, 0, et*0.3);
+      astronaut.rotation.y = lerp(0.4, 0, et*0.3);
+      heldGlow.visible = false;
+      poses.holdBoth();
+      updateHarHUD(6, sc, false);
+      break;
+    }
+    case 7: { // COMPLETE
+      setCameraRig('WIDE');
+      astronaut.position.x = lerp(astronaut.position.x, 0, dt*1.5);
+      astronaut.position.z = lerp(astronaut.position.z, 1.5, dt*1.5);
+      astronaut.rotation.y = 0;
+      poses.celebrateComplete(t);
+      updateHarHUD(7, sc, false);
+      break;
+    }
+  }
+
+  // Gravity
+  updateGravity(ph, t, isWrong && ph===3);
+  // Active step
+  activeStep = Math.min(ph+1, 8);
+  updateStepList(activeStep);
+  // Narration
+  updateNarration(sc, ph);
+  // HAR alert state
+  document.getElementById('harAlert').style.display = (isWrong && ph===3) ? 'block' : 'none';
+  // Progress
+  const totalPhases = PHASE_NARRATIONS[sc].length;
+  document.getElementById('progFill').style.width = `${((ph + t) / totalPhases * 100).toFixed(1)}%`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════════════════════════════════════
+let fpsCount=0, fpsTimer2=0, displayFps2=60;
+
+function formatMET(sec) {
+  const h=String(Math.floor(sec/3600)).padStart(2,'0');
+  const m=String(Math.floor((sec%3600)/60)).padStart(2,'0');
+  const s=String(Math.floor(sec%60)).padStart(2,'0');
+  return `MET: T+${h}:${m}:${s}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCENARIO MANAGEMENT
+// ══════════════════════════════════════════════════════════════════════════════
+function resetScenario(sc) {
+  scenario = sc;
+  phase = 0;
+  phaseT = 0;
+  wrongAlert = false;
+  heldRedMesh.visible = false;
+  heldYelMesh.visible = false;
+  heldGlow.visible = true;
+  heldGlow.material.opacity = 0.08;
+  redGroup.scale.setScalar(1);
+  yelGroup.scale.setScalar(1);
+  lidGroup.rotation.x = 0;
+  astronaut.position.set(0, -0.3, 8);
+  astronaut.rotation.set(0,0,0);
+  torso.rotation.set(0,0,0);
+  scene.redPlacedA = false;
+
+  document.getElementById('scenarioLabel').textContent = `SCENARIO ${sc+1}`;
+  document.getElementById('scenarioDesc').textContent = sc===0
+    ? 'Correct 8-step protocol — RED extraction, Zone A placement'
+    : '⚠ Wrong pick detected — HAR alerts astronaut — correction performed';
+  document.getElementById('scenarioBar').querySelectorAll('.sc-dot').forEach((d,i) => {
+    d.className = `sc-dot ${i===sc?'active':i<sc?'done':''}`;
+  });
+}
+resetScenario(0);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN RENDER LOOP
+// ══════════════════════════════════════════════════════════════════════════════
+let lastTs = 0;
+function animate(ts) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((ts - lastTs)/1000, 0.05);
+  lastTs = ts;
+  totalTime += dt;
+  simTime   += dt;
+
+  // FPS counter
+  fpsCount++; fpsTimer2 += dt;
+  if (fpsTimer2 >= 0.5) {
+    displayFps2 = Math.round(fpsCount/fpsTimer2);
+    fpsCount=0; fpsTimer2=0;
+    document.getElementById('bbFps').textContent = displayFps2;
+    document.getElementById('bbLat').textContent = (6+Math.random()*4).toFixed(1)+' ms';
+    document.getElementById('metClock').textContent = formatMET(totalTime);
+  }
+
+  // Phase advance
+  const phaseDur = PHASE_DURATIONS[scenario][phase] || 3.5;
+  phaseT += dt / phaseDur;
+  if (phaseT >= 1) {
+    phaseT = 0;
+    phase++;
+    if (phase >= PHASE_NARRATIONS[scenario].length) {
+      phase = 0;
+      const nextSc = (scenario+1) % 2;
+      resetScenario(nextSc);
+      simTime = 0;
+    }
+  }
+
+  // Run current phase animation
+  runPhase(phase, clamp01(phaseT), scenario, dt);
+
+  // Earth rotation
+  if (scene.earthMesh) scene.earthMesh.rotation.y += dt*0.03;
+
+  // Headlamp tracks astronaut
+  const headWorld = new THREE.Vector3();
+  helmetGroup.getWorldPosition(headWorld);
+  headlamp.position.copy(headWorld);
+  headlamp.target.position.set(headWorld.x, headWorld.y, headWorld.z - 3);
+  headlamp.target.updateMatrixWorld();
+
+  // Dust particles drift
+  const dPos = scene.dustGeo.attributes.position;
+  for (let i=0; i<dustParticles.length; i++) {
+    const p = dustParticles[i];
+    p.x += p.vx; p.y += p.vy; p.z += p.vz;
+    if (p.x < -6) p.x=6; if (p.x>6) p.x=-6;
+    if (p.y < -2) p.y=4; if (p.y>4) p.y=-2;
+    if (p.z < -9) p.z=9; if (p.z>9) p.z=-9;
+    dPos.setXYZ(i, p.x, p.y, p.z);
+  }
+  dPos.needsUpdate = true;
+
+  // Subtle astronaut body float (microgravity)
+  astronaut.position.y += Math.sin(totalTime*0.7)*0.0003;
+  astronaut.rotation.z = Math.sin(totalTime*0.4)*0.008;
+
+  // Camera
+  updateCamera(dt);
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

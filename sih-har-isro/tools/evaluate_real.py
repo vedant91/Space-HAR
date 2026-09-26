@@ -48,9 +48,14 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(1, str(Path(__file__).resolve().parent))   # tools/ (no package): build_sequences
 
 from config.experiment_config import (  # noqa: E402
-    SEQUENCE_WINDOW, SKELETON_FEATURES, STEP_CONFIDENCE_THRESHOLD,
+    FPS, FRAME_HEIGHT, FRAME_WIDTH, MEDIAPIPE_MODEL_COMPLEXITY, MODEL_FEATURE_DIM, POSE_INPUT_WIDTH,
+    SKELETON_FEATURES, STEP_CONFIDENCE_THRESHOLD, WINDOW_PURITY,
+)
+from pipeline.features import (  # noqa: E402
+    LAYOUT_DIMS, build_frame_features, contract_of, windows,
 )
 
 NUM_LANDMARKS = 33
@@ -66,12 +71,16 @@ KEY_LANDMARKS = [11, 12, 13, 14, 15, 16, 23, 24]
 class LSTMRunner:
     """Loads the trained checkpoint and classifies 30-frame windows."""
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, runtime_backend: str = "none"):
         import torch
         from train.train_lstm import HARLSTMClassifier
 
         self.torch = torch
         ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
+        # runtime_backend is the pose stage this run scores through: "none"
+        # (MediaPipe, OptimizedMPWrapper) or "romp" (--pose-source hmr).
+        from pipeline.hmr_backend import check_pose_source
+        check_pose_source(model_path, ckpt, runtime_backend)
         self.model = HARLSTMClassifier(
             feature_dim=ckpt["feature_dim"],
             hidden_size=ckpt["hidden_size"],
@@ -83,6 +92,18 @@ class LSTMRunner:
         self.idx_to_label = {int(k): int(v) for k, v in ckpt.get("idx_to_label", {}).items()}
         self.train_val_acc = float(ckpt.get("val_acc", 0.0))
         self.feature_dim = int(ckpt["feature_dim"])
+        # What this checkpoint was trained on. A checkpoint with no recorded
+        # contract (e.g. models/lstm_final_rack.pt, the 0.201 baseline) is the
+        # legacy one: 132-dim pose only, every frame. Its inputs are built
+        # that way here, so it stays scorable next to new models.
+        self.contract = contract_of(ckpt)
+        want = LAYOUT_DIMS.get(self.contract["feature_layout"])
+        if want != self.feature_dim:
+            raise SystemExit(f"{model_path}: layout {self.contract['feature_layout']!r} "
+                             f"is {want}-dim but the model takes {self.feature_dim}")
+        if self.feature_dim != MODEL_FEATURE_DIM:
+            print(f"[i] {model_path}: layout {self.contract['feature_layout']!r} "
+                  f"({self.feature_dim}-dim), not the deployed {MODEL_FEATURE_DIM}-dim layout")
 
     def predict(self, window: np.ndarray):
         """(T, F) -> (step_id, confidence)."""
@@ -100,14 +121,14 @@ class LSTMRunner:
 
 def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
                   camera: Optional[str] = None,
-                  complexity: int = 1,
                   rack_normalize: bool = False,
                   max_frames: int = 0,
-                  upright: bool = True) -> Optional[dict]:
+                  upright: bool = True,
+                  pose_source: str = "mediapipe") -> Optional[dict]:
     import cv2
-    from pipeline.pose_backend import PoseBackend
+    from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size
     from pipeline.hsv_detector import HSVBoxDetector
-    from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
+    from pipeline.rack_frame import RackFrameNormalizer
 
     meta_path = take_dir / "meta.json"
     if not meta_path.exists():
@@ -132,65 +153,74 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
     img0 = cv2.imread(str(frames[0]))
     h, w = img0.shape[:2]
 
-    if upright:
-        from pipeline.upright_pose import UprightPoseEstimator
-        backend = UprightPoseEstimator(complexity=complexity, min_det_conf=0.3,
-                                       min_trk_conf=0.3, downscale=1,
-                                       frame_width=w, frame_height=h)
+    # Perception runs on frames brought to the live frame size (to_frame_size),
+    # with the live pose stage's config defaults (complexity, POSE_INPUT_WIDTH).
+    # w, h stay the render's native size for pixel pose error / truth boxes.
+    fw, fh = FRAME_WIDTH, FRAME_HEIGHT
+    box_scale = np.array([fw / w, fh / h, fw / w, fh / h])
+    hmr_poses = hmr_dets = hmr_stats = backend = detector = None
+    if pose_source == "hmr":
+        # The HMR route is tools/build_sequences._frame_inputs, the exact code
+        # that built the HMR training set: HSV + HMRBackend("romp") per frame,
+        # no upright (the live HMR branch never canonicalises the frame).
+        # Cached per take, so a scoring run under the system Python reuses a
+        # ROMP pass made under .venv-hmr; on a miss it runs ROMP (and refuses
+        # if ROMP does not load, never falling back to MediaPipe).
+        from build_sequences import _frame_inputs
+        upright = False
+        hmr_poses, hmr_dets, _, hmr_stats = _frame_inputs(
+            str(take_dir.parent), take_dir, cam_dir, "hmr", upright=False)
+        n = min(n, len(hmr_poses))
     else:
-        backend = PoseBackend(complexity=complexity, min_det_conf=0.3,
-                              min_trk_conf=0.3, downscale=1,
-                              frame_width=w, frame_height=h)
-    detector = HSVBoxDetector(frame_width=w, frame_height=h)
+        backend = OptimizedMPWrapper(frame_wh=(fw, fh), upright=upright)
+        detector = HSVBoxDetector(frame_width=fw, frame_height=fh)
     normalizer = RackFrameNormalizer() if rack_normalize else None
+    layout = runner.contract["feature_layout"] if runner is not None else "pose132"
+    dim = LAYOUT_DIMS[layout]
 
     # Two copies of MediaPipe's output are needed once rack normalisation is
     # in play. `mp_raw` stays in image coordinates so it can be compared
-    # against the ground truth for landmark error; `mp_poses` is whatever the
-    # LSTM was actually trained on. Scoring normalised coordinates against
-    # raw ones silently produces a nonsense error (~700 px on a 900 px frame,
-    # because rack-frame units are torso-lengths, not pixels).
-    mp_poses = np.zeros((n, SKELETON_FEATURES), dtype=np.float32)
+    # against the ground truth for landmark error; `mp_poses` is the model
+    # input, built by the same pipeline.features call the live pipeline makes.
+    # Scoring normalised coordinates against raw ones silently produces a
+    # nonsense error (~700 px on a 900 px frame, because rack-frame units are
+    # torso-lengths, not pixels).
+    mp_poses = np.zeros((n, dim), dtype=np.float32)
     mp_raw = np.zeros((n, SKELETON_FEATURES), dtype=np.float32)
-    gt_for_model = np.array(gt_pose[:n], dtype=np.float32)
+    gt_for_model = np.zeros((n, dim), dtype=np.float32)
     gt_normalizer = RackFrameNormalizer() if rack_normalize else None
     timings = defaultdict(list)
     hsv_counts = {k: {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
                   for k in ("red_box", "yellow_box", "main_box")}
     iou_sums = defaultdict(list)
     detected = 0
+    prev = None      # frame 0 gets no pose hint, exactly as live
 
     for i in range(n):
-        img = cv2.imread(str(frames[i]))
-        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-        t0 = time.perf_counter()
-        dets = detector.detect(img)
-        t_hsv = (time.perf_counter() - t0) * 1000.0
-
-        t0 = time.perf_counter()
-        if upright:
-            feats = backend.process(rgb, detections=dets)
+        if hmr_poses is not None:
+            dets, feats = hmr_dets[i], hmr_poses[i]
         else:
-            feats = backend.process(rgb, timestamp_ms=int(i * 1000 / 30))
-        t_pose = (time.perf_counter() - t0) * 1000.0
+            img = to_frame_size(cv2.imread(str(frames[i])))
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+            # The live loop's own perception step (HSV on this frame, pose
+            # hinted with the previous frame's detections).
+            tm = {}
+            dets, feats = perceive(img, rgb, detector, backend, prev, timings=tm)
+            prev = dets
+            timings["hsv"].append(tm["hsv_ms"])
+            timings["pose"].append(tm["pose_ms"])
 
         if np.any(feats):
             detected += 1
         mp_raw[i] = feats
-        rack_rect = pick_rack_rect(dets)
-        if normalizer is not None:
-            feats = normalizer.normalize(feats, rack_rect=rack_rect)
-        mp_poses[i] = feats
-        if gt_normalizer is not None:
-            # The oracle path must see the ground truth put through the SAME
-            # transform as the live path, or it is measuring a feature-space
-            # mismatch rather than the cost of perception.
-            gt_for_model[i] = gt_normalizer.normalize(gt_for_model[i],
-                                                      rack_rect=rack_rect)
-
-        timings["hsv"].append(t_hsv)
-        timings["pose"].append(t_pose)
+        mp_poses[i] = build_frame_features(feats, dets, (fw, fh), normalizer, layout)
+        # The oracle path must see the ground truth put through the SAME
+        # builder (same rack rect, same boxes, own normaliser state) as the
+        # live path, or it measures a feature-space mismatch rather than the
+        # cost of perception. Only the pose is swapped; boxes stay HSV.
+        gt_for_model[i] = build_frame_features(gt_pose[i], dets, (fw, fh),
+                                               gt_normalizer, layout)
 
         # HSV vs true visibility + true boxes
         by_label = {d.label: d for d in dets}
@@ -199,7 +229,8 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
             pred = key in by_label
             if truth and pred:
                 hsv_counts[key]["tp"] += 1
-                iou_sums[key].append(_iou(by_label[key].bbox, payload_gt[i][key]["bbox"]))
+                truth_box = np.asarray(payload_gt[i][key]["bbox"], dtype=float) * box_scale
+                iou_sums[key].append(_iou(by_label[key].bbox, truth_box))
             elif truth and not pred:
                 hsv_counts[key]["fn"] += 1
             elif (not truth) and pred:
@@ -207,7 +238,16 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
             else:
                 hsv_counts[key]["tn"] += 1
 
-    backend.close()
+    if backend is not None:
+        backend.close()
+    latency = {k: {"mean": round(float(np.mean(v)), 2),
+                   "p95": round(float(np.percentile(v, 95)), 2)}
+               for k, v in timings.items()}
+    if hmr_stats is not None:
+        # Whole-pass wall time of the ROMP run that filled the cache (imread +
+        # resize + HSV + ROMP per frame); not separable per stage.
+        latency["hmr_pass_incl_io_hsv"] = {
+            "mean": round(1000.0 * hmr_stats["seconds"] / max(hmr_stats["frames"], 1), 2)}
 
     result = {
         "take": take_dir.name,
@@ -219,20 +259,17 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
         "camera": cam,
         "frames": n,
         "pose_detect_rate": round(detected / max(n, 1), 4),
-        "pose_backend": backend.backend,
+        "pose_backend": hmr_stats["backend"] if hmr_stats is not None else backend.backend_name,
         "upright_pose": bool(upright),
-        "latency_ms": {
-            k: {"mean": round(float(np.mean(v)), 2),
-                "p95": round(float(np.percentile(v, 95)), 2)}
-            for k, v in timings.items()
-        },
+        "latency_ms": latency,
         "hsv": _hsv_summary(hsv_counts, iou_sums),
         "pose_error": _pose_error(mp_raw, gt_pose[:n], w, h),
     }
 
     if runner is not None:
-        result["step"] = _step_accuracy(runner, mp_poses, gt_for_model, labels[:n])
-        result["protocol"] = _protocol_outcome(runner, mp_poses, labels[:n],
+        stamps = np.arange(n) / float(meta.get("fps", FPS))   # render frame i at i / fps
+        result["step"] = _step_accuracy(runner, mp_poses, gt_for_model, labels[:n], stamps)
+        result["protocol"] = _protocol_outcome(runner, mp_poses, labels[:n], stamps,
                                                meta.get("sequence", []))
     return result
 
@@ -303,35 +340,26 @@ def _pose_error(mp_pose: np.ndarray, gt_pose: np.ndarray,
     }
 
 
-def _windows(poses: np.ndarray, labels: np.ndarray, stride: int = 1,
-             purity: float = 0.6):
-    """Dominant-label windows, matching tools/build_sequences.py.
-
-    Strictly-pure windows at stride 3 yielded as few as ONE scorable window
-    for a whole take (a ~32-frame step against a 30-frame window admits 3
-    pure starts, and stride 3 keeps one of them). A per-take accuracy over
-    n=1 is not a measurement, and averaging such numbers across takes gives
-    a headline figure dominated by whichever take happened to have the most
-    windows.
-    """
-    for start in range(0, len(poses) - SEQUENCE_WINDOW + 1, stride):
-        lab = labels[start:start + SEQUENCE_WINDOW]
-        values, counts = np.unique(lab, return_counts=True)
-        if counts.max() / float(SEQUENCE_WINDOW) < purity:
-            continue
-        yield poses[start:start + SEQUENCE_WINDOW], int(values[int(np.argmax(counts))])
-
-
 def _step_accuracy(runner: LSTMRunner, mp_poses: np.ndarray,
                    gt_poses: np.ndarray, labels: np.ndarray,
-                   stride: int = 1) -> dict:
+                   stamps: np.ndarray, stride: int = 1) -> dict:
     """The headline comparison: real perception vs oracle pose, same model,
-    same windows, same labels. The difference is the perception cost."""
+    same windows, same labels. The difference is the perception cost.
+
+    Windows come from pipeline.features.windows() at the model's own sample
+    rate and the one config purity (WINDOW_PURITY) that training used, so a
+    3-second-trained model is scored on 3-second windows. Dominant-label
+    windows rather than strictly pure ones: pure windows at stride 3 once
+    yielded ONE scorable window for a whole take, and a per-take accuracy
+    over n=1 is not a measurement.
+    """
     res = {}
     for name, source in (("real", mp_poses), ("oracle", gt_poses)):
         correct = total = confident = 0
         confusion = defaultdict(int)
-        for window, truth in _windows(source, labels, stride):
+        for window, truth in windows(source, labels, stride=stride, purity=WINDOW_PURITY,
+                                     sample_every=runner.contract["sample_every"],
+                                     timestamps=stamps):
             pred, conf = runner.predict(window)
             total += 1
             if conf >= STEP_CONFIDENCE_THRESHOLD:
@@ -353,7 +381,8 @@ def _step_accuracy(runner: LSTMRunner, mp_poses: np.ndarray,
 
 
 def _protocol_outcome(runner: LSTMRunner, mp_poses: np.ndarray,
-                      labels: np.ndarray, sequence: Sequence[int]) -> dict:
+                      labels: np.ndarray, stamps: np.ndarray,
+                      sequence: Sequence[int]) -> dict:
     """Drive the real state machine with the REAL prediction stream.
 
     `simulation/space_sim.evaluate_state_machine()` feeds it hand-written
@@ -370,8 +399,11 @@ def _protocol_outcome(runner: LSTMRunner, mp_poses: np.ndarray,
     sm.on_step_recovered = lambda rec, o: events["recovered"].append(rec.step_id)
     sm.on_step_completed = lambda rec: events["completed"].append(rec.step_id)
 
-    for start in range(0, len(mp_poses) - SEQUENCE_WINDOW + 1):
-        pred, conf = runner.predict(mp_poses[start:start + SEQUENCE_WINDOW])
+    # One prediction per sample entering the window, exactly as the live
+    # pipeline feeds its state machine.
+    for window, _ in windows(mp_poses, None, stride=1, purity=0.0,
+                             sample_every=runner.contract["sample_every"], timestamps=stamps):
+        pred, conf = runner.predict(window)
         sm.feed_prediction(pred, conf)
 
     summary = sm.get_status_summary()
@@ -397,18 +429,32 @@ def main():
     ap.add_argument("--model", default="models/lstm_classifier.pt")
     ap.add_argument("--out", default="logs/real_eval.json")
     ap.add_argument("--camera", default=None)
-    ap.add_argument("--complexity", type=int, default=1)
     ap.add_argument("--rack-normalize", action="store_true")
     ap.add_argument("--no-upright", action="store_true")
     ap.add_argument("--max-frames", type=int, default=0)
     ap.add_argument("--tags", default="", help="Only evaluate takes with these tags")
     ap.add_argument("--label", default="", help="Free-text label for this run")
+    ap.add_argument("--pose-source", default="mediapipe", choices=["mediapipe", "hmr"],
+                    help="hmr = ROMP via tools/build_sequences' HMR pass (the one HMR "
+                         "training used); needs .venv-hmr unless every take is cached. "
+                         "The checkpoint must have been trained on the same source.")
     args = ap.parse_args()
+    if args.pose_source == "hmr":
+        args.no_upright = True   # the HMR branch never canonicalises the frame
 
     runner = None
     if Path(args.model).exists():
-        runner = LSTMRunner(args.model)
-        print(f"LSTM loaded: {args.model} (reported train val_acc={runner.train_val_acc:.3f})")
+        from build_sequences import HMR_TRAIN_BACKEND
+        runner = LSTMRunner(args.model,
+                            HMR_TRAIN_BACKEND if args.pose_source == "hmr" else "none")
+        print(f"LSTM loaded: {args.model} (reported train val_acc={runner.train_val_acc:.3f}, "
+              f"contract {runner.contract})")
+        recorded = runner.contract["rack_normalized"]
+        if recorded is not None and bool(recorded) != args.rack_normalize:
+            # The checkpoint knows how it was trained; the flag is a guess.
+            print(f"[!] --rack-normalize={args.rack_normalize} contradicts the checkpoint "
+                  f"(trained with rack_normalized={recorded}); using the checkpoint's value.")
+            args.rack_normalize = bool(recorded)
     else:
         print(f"[!] No model at {args.model} — pose/HSV metrics only.")
 
@@ -421,9 +467,9 @@ def main():
             tag = json.loads(meta_path.read_text(encoding="utf-8")).get("tag", "nominal")
             if tag not in only:
                 continue
-        row = evaluate_take(take_dir, runner, args.camera, args.complexity,
+        row = evaluate_take(take_dir, runner, args.camera,
                             args.rack_normalize, args.max_frames,
-                            upright=not args.no_upright)
+                            upright=not args.no_upright, pose_source=args.pose_source)
         if row is None:
             continue
         rows.append(row)
@@ -438,8 +484,12 @@ def main():
         "model": args.model,
         "model_reported_val_acc": runner.train_val_acc if runner else None,
         "rack_normalize": args.rack_normalize,
+        "model_contract": runner.contract if runner else None,
+        "pose_source": args.pose_source,
+        "window_purity": WINDOW_PURITY,
         "upright_pose": not args.no_upright,
-        "pose_complexity": args.complexity,
+        "pose_complexity": MEDIAPIPE_MODEL_COMPLEXITY,
+        "pose_input_width": POSE_INPUT_WIDTH,
         "takes": rows,
         "aggregate": _aggregate(rows),
     }
@@ -496,6 +546,7 @@ def _aggregate(rows: List[dict]) -> dict:
         "hsv_yellow_precision": _mean(["hsv", "yellow_box", "precision"]),
         "hsv_main_recall": _mean(["hsv", "main_box", "recall"]),
         "pose_latency_ms_mean": _mean(["latency_ms", "pose", "mean"]),
+        "hmr_pass_ms_mean": _mean(["latency_ms", "hmr_pass_incl_io_hsv", "mean"]),
         "hsv_latency_ms_mean": _mean(["latency_ms", "hsv", "mean"]),
         "experiments_completed": sum(
             1 for r in step_rows if r.get("protocol", {}).get("experiment_complete")),

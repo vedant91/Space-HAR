@@ -12,6 +12,7 @@ Run this file to launch the full system:
     python main.py --mode train     → run full training sequence
     python main.py --mode e2e       → data → train → space sim loop until gates pass
     python main.py --mode sim       → space simulation only (requires trained LSTM)
+    python main.py --mode sim3d --render → render the Blender BAS digital twin
 """
 
 import sys
@@ -142,6 +143,33 @@ def run_hsv_tuner(camera: int = 0):
     run_hsv_tuner(camera)
 
 
+def run_blender_digital_twin(render: bool = False):
+    """Build the Blender digital twin and package its evaluation artifacts.
+
+    Unlike the lightweight procedural simulator, this path is intended for
+    presentation footage and synthetic-data generation.  The clean RGB video
+    is the input to HAR; a separate review video carries only simulation
+    ground-truth boxes.
+    """
+    import subprocess
+
+    root = Path(__file__).resolve().parent
+    blender = root.parent / "tools" / "blender-5.2.0" / "blender-5.2.0-windows-x64" / "blender.exe"
+    scene = root / "dataset" / "blender_twin" / "bas_har_digital_twin.blend"
+    builder = root / "simulation" / "blender_build_bas_scene.py"
+    exporter = root / "simulation" / "blender_export_annotations.py"
+    if not blender.exists():
+        raise FileNotFoundError(f"Blender was not found at {blender}")
+    if render or not scene.exists():
+        subprocess.run([str(blender), "--background", "--python", str(builder)], check=True)
+    subprocess.run([str(blender), "--background", str(scene), "--python", str(exporter)], check=True)
+    from simulation.package_blender_demo import main as package
+    result = package()
+    result["renderer"] = "Blender digital twin (fixed payload camera)"
+    result["label_policy"] = "Preview boxes are simulation ground truth; run pipeline on clean_video for live inference."
+    return result
+
+
 def print_status():
     """Print current system status: models, data, etc."""
     print("\n" + "="*60)
@@ -224,9 +252,10 @@ Modes:
   status     → Show system status and model availability
   e2e        → End-to-end loop: data → train → space sim until gates pass
   sim        → Space simulation latency/accuracy test only
+  sim3d      → Package Blender astronaut/payload-rack digital twin
         """
     )
-    parser.add_argument("--mode", choices=["pipeline", "train", "datagen", "tuner", "status", "e2e", "sim"],
+    parser.add_argument("--mode", choices=["pipeline", "train", "datagen", "tuner", "status", "e2e", "sim", "sim3d"],
                         default="pipeline")
     parser.add_argument("--camera",   type=int,  default=0)
     parser.add_argument("--video",    type=str,  default=None)
@@ -244,6 +273,8 @@ Modes:
                             "train/train_cnn.py before relying on this in production.")
     parser.add_argument("--mock",     action="store_true",
                         help="Use mock data (no Gemini API needed)")
+    parser.add_argument("--render", action="store_true",
+                        help="For sim3d, rebuild and render all Blender frames before packaging")
     args = parser.parse_args()
 
     if args.mode == "status":
@@ -281,3 +312,7 @@ Modes:
         report = run_full_space_sim(test_sequences_dir="dataset/skeleton_sequences_test")
         print(json.dumps({k: v for k, v in report.items() if k != "sm_statuses"},
                          indent=2, default=str))
+
+    elif args.mode == "sim3d":
+        import json
+        print(json.dumps(run_blender_digital_twin(render=args.render), indent=2))

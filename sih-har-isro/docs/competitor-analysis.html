@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS 26174 Competitor Scan</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1b1c1e; --mute:#5d6166; --line:#e2e2de;
+  --accent:#1f5fbf; --ok:#1d7a46; --okbg:#e3f3ea; --warn:#9a6200; --warnbg:#fbf0d9;
+  --bad:#b3261e; --badbg:#fbe4e2; --code:#f0f0ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034;
+    --accent:#7aa7ef; --ok:#6fcf97; --okbg:#1c3226; --warn:#f0c060; --warnbg:#3a2f16;
+    --bad:#f28b82; --badbg:#3d1f1d; --code:#26282c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131416; --card:#1c1d20; --ink:#ececea; --mute:#a2a5aa; --line:#2e3034;
+  --accent:#7aa7ef; --ok:#6fcf97; --okbg:#1c3226; --warn:#f0c060; --warnbg:#3a2f16;
+  --bad:#f28b82; --badbg:#3d1f1d; --code:#26282c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:960px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}
+h2{font-size:1.25rem;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
+p{margin:8px 0}
+.sub{color:var(--mute);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+.verdict{border-left:4px solid var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.tw{overflow-x:auto}
+.b{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.ok{background:var(--okbg);color:var(--ok)} .warn{background:var(--warnbg);color:var(--warn)} .bad{background:var(--badbg);color:var(--bad)}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.88em}
+ul,ol{margin:6px 0;padding-left:20px} li{margin:4px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.small{font-size:.86rem;color:var(--mute)}
+a{color:var(--accent)}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+
+<h1>PS 26174: what the other teams built</h1>
+<p class="sub">GitHub scan, 26 Sep 2026 · 22 public repos found for this problem statement · file trees and READMEs read for every repo, code opened for the strongest</p>
+
+<div class="card verdict">
+<p><b>The short version.</b> Almost every team built the same thing: a webcam pointed at an <i>upright person at a table</i>, YOLO or colour detection, MediaPipe hands, a rule-based step checker and a dashboard. <b>Nobody has tested an astronaut at a real space orientation</b>: rolled, tilted or upside down. "Microgravity" and "HMR" appear in their READMEs and UI mockups, but none of them run it. Space is the entire point of this problem statement, and it's the part everyone skipped. It's also the part we actually built.</p>
+<p><b>But they're ahead of us in one place:</b> the strong teams have a YOLO detector trained on real photos of their props, and a clean live demo. We have neither yet. That gap is exactly hours 0–13 of our <a href="ultimate-plan.html">24-hour plan</a>.</p>
+</div>
+
+<h2>1. The strongest competitors</h2>
+<div class="tw"><table>
+<tr><th>Repo</th><th>What's real</th><th>Weak spot</th></tr>
+<tr><td><b>ATLAS</b><br><span class="small">atulharshvardhan2006</span></td><td>Custom YOLOv8 (about 200 images) with <b>open/closed box classes</b>, YOLOv8-Pose wrists, ORB matching for lid state, JSON-driven state machine, React HUD, training UI.</td><td>"Space augmentation" is only 2D lighting effects (flares, glare), with no rotation. Scope creep: face biometrics, an LLM. Invented props (scissors, hole puncher).</td></tr>
+<tr><td><b>ASTRA-HAR-EdgeAI</b><br><span class="small">gsaivenkateshkumar</span></td><td>The most real data: ~550 labelled webcam frames of red and blue boxes, YOLO11 training jobs, large test suite.</td><td>Upright tabletop only. Model files are Git LFS pointers (0 KB) and won't download. The repo is 13,000+ files with dependencies committed.</td></tr>
+<tr><td><b>BAS-EXA</b><br><span class="small">Rahulrwt99</span></td><td><b>Same idea as our plan:</b> AprilTag rack frame + a deterministic safety engine + JSONL audit log. Clean one-command demo, plus a separate skip-step demo.</td><td>Says it plainly: "dataset collection and model training remain necessary." No trained model, and a colour-based fallback detector.</td></tr>
+<tr><td><b>ASTRA-SEQ</b><br><span class="small">moiz2405</span></td><td>ArUco marker per object, proper evaluation (precision/recall/F1, false events per minute), honest README.</td><td>HSV detector by default, and the YOLO backend is optional and untrained. Tabletop only.</td></tr>
+<tr><td><b>Hangla Coders</b><br><span class="small">MakInShort</span></td><td>Trained YOLO + MediaPipe hands + XGBoost step classifier, PySide6 dashboard.</td><td>Went off-task: built a <i>wireless microphone</i> experiment instead of the box experiment.</td></tr>
+<tr><td><b>TARA</b><br><span class="small">StarCodes03</span></td><td>YOLOv8 + YOLOv8-pose, held-object tracker, tests, web HUD.</td><td>A COCO-pretrained <code>yolov8n.pt</code>, which doesn't know the project's boxes. Rule-based "temporal" logic. Bloat: life-support telemetry panels.</td></tr>
+<tr><td><b>DRISHTI</b><br><span class="small">ThouheedAhmed</span></td><td>Claims "97.25% held-out accuracy".</td><td>Measured on a posture/distress Random Forest, which is not step recognition. That's the wrong metric for this problem statement.</td></tr>
+</table></div>
+
+<h2>2. What the whole field gets wrong</h2>
+<div class="grid2">
+<div class="card"><b>Space is only in the text</b><p>Every dataset shows an upright person at a desk. No rotation testing, no tilted or inverted crew. The optional HMR exists as a PDF (Space-Sight2), a UI viewer (one repo), or not at all.</p></div>
+<div class="card"><b>No trained sequence model</b><p>The deliverable is "a trained AI model". Most teams train only an object detector, or nothing at all, and hard-code the steps as rules. Two teams say openly that their perception is scripted or simulated.</p></div>
+<div class="card"><b>Tiny, single-room datasets</b><p>170 to 550 hand-labelled frames, one room, one lighting setup. These will score well in that room and fall apart anywhere else.</p></div>
+<div class="card"><b>No honest numbers</b><p>Most report no accuracy at all. The one big number (97%) measures a different problem. Nobody tests on conditions the model never saw.</p></div>
+<div class="card"><b>Scope creep</b><p>Face recognition, LLM chatbots, life-support telemetry, Docker plus React stacks. None of it is asked for, and it all eats edge compute.</p></div>
+<div class="card"><b>Empty or placeholder repos</b><p>Several are just a prompt file, a PDF, or 0-byte training scripts. The real field is about 7 serious teams.</p></div>
+</div>
+
+<h2>3. Where we stand against them</h2>
+<div class="tw"><table>
+<tr><th></th><th>Best competitor</th><th>Us today</th><th>After the 24 h plan</th></tr>
+<tr><td>Training data</td><td>~550 real webcam frames</td><td><span class="b ok">22,349 rendered frames, 23 takes, every orientation</span></td><td>+ real webcam takes</td></tr>
+<tr><td>Tested on tilted / inverted astronaut</td><td><span class="b bad">Nobody</span></td><td><span class="b ok">Yes: held-out 180° roll, 60° pitch, 90° yaw</span></td><td>Same, reported with seed spread</td></tr>
+<tr><td>HMR actually running</td><td><span class="b bad">Nobody</span></td><td><span class="b ok">ROMP on RTX 3050</span> (limits known)</td><td>Live 3D panel with 2D fallback</td></tr>
+<tr><td>Trained temporal model</td><td>XGBoost (one team)</td><td><span class="b ok">LSTM, train/live parity, tests</span></td><td>Retrained on detector features</td></tr>
+<tr><td>Trained object detector</td><td><span class="b ok">YOLO on their props</span></td><td><span class="b bad">Colour thresholds</span></td><td>YOLOv8n on 60k Blender boxes + real frames</td></tr>
+<tr><td>Rack reference frame</td><td>AprilTag / ArUco (2 teams)</td><td>Rack geometry normaliser</td><td>+ ArUco marker</td></tr>
+<tr><td>Live real-prop demo</td><td><span class="b ok">Several</span></td><td><span class="b bad">Not yet</span></td><td>Webcam run with a deliberate skip</td></tr>
+<tr><td>Clean repo + one-command demo</td><td><span class="b ok">BAS-EXA</span></td><td><span class="b bad">Messy</span></td><td>README + <code>main.py</code> demo modes</td></tr>
+</table></div>
+
+<h2>4. How we become the best</h2>
+<ol>
+<li><b>Lead with the thing nobody else has.</b> Slide 2 of the pitch: the same system tracking an <i>upside-down</i> astronaut, next to a competitor-style upright demo. Every other team's system has only ever seen an upright person.</li>
+<li><b>Close the one gap they have on us.</b> Train YOLO with open/closed box classes (borrow ATLAS's good idea) on our free Blender labels plus real webcam frames. That's hours 0–6 of the plan.</li>
+<li><b>Own the honest-metrics story.</b> Show a results table on orientations the model never trained on, with the seed spread. Say out loud: "other teams test in the room they trained in."</li>
+<li><b>Match BAS-EXA's polish.</b> One README, <code>python main.py --demo</code> and <code>--deviation</code>, and a results table. Judges open the GitHub link.</li>
+<li><b>Stay in scope.</b> No LLM, no biometrics, no extra dashboards. Every requirement is done and working live, and nothing else.</li>
+<li><b>Don't claim the rack frame as unique.</b> Two teams have fiducial rack frames. Our edge is that we <i>trained and tested</i> at orientations where the rack frame actually matters.</li>
+</ol>
+
+<p class="small">Note: ISRO's sample experiment text is cut off on the public portal after "two smaller boxes of color red and yellow". Every team, including us, defined its own steps from there. ATLAS added scissors and a hole puncher. Our 8 steps (open box, pick, examine and place each box) stick closest to the published text, which is worth saying in the PPT.</p>
+
+</main>
+</body>
+</html>

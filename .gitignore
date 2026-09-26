@@ -62,3 +62,33 @@ Thumbs.db
 # optional accuracy upgrade - fetch it on demand rather than paying for it in
 # every clone:  python tools/fetch_pose_model.py --variant heavy
 sih-har-isro/models/mediapipe/pose_landmarker_heavy.task
+
+# ── SMPL body model — licensed, not ours to redistribute ─────────────────────
+# The SMPL model file (basicmodel_neutral_lbs_10_207_0_v1.1.0.pkl) is
+# distributed under a license that requires each user to register and accept
+# its terms directly; it must not be redistributed via this repo. Every
+# teammate downloads their own copy after accepting the license at
+# https://smpl.is.tue.mpg.de/ and places it as documented in
+# sih-har-isro/docs/HANDOFF_YOLO_MEDIAPIPE.md / hmr-env agent notes.
+SMPL_NEUTRAL.pkl/
+hmr_models/
+
+# ── Local caches, scratch, and vendored tools — never project state ──────────
+.pip-cache/
+.tmp/
+sih-har-isro/.showcase_deps/
+/tools/
+
+# ── Local run logs ────────────────────────────────────────────────────────────
+# One pair of files per local pipeline run (timestamped); these are dev
+# scratch, not a deliverable. The small evaluation result JSONs in
+# sih-har-isro/logs/ (real_eval_*, t14_*, hmr_eval/) are NOT matched by this
+# and stay tracked.
+sih-har-isro/logs/experiment_log_*.txt
+sih-har-isro/logs/experiment_log_*.jsonl
+
+# ── The big rendered dataset — too large for plain git ────────────────────────
+# 11 GB, 22,349 frames. Transfer this directly (zip + shared drive, or a
+# separate Git LFS remote) rather than through a normal git push/pull —
+# see docs/HANDOFF_YOLO_MEDIAPIPE.md for how each teammate gets a copy.
+sih-har-isro/dataset/blender_core/
