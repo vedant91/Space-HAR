@@ -112,36 +112,40 @@ def build_plan(name: str) -> list:
         return plan
 
     if name == "core":
+        # 120 frames/step: after speed jitter (0.88-1.14 x 0.94-1.06) the
+        # shortest step is ~99 frames, still longer than the 90-frame
+        # (3 s at 30 fps) window, so the 0.75 purity filter keeps windows.
+        # Every attitude take is tagged so any one can be held out.
+        # Default holdout: orient_180, orient_-60, yaw_90, pitch_60.
+        fps = 120
+        base = dict(lighting="nominal", distractors="moderate",
+                    sequence=NOMINAL, cameras=["payload_a"], frames_per_step=fps)
         plan = []
-        # Nominal runs across orientation and camera - the bulk of the training
-        # signal.
+        # Roll: in-plane, the axis upright_pose cancels.
         for i, roll in enumerate((0.0, 30.0, 60.0, 90.0, 180.0, -30.0, -60.0, -90.0)):
-            plan.append(dict(seed=200 + i, roll=roll, lighting="nominal",
-                             distractors="moderate", sequence=NOMINAL,
-                             cameras=["payload_a", "payload_b"], frames_per_step=45))
+            plan.append(dict(base, seed=200 + i, roll=roll, tag=f"orient_{int(roll)}"))
+        # Yaw and pitch: out-of-plane, the axes image rotation cannot undo.
+        for i, yaw in enumerate((45.0, 90.0, -45.0)):
+            plan.append(dict(base, seed=250 + i, roll=0.0, yaw=yaw, tag=f"yaw_{int(yaw)}"))
+        for i, pitch in enumerate((30.0, -30.0, 60.0)):
+            plan.append(dict(base, seed=270 + i, roll=0.0, pitch=pitch,
+                             tag=f"pitch_{int(pitch)}"))
         # Lighting stress, upright and inverted.
         for i, (light, roll) in enumerate((("dim", 0.0), ("dim", 90.0),
                                            ("single_fail", 0.0), ("single_fail", 180.0))):
-            plan.append(dict(seed=300 + i, roll=roll, lighting=light,
-                             distractors="moderate", sequence=NOMINAL,
-                             cameras=["payload_a"], frames_per_step=45))
+            plan.append(dict(base, seed=300 + i, roll=roll, lighting=light,
+                             tag=f"light_{light}_{int(roll)}"))
         # Colour-distractor stress for the HSV detector.
         for i, dis in enumerate(("none", "harsh")):
-            plan.append(dict(seed=400 + i, roll=0.0, lighting="nominal",
-                             distractors=dis, sequence=NOMINAL,
-                             cameras=["payload_a"], frames_per_step=45))
-        # Protocol error cases for the state machine.
+            plan.append(dict(base, seed=400 + i, roll=0.0, distractors=dis,
+                             tag=f"clutter_{dis}"))
+        # Protocol error cases for the state machine (excluded from training).
         for i, (seq, tag) in enumerate(((SKIP_STEP2, "skip"),
                                         (RECOVER_STEP2, "recover"))):
-            plan.append(dict(seed=500 + i, roll=0.0, lighting="nominal",
-                             distractors="moderate", sequence=seq, tag=tag,
-                             cameras=["payload_a"], frames_per_step=45))
-        # Held-out geometry: a camera the training takes never use.
-        for i, roll in enumerate((0.0, 90.0)):
-            plan.append(dict(seed=600 + i, roll=roll, lighting="nominal",
-                             distractors="moderate", sequence=NOMINAL,
-                             cameras=["payload_wide", "payload_over"],
-                             frames_per_step=45, tag="heldout_view"))
+            plan.append(dict(base, seed=500 + i, roll=0.0, sequence=seq, tag=tag))
+        # Unseen camera geometry, evaluation only (excluded from training).
+        plan.append(dict(base, seed=600, roll=0.0, cameras=["payload_wide"],
+                         tag="heldout_view"))
         return plan
 
     raise SystemExit(f"unknown plan '{name}'")
@@ -159,6 +163,8 @@ def render_take(spec: dict, out_root: Path, resolution, samples: int,
     built = build_scene.build(
         seed=spec["seed"],
         body_roll_deg=spec["roll"],
+        facing_deg=spec.get("yaw", 0.0),
+        body_pitch_deg=spec.get("pitch", 0.0),
         lighting=spec["lighting"],
         distractors=spec["distractors"],
         sequence=spec["sequence"],
@@ -226,6 +232,8 @@ def render_take(spec: dict, out_root: Path, resolution, samples: int,
         "index": spec["index"],
         "seed": spec["seed"],
         "body_roll_deg": spec["roll"],
+        "facing_deg": spec.get("yaw", 0.0),
+        "body_pitch_deg": spec.get("pitch", 0.0),
         "lighting": spec["lighting"],
         "distractors": spec["distractors"],
         "sequence": spec["sequence"],
@@ -235,6 +243,7 @@ def render_take(spec: dict, out_root: Path, resolution, samples: int,
         "n_frames": int(meta["n_frames"]),
         "fps": meta["fps"],
         "spans": meta["spans"],
+        "style": meta.get("style"),
         "resolution": list(resolution),
         "samples": samples,
         "view_transform": scene.view_settings.view_transform,

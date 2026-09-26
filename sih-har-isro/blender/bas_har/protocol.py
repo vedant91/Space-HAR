@@ -45,6 +45,22 @@ PARK_R = Vector((0.56, -0.28, 1.32))
 # object, roughly 95 mm further along the hand.
 WRIST_BACKOFF = 0.095
 
+# Newton's third law: an arm swung one way rotates the torso the other way,
+# and the foot restraint bleeds that rotation back out over a second or so.
+# ponytail: point-mass arms about a fixed body centre, not a multibody sim;
+# good for a few degrees of physically-signed counter-rotation, no more.
+ARM_MASS_KG = 4.0
+BODY_INERTIA_KGM2 = 12.0
+RESTRAINT_DECAY = 0.97
+
+# Newton's first law: a box let go of mid-air keeps its velocity, less a
+# little cabin-air drag per frame.
+CABIN_DRAG = 0.995
+
+# Peak hand speed, ~0.9 m/s at 30 fps: a deliberate reach from a restraint.
+# Smootherstep peaks at 1.875x its mean speed, which the reach sizing uses.
+HAND_PEAK_M_PER_FRAME = 0.03
+
 
 def _lid_open_angle() -> float:
     return math.radians(-104.0)
@@ -88,6 +104,22 @@ class ProtocolAnimator:
                               rng.gauss(0.0, 0.012),
                               rng.gauss(0.0, 0.010)))
         self.speed = rng.uniform(0.88, 1.14)
+
+        # Per-take performance style: the same eight steps, done the way a
+        # different person would do them. Without this every take replays one
+        # scripted trajectory and a classifier can only memorise it.
+        u = rng.uniform
+        self.style = {
+            "reach": u(0.15, 0.30),     # share of a step spent getting the hands into position
+            "lift": u(0.18, 0.34),      # how high a box is lifted clear of the container (m)
+            "pull": u(0.06, 0.14),      # how far it is drawn toward the body (m)
+            "inspect": Vector((u(-0.08, 0.08), u(-0.06, 0.04), u(-0.08, 0.06))),
+            "arrive": u(0.25, 0.50),    # share of an examine step spent reaching visor height
+            "descend": u(0.50, 0.72),   # share of a place step before lowering into the tray
+            "release": u(0.72, 0.88),   # when the carrying hand lets go
+            "turn": u(0.6, 1.4),        # how much the box is turned while examined
+            "two_handed": rng.random() < 0.7,  # steady the box with the spare hand?
+        }
 
         self.red_home = self.red.location.copy()
         self.yellow_home = self.yellow.location.copy()
@@ -148,71 +180,70 @@ class ProtocolAnimator:
             r = wrist_for(Vector((swung.x + 0.11, swung.y, swung.z)), 0.06)
             return self._jit(l), self._jit(r), None, None
 
+        st = self.style
+        red_lift = Vector((red_slot.x - 0.02, red_slot.y - st["pull"], red_slot.z + st["lift"]))
+        yel_lift = Vector((yel_slot.x + 0.02, yel_slot.y - st["pull"], yel_slot.z + st["lift"]))
+        ins = st["inspect"]
+        red_look = Vector((-0.05, -0.22, 1.50)) + ins
+        yel_look = Vector((0.05, -0.22, 1.48)) + Vector((-ins.x, ins.y, ins.z))
+        arrive, descend, release, two = st["arrive"], st["descend"], st["release"], st["two_handed"]
+
         if step == 3:  # Pick the red box (left hand) and lift it clear
-            grasp = red_slot.copy()
-            lifted = Vector((red_slot.x - 0.02, red_slot.y - 0.10, red_slot.z + 0.26))
-            pos = _lerp(grasp, lifted, e)
+            # From wherever the box actually is: home in nominal takes, but a
+            # box abandoned mid-air in a recovery sequence is picked up there.
+            pos = _lerp(self.red_at, red_lift, e)
             l = wrist_for(pos, 0.075)
             r = _lerp(self._jit(wrist_for(Vector((c.x + 0.17, c.y, c.z + 0.05)))),
                       PARK_R, _ease(max(0.0, (t - 0.55) / 0.45)))
             return self._jit(l), r, pos, None
 
         if step == 4:  # Examine: bring it to visor height and rotate it
-            start = Vector((red_slot.x - 0.02, red_slot.y - 0.10, red_slot.z + 0.26))
-            inspect = Vector((-0.05, -0.22, 1.50))
-            pos = _lerp(start, inspect, _ease(min(t / 0.35, 1.0)))
-            # Second hand comes in to steady it - crew inspect two-handed.
+            pos = _lerp(red_lift, red_look, _ease(min(t / arrive, 1.0)))
             l = wrist_for(pos, 0.075)
-            r_in = _ease(min(max((t - 0.15) / 0.35, 0.0), 1.0))
-            r = _lerp(PARK_R, Vector((pos.x + 0.15, pos.y + 0.01, pos.z - 0.01)), r_in)
+            r = PARK_R
+            if two:  # most crew steady it with the spare hand
+                r_in = _ease(min(max((t - 0.15) / 0.35, 0.0), 1.0))
+                r = _lerp(PARK_R, Vector((pos.x + 0.15, pos.y + 0.01, pos.z - 0.01)), r_in)
             return self._jit(l), self._jit(r), pos, None
 
         if step == 5:  # Place the red box in the left restraint tray
-            start = Vector((-0.05, -0.22, 1.50))
             above = Vector((lz.x, lz.y - 0.06, lz.z + 0.20))
             seated = Vector((lz.x, lz.y, lz.z))
-            if t < 0.62:
-                pos = _lerp(start, above, _ease(t / 0.62))
+            if t < descend:
+                pos = _lerp(red_look, above, _ease(t / descend))
             else:
-                pos = _lerp(above, seated, _ease((t - 0.62) / 0.38))
+                pos = _lerp(above, seated, _ease((t - descend) / (1.0 - descend)))
             l = wrist_for(pos, 0.075)
-            # Release and withdraw over the last fifth of the step.
-            back = _ease(max(0.0, (t - 0.80) / 0.20))
-            l = _lerp(l, PARK_L, back)
-            r = _lerp(Vector((start.x + 0.15, start.y + 0.01, start.z - 0.01)),
-                      PARK_R, _ease(min(t / 0.4, 1.0)))
+            l = _lerp(l, PARK_L, 0.25 * _ease(max(0.0, (t - release) / (1.0 - release))))  # partial withdraw; next reach finishes it
+            r0 = Vector((red_look.x + 0.15, red_look.y + 0.01, red_look.z - 0.01)) if two else PARK_R
+            r = _lerp(r0, PARK_R, _ease(min(t / 0.4, 1.0)))
             return self._jit(l), self._jit(r), pos, None
 
         if step == 6:  # Pick the yellow box (right hand)
-            grasp = yel_slot.copy()
-            lifted = Vector((yel_slot.x + 0.02, yel_slot.y - 0.10, yel_slot.z + 0.26))
-            pos = _lerp(grasp, lifted, e)
+            pos = _lerp(self.yel_at, yel_lift, e)
             r = wrist_for(pos, 0.075)
-            l = _lerp(PARK_L, PARK_L, e)
-            return self._jit(l), self._jit(r), None, pos
+            return self._jit(PARK_L), self._jit(r), None, pos
 
         if step == 7:  # Examine yellow
-            start = Vector((yel_slot.x + 0.02, yel_slot.y - 0.10, yel_slot.z + 0.26))
-            inspect = Vector((0.05, -0.22, 1.48))
-            pos = _lerp(start, inspect, _ease(min(t / 0.35, 1.0)))
+            pos = _lerp(yel_lift, yel_look, _ease(min(t / arrive, 1.0)))
             r = wrist_for(pos, 0.075)
-            l_in = _ease(min(max((t - 0.15) / 0.35, 0.0), 1.0))
-            l = _lerp(PARK_L, Vector((pos.x - 0.15, pos.y + 0.01, pos.z - 0.01)), l_in)
+            l = PARK_L
+            if two:
+                l_in = _ease(min(max((t - 0.15) / 0.35, 0.0), 1.0))
+                l = _lerp(PARK_L, Vector((pos.x - 0.15, pos.y + 0.01, pos.z - 0.01)), l_in)
             return self._jit(l), self._jit(r), None, pos
 
         if step == 8:  # Place yellow in the right restraint tray
-            start = Vector((0.05, -0.22, 1.48))
             above = Vector((rz.x, rz.y - 0.06, rz.z + 0.20))
             seated = Vector((rz.x, rz.y, rz.z))
-            if t < 0.62:
-                pos = _lerp(start, above, _ease(t / 0.62))
+            if t < descend:
+                pos = _lerp(yel_look, above, _ease(t / descend))
             else:
-                pos = _lerp(above, seated, _ease((t - 0.62) / 0.38))
+                pos = _lerp(above, seated, _ease((t - descend) / (1.0 - descend)))
             r = wrist_for(pos, 0.075)
-            back = _ease(max(0.0, (t - 0.80) / 0.20))
-            r = _lerp(r, PARK_R, back)
-            l = _lerp(Vector((start.x - 0.15, start.y + 0.01, start.z - 0.01)),
-                      PARK_L, _ease(min(t / 0.4, 1.0)))
+            r = _lerp(r, PARK_R, 0.25 * _ease(max(0.0, (t - release) / (1.0 - release))))  # partial withdraw; next reach finishes it
+            l0 = Vector((yel_look.x - 0.15, yel_look.y + 0.01, yel_look.z - 0.01)) if two else PARK_L
+            l = _lerp(l0, PARK_L, _ease(min(t / 0.4, 1.0)))
             return self._jit(l), self._jit(r), None, pos
 
         return PARK_L, PARK_R, None, None
@@ -256,6 +287,12 @@ class ProtocolAnimator:
         lid_angle = 0.0
         red_rot = Euler((0.0, 0.0, 0.0))
         yel_rot = Euler((0.0, 0.0, 0.0))
+        red_vel, yel_vel = Vector((0.0, 0.0, 0.0)), Vector((0.0, 0.0, 0.0))
+        red_free = yel_free = False   # released mid-air, i.e. not seated in a tray
+        react = Vector((0.0, 0.0, 0.0))
+        l_prev, r_prev = PARK_L.copy(), PARK_R.copy()
+        reach = self.style["reach"]
+        turn = self.style["turn"]
 
         frame = 1
         self.labels = []
@@ -264,14 +301,37 @@ class ProtocolAnimator:
         for occurrence, step in enumerate(sequence):
             n = max(8, int(round(self.fps * self.speed * self.rng.uniform(0.94, 1.06))))
             span_start = frame
+            self.red_at, self.yel_at = red_pos.copy(), yel_pos.copy()
+            l_from, r_from = l_prev.copy(), r_prev.copy()
+            # A long reach takes more of the step, so the hand never exceeds
+            # HAND_PEAK_M_PER_FRAME however far it has to travel.
+            l0, r0, _, _ = self._hand_targets(step, 0.0)
+            dist = max((l0 - l_from).length, (r0 - r_from).length)
+            rch = min(0.6, max(reach, 1.875 * dist / (HAND_PEAK_M_PER_FRAME * max(n - 1, 1))))
             for i in range(n):
-                t = i / max(n - 1, 1)
+                u = i / max(n - 1, 1)
+                # Reach phase: the hands travel from wherever the previous
+                # step left them before this step's motion starts. Without it
+                # the IK goal teleports on the first frame of every step,
+                # a one-frame spike that marks each label boundary for free.
+                t = max(0.0, (u - rch) / (1.0 - rch))
                 l, r, rp, yp = self._hand_targets(step, t)
+                if u < rch:
+                    k = _ease(u / rch)
+                    l, r = _lerp(l_from, l, k), _lerp(r_from, r, k)
 
                 self._key_loc(self.goal_l, frame, l)
                 self._key_loc(self.goal_r, frame, r)
 
+                # Newton's third law: angular momentum the arms gain, the torso
+                # loses (L = m r x v, so d_theta = -(m / I) r x dx per frame).
+                react -= (ARM_MASS_KG / BODY_INERTIA_KGM2) * (
+                    (l - base_loc).cross(l - l_prev) + (r - base_loc).cross(r - r_prev))
+                react *= RESTRAINT_DECAY
+                l_prev, r_prev = l, r
+
                 loc, rot = self._body_drift(frame, base_loc, base_rot)
+                rot = Euler((rot.x + react.x, rot.y + react.y, rot.z + react.z))
                 self._key_loc(self.root, frame, loc)
                 self._key_rot(self.root, frame, rot)
 
@@ -285,23 +345,34 @@ class ProtocolAnimator:
                 self._key_rot(self.lid, frame, Euler((lid_angle, 0.0, 0.0)))
 
                 if rp is not None:
+                    red_vel = rp - red_pos
                     red_pos = rp
+                    red_free = step != 5   # only the tray restrains it
                     if step == 4:
-                        red_rot = Euler((math.radians(38.0 * math.sin(t * math.tau)),
-                                         math.radians(26.0 * math.sin(t * math.tau * 1.3)),
+                        red_rot = Euler((math.radians(38.0 * turn * math.sin(t * math.tau)),
+                                         math.radians(26.0 * turn * math.sin(t * math.tau * 1.3)),
                                          0.0))
                     elif step == 5:
                         red_rot = Euler((red_rot.x * (1.0 - _ease(t)),
                                          red_rot.y * (1.0 - _ease(t)), 0.0))
+                elif red_free:
+                    # Newton's first law: an abandoned box keeps drifting.
+                    red_pos = red_pos + red_vel
+                    red_vel = red_vel * CABIN_DRAG
                 if yp is not None:
+                    yel_vel = yp - yel_pos
                     yel_pos = yp
+                    yel_free = step != 8
                     if step == 7:
-                        yel_rot = Euler((math.radians(34.0 * math.sin(t * math.tau)),
-                                         math.radians(-24.0 * math.sin(t * math.tau * 1.2)),
+                        yel_rot = Euler((math.radians(34.0 * turn * math.sin(t * math.tau)),
+                                         math.radians(-24.0 * turn * math.sin(t * math.tau * 1.2)),
                                          0.0))
                     elif step == 8:
                         yel_rot = Euler((yel_rot.x * (1.0 - _ease(t)),
                                          yel_rot.y * (1.0 - _ease(t)), 0.0))
+                elif yel_free:
+                    yel_pos = yel_pos + yel_vel
+                    yel_vel = yel_vel * CABIN_DRAG
 
                 self._key_loc(self.red, frame, red_pos)
                 self._key_rot(self.red, frame, red_rot)
@@ -336,4 +407,6 @@ class ProtocolAnimator:
             "spans": step_spans,
             "fps": FPS,
             "speed": self.speed,
+            "style": {k: (list(v) if isinstance(v, Vector) else v)
+                      for k, v in self.style.items()},
         }

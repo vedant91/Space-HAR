@@ -1,0 +1,4516 @@
+{
+  "schema": "bas-har-synthetic-ground-truth/v1",
+  "label_provenance": "Blender geometric ground truth; not live inference",
+  "image_size": [
+    960,
+    540
+  ],
+  "fps": 30,
+  "categories": [
+    "astronaut",
+    "red_payload",
+    "yellow_payload"
+  ],
+  "frames": [
+    {
+      "frame": 1,
+      "image": "raw_frames/frame_0001.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            417.05,
+            293.83,
+            50.78,
+            45.14
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.83,
+            50.78,
+            45.14
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 2,
+      "image": "raw_frames/frame_0002.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            417.03,
+            293.76,
+            50.79,
+            45.14
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.81,
+            50.78,
+            45.14
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 3,
+      "image": "raw_frames/frame_0003.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.98,
+            293.54,
+            50.8,
+            45.14
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.77,
+            50.79,
+            45.14
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 4,
+      "image": "raw_frames/frame_0004.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.89,
+            293.19,
+            50.82,
+            45.15
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.69,
+            50.79,
+            45.14
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 5,
+      "image": "raw_frames/frame_0005.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.77,
+            292.71,
+            50.84,
+            45.15
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.59,
+            50.79,
+            45.14
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 6,
+      "image": "raw_frames/frame_0006.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.62,
+            292.11,
+            50.87,
+            45.16
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.17,
+            293.45,
+            50.8,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 7,
+      "image": "raw_frames/frame_0007.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.43,
+            291.39,
+            50.91,
+            45.16
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.18,
+            293.29,
+            50.81,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 8,
+      "image": "raw_frames/frame_0008.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            416.2,
+            290.55,
+            50.95,
+            45.17
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.18,
+            293.1,
+            50.82,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 9,
+      "image": "raw_frames/frame_0009.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            415.95,
+            289.61,
+            51.0,
+            45.18
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.19,
+            292.88,
+            50.83,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 10,
+      "image": "raw_frames/frame_0010.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            415.66,
+            288.56,
+            51.06,
+            45.19
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.2,
+            292.64,
+            50.84,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 11,
+      "image": "raw_frames/frame_0011.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            415.34,
+            287.42,
+            51.12,
+            45.2
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.21,
+            292.37,
+            50.85,
+            45.16
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 12,
+      "image": "raw_frames/frame_0012.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            414.99,
+            286.18,
+            51.18,
+            45.21
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.22,
+            292.08,
+            50.86,
+            45.16
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 13,
+      "image": "raw_frames/frame_0013.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            414.6,
+            284.85,
+            51.25,
+            45.22
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.23,
+            291.75,
+            50.88,
+            45.16
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 14,
+      "image": "raw_frames/frame_0014.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            414.19,
+            283.45,
+            51.33,
+            45.23
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.25,
+            291.41,
+            50.89,
+            45.16
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 15,
+      "image": "raw_frames/frame_0015.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            413.74,
+            281.96,
+            51.41,
+            45.24
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.27,
+            291.04,
+            50.91,
+            45.17
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 16,
+      "image": "raw_frames/frame_0016.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            413.26,
+            280.41,
+            51.49,
+            45.26
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.29,
+            290.65,
+            50.93,
+            45.17
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 17,
+      "image": "raw_frames/frame_0017.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            412.75,
+            278.79,
+            51.58,
+            45.27
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.31,
+            290.23,
+            50.95,
+            45.17
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 18,
+      "image": "raw_frames/frame_0018.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            412.2,
+            277.1,
+            51.67,
+            45.28
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.33,
+            289.8,
+            50.97,
+            45.18
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 19,
+      "image": "raw_frames/frame_0019.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            411.63,
+            275.37,
+            51.76,
+            45.3
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.36,
+            289.34,
+            50.99,
+            45.18
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 20,
+      "image": "raw_frames/frame_0020.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            411.03,
+            273.58,
+            51.86,
+            45.31
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.39,
+            288.85,
+            51.01,
+            45.19
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 21,
+      "image": "raw_frames/frame_0021.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            410.39,
+            271.75,
+            51.96,
+            45.33
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.43,
+            288.35,
+            51.04,
+            45.19
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 22,
+      "image": "raw_frames/frame_0022.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            409.73,
+            269.88,
+            52.07,
+            45.34
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.46,
+            287.83,
+            51.06,
+            45.19
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 23,
+      "image": "raw_frames/frame_0023.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            409.03,
+            267.98,
+            52.17,
+            45.36
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.5,
+            287.29,
+            51.09,
+            45.2
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 24,
+      "image": "raw_frames/frame_0024.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            408.31,
+            266.05,
+            52.28,
+            45.37
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.55,
+            286.72,
+            51.11,
+            45.2
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 25,
+      "image": "raw_frames/frame_0025.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            407.56,
+            264.1,
+            52.39,
+            45.38
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.6,
+            286.14,
+            51.14,
+            45.21
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 26,
+      "image": "raw_frames/frame_0026.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            406.78,
+            262.13,
+            52.5,
+            45.4
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.65,
+            285.54,
+            51.17,
+            45.21
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 27,
+      "image": "raw_frames/frame_0027.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            405.97,
+            260.15,
+            52.62,
+            45.41
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.71,
+            284.93,
+            51.2,
+            45.22
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 28,
+      "image": "raw_frames/frame_0028.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            405.13,
+            258.17,
+            52.73,
+            45.43
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.77,
+            284.29,
+            51.23,
+            45.23
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 29,
+      "image": "raw_frames/frame_0029.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            404.26,
+            256.2,
+            52.85,
+            45.44
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.83,
+            283.64,
+            51.26,
+            45.23
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 30,
+      "image": "raw_frames/frame_0030.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            403.36,
+            254.23,
+            52.97,
+            45.46
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.9,
+            282.97,
+            51.29,
+            45.24
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 31,
+      "image": "raw_frames/frame_0031.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            402.44,
+            252.28,
+            53.08,
+            45.47
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            492.97,
+            282.29,
+            51.33,
+            45.24
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 32,
+      "image": "raw_frames/frame_0032.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            401.49,
+            250.35,
+            53.2,
+            45.48
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.05,
+            281.59,
+            51.36,
+            45.25
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 33,
+      "image": "raw_frames/frame_0033.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            400.52,
+            248.44,
+            53.32,
+            45.49
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.14,
+            280.88,
+            51.4,
+            45.25
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 34,
+      "image": "raw_frames/frame_0034.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            399.52,
+            246.57,
+            53.43,
+            45.51
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.22,
+            280.15,
+            51.43,
+            45.26
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 35,
+      "image": "raw_frames/frame_0035.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            398.49,
+            244.75,
+            53.55,
+            45.52
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.32,
+            279.41,
+            51.47,
+            45.27
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 36,
+      "image": "raw_frames/frame_0036.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            397.44,
+            242.97,
+            53.66,
+            45.53
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.42,
+            278.65,
+            51.5,
+            45.27
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 37,
+      "image": "raw_frames/frame_0037.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            396.36,
+            241.24,
+            53.78,
+            45.54
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.52,
+            277.88,
+            51.54,
+            45.28
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 38,
+      "image": "raw_frames/frame_0038.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            395.26,
+            239.58,
+            53.89,
+            45.55
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.63,
+            277.1,
+            51.58,
+            45.28
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 39,
+      "image": "raw_frames/frame_0039.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            394.14,
+            237.98,
+            54.0,
+            45.56
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.75,
+            276.31,
+            51.62,
+            45.29
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 40,
+      "image": "raw_frames/frame_0040.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            392.99,
+            236.46,
+            54.1,
+            45.57
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            493.87,
+            275.51,
+            51.66,
+            45.3
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 41,
+      "image": "raw_frames/frame_0041.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            391.82,
+            235.02,
+            54.21,
+            45.58
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.0,
+            274.7,
+            51.7,
+            45.3
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 42,
+      "image": "raw_frames/frame_0042.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            390.63,
+            233.67,
+            54.31,
+            45.59
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.14,
+            273.87,
+            51.74,
+            45.31
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 43,
+      "image": "raw_frames/frame_0043.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            389.42,
+            232.42,
+            54.41,
+            45.59
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.28,
+            273.04,
+            51.79,
+            45.32
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 44,
+      "image": "raw_frames/frame_0044.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            388.19,
+            231.27,
+            54.5,
+            45.6
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.43,
+            272.2,
+            51.83,
+            45.32
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 45,
+      "image": "raw_frames/frame_0045.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            386.95,
+            230.23,
+            54.59,
+            45.61
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.59,
+            271.35,
+            51.87,
+            45.33
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 46,
+      "image": "raw_frames/frame_0046.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            385.68,
+            229.3,
+            54.68,
+            45.61
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.75,
+            270.49,
+            51.92,
+            45.34
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 47,
+      "image": "raw_frames/frame_0047.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            384.4,
+            228.5,
+            54.76,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            494.92,
+            269.62,
+            51.96,
+            45.34
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 48,
+      "image": "raw_frames/frame_0048.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            383.1,
+            227.83,
+            54.83,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            495.1,
+            268.75,
+            52.01,
+            45.35
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 49,
+      "image": "raw_frames/frame_0049.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            381.79,
+            227.3,
+            54.9,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            495.28,
+            267.87,
+            52.05,
+            45.36
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 50,
+      "image": "raw_frames/frame_0050.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            380.46,
+            226.91,
+            54.97,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            495.48,
+            266.99,
+            52.1,
+            45.36
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 51,
+      "image": "raw_frames/frame_0051.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            379.12,
+            226.67,
+            55.02,
+            45.63
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            495.68,
+            266.1,
+            52.15,
+            45.37
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 52,
+      "image": "raw_frames/frame_0052.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            377.77,
+            226.59,
+            55.08,
+            45.63
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            495.89,
+            265.2,
+            52.19,
+            45.38
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 53,
+      "image": "raw_frames/frame_0053.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            376.41,
+            226.75,
+            55.11,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            496.1,
+            264.31,
+            52.24,
+            45.38
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 54,
+      "image": "raw_frames/frame_0054.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            375.06,
+            227.21,
+            55.14,
+            45.62
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            496.33,
+            263.41,
+            52.29,
+            45.39
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 55,
+      "image": "raw_frames/frame_0055.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            373.71,
+            227.97,
+            55.14,
+            45.6
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            496.57,
+            262.5,
+            52.34,
+            45.4
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 56,
+      "image": "raw_frames/frame_0056.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            372.34,
+            229.0,
+            55.13,
+            45.59
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            496.81,
+            261.6,
+            52.39,
+            45.4
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 57,
+      "image": "raw_frames/frame_0057.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            370.95,
+            230.28,
+            55.11,
+            45.57
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            497.06,
+            260.69,
+            52.44,
+            45.41
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 58,
+      "image": "raw_frames/frame_0058.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            369.54,
+            231.8,
+            55.08,
+            45.55
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            497.32,
+            259.78,
+            52.49,
+            45.42
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 59,
+      "image": "raw_frames/frame_0059.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            368.09,
+            233.54,
+            55.03,
+            45.52
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            497.59,
+            258.87,
+            52.54,
+            45.42
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 60,
+      "image": "raw_frames/frame_0060.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            366.59,
+            235.48,
+            54.97,
+            45.49
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            497.87,
+            257.96,
+            52.59,
+            45.43
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 61,
+      "image": "raw_frames/frame_0061.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            365.05,
+            237.6,
+            54.91,
+            45.45
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            498.16,
+            257.05,
+            52.64,
+            45.44
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 62,
+      "image": "raw_frames/frame_0062.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            363.45,
+            239.89,
+            54.83,
+            45.41
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            498.46,
+            256.14,
+            52.69,
+            45.44
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 63,
+      "image": "raw_frames/frame_0063.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            361.78,
+            242.32,
+            54.75,
+            45.37
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            498.77,
+            255.24,
+            52.74,
+            45.45
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 64,
+      "image": "raw_frames/frame_0064.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            360.04,
+            244.88,
+            54.67,
+            45.33
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            499.09,
+            254.34,
+            52.8,
+            45.45
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 65,
+      "image": "raw_frames/frame_0065.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            358.22,
+            247.54,
+            54.58,
+            45.28
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            499.42,
+            253.44,
+            52.85,
+            45.46
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 66,
+      "image": "raw_frames/frame_0066.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            356.31,
+            250.3,
+            54.49,
+            45.24
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            499.76,
+            252.54,
+            52.9,
+            45.47
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 67,
+      "image": "raw_frames/frame_0067.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            354.31,
+            253.14,
+            54.39,
+            45.19
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            500.11,
+            251.65,
+            52.95,
+            45.47
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 68,
+      "image": "raw_frames/frame_0068.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            352.2,
+            256.03,
+            54.3,
+            45.13
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            500.47,
+            250.76,
+            53.01,
+            45.48
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 69,
+      "image": "raw_frames/frame_0069.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            349.98,
+            258.97,
+            54.21,
+            45.08
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            500.84,
+            249.88,
+            53.06,
+            45.48
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 70,
+      "image": "raw_frames/frame_0070.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            347.65,
+            261.93,
+            54.11,
+            45.02
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            501.23,
+            249.01,
+            53.11,
+            45.49
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 71,
+      "image": "raw_frames/frame_0071.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            345.19,
+            264.9,
+            54.02,
+            44.96
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            501.62,
+            248.14,
+            53.17,
+            45.5
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 72,
+      "image": "raw_frames/frame_0072.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            342.6,
+            267.86,
+            53.94,
+            44.91
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            502.03,
+            247.28,
+            53.22,
+            45.5
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 73,
+      "image": "raw_frames/frame_0073.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            339.88,
+            270.81,
+            53.85,
+            44.85
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            502.44,
+            246.42,
+            53.27,
+            45.51
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 74,
+      "image": "raw_frames/frame_0074.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            337.0,
+            273.72,
+            53.78,
+            44.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            502.87,
+            245.58,
+            53.33,
+            45.51
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 75,
+      "image": "raw_frames/frame_0075.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            333.97,
+            276.57,
+            53.71,
+            44.73
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            503.31,
+            244.75,
+            53.38,
+            45.52
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 76,
+      "image": "raw_frames/frame_0076.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            330.78,
+            279.37,
+            53.64,
+            44.67
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            503.77,
+            243.92,
+            53.43,
+            45.52
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 77,
+      "image": "raw_frames/frame_0077.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            327.42,
+            282.09,
+            53.59,
+            44.61
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            504.23,
+            243.11,
+            53.49,
+            45.53
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 78,
+      "image": "raw_frames/frame_0078.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            323.88,
+            284.72,
+            53.55,
+            44.55
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            504.71,
+            242.31,
+            53.54,
+            45.53
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 79,
+      "image": "raw_frames/frame_0079.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            320.16,
+            287.24,
+            53.51,
+            44.49
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            505.2,
+            241.52,
+            53.59,
+            45.54
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 80,
+      "image": "raw_frames/frame_0080.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            316.24,
+            289.65,
+            53.49,
+            44.43
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            505.7,
+            240.74,
+            53.65,
+            45.54
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 81,
+      "image": "raw_frames/frame_0081.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            312.13,
+            291.93,
+            53.48,
+            44.37
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            506.22,
+            239.98,
+            53.7,
+            45.55
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 82,
+      "image": "raw_frames/frame_0082.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            307.8,
+            294.07,
+            53.48,
+            44.32
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            506.75,
+            239.23,
+            53.75,
+            45.55
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 83,
+      "image": "raw_frames/frame_0083.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            303.25,
+            296.05,
+            53.5,
+            44.26
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            507.29,
+            238.49,
+            53.81,
+            45.56
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 84,
+      "image": "raw_frames/frame_0084.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            298.47,
+            297.87,
+            53.53,
+            44.21
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            507.84,
+            237.77,
+            53.86,
+            45.56
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 85,
+      "image": "raw_frames/frame_0085.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            293.45,
+            299.51,
+            53.58,
+            44.16
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            508.41,
+            237.07,
+            53.91,
+            45.57
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 86,
+      "image": "raw_frames/frame_0086.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            288.19,
+            300.96,
+            53.65,
+            44.11
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            508.99,
+            236.38,
+            53.96,
+            45.57
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 87,
+      "image": "raw_frames/frame_0087.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            282.67,
+            302.24,
+            53.73,
+            44.07
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            509.59,
+            235.71,
+            54.02,
+            45.57
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 88,
+      "image": "raw_frames/frame_0088.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            276.96,
+            303.39,
+            53.83,
+            44.03
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            510.2,
+            235.06,
+            54.07,
+            45.58
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 89,
+      "image": "raw_frames/frame_0089.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            271.09,
+            304.4,
+            53.94,
+            43.99
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            510.82,
+            234.43,
+            54.12,
+            45.58
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 90,
+      "image": "raw_frames/frame_0090.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            265.15,
+            305.28,
+            54.06,
+            43.96
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            511.46,
+            233.82,
+            54.17,
+            45.59
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 91,
+      "image": "raw_frames/frame_0091.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            259.17,
+            306.06,
+            54.2,
+            43.93
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            512.11,
+            233.22,
+            54.22,
+            45.59
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 92,
+      "image": "raw_frames/frame_0092.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            253.21,
+            306.72,
+            54.34,
+            43.91
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            512.78,
+            232.65,
+            54.27,
+            45.59
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 93,
+      "image": "raw_frames/frame_0093.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            247.34,
+            307.29,
+            54.48,
+            43.88
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            513.46,
+            232.1,
+            54.32,
+            45.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 94,
+      "image": "raw_frames/frame_0094.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            241.6,
+            307.77,
+            54.62,
+            43.87
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            514.16,
+            231.57,
+            54.37,
+            45.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 95,
+      "image": "raw_frames/frame_0095.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            236.07,
+            308.17,
+            54.77,
+            43.85
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            514.87,
+            231.06,
+            54.42,
+            45.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 96,
+      "image": "raw_frames/frame_0096.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            230.78,
+            308.49,
+            54.91,
+            43.83
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            515.59,
+            230.58,
+            54.47,
+            45.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 97,
+      "image": "raw_frames/frame_0097.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            225.8,
+            308.75,
+            55.05,
+            43.82
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            516.33,
+            230.12,
+            54.52,
+            45.61
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 98,
+      "image": "raw_frames/frame_0098.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            221.19,
+            308.95,
+            55.18,
+            43.81
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            517.09,
+            229.69,
+            54.56,
+            45.61
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 99,
+      "image": "raw_frames/frame_0099.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            217.01,
+            309.1,
+            55.3,
+            43.8
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            517.86,
+            229.28,
+            54.61,
+            45.61
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 100,
+      "image": "raw_frames/frame_0100.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            213.31,
+            309.21,
+            55.41,
+            43.8
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            518.64,
+            228.9,
+            54.66,
+            45.61
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 101,
+      "image": "raw_frames/frame_0101.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            210.15,
+            309.27,
+            55.5,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            519.44,
+            228.54,
+            54.7,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 102,
+      "image": "raw_frames/frame_0102.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            207.59,
+            309.31,
+            55.58,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            520.26,
+            228.21,
+            54.75,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 103,
+      "image": "raw_frames/frame_0103.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            205.68,
+            309.33,
+            55.63,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            521.09,
+            227.91,
+            54.79,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 104,
+      "image": "raw_frames/frame_0104.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.5,
+            309.34,
+            55.67,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            521.94,
+            227.64,
+            54.84,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 105,
+      "image": "raw_frames/frame_0105.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            522.8,
+            227.4,
+            54.88,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 106,
+      "image": "raw_frames/frame_0106.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            523.68,
+            227.19,
+            54.92,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 107,
+      "image": "raw_frames/frame_0107.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            524.58,
+            227.01,
+            54.96,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 108,
+      "image": "raw_frames/frame_0108.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            525.49,
+            226.86,
+            55.0,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 109,
+      "image": "raw_frames/frame_0109.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            526.42,
+            226.74,
+            55.04,
+            45.63
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 110,
+      "image": "raw_frames/frame_0110.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            527.36,
+            226.66,
+            55.08,
+            45.63
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 111,
+      "image": "raw_frames/frame_0111.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            528.32,
+            226.6,
+            55.12,
+            45.63
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 112,
+      "image": "raw_frames/frame_0112.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            529.3,
+            226.59,
+            55.15,
+            45.63
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 113,
+      "image": "raw_frames/frame_0113.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            530.31,
+            226.73,
+            55.18,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 114,
+      "image": "raw_frames/frame_0114.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            531.38,
+            227.15,
+            55.2,
+            45.62
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 115,
+      "image": "raw_frames/frame_0115.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            532.5,
+            227.83,
+            55.21,
+            45.61
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 116,
+      "image": "raw_frames/frame_0116.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            533.69,
+            228.75,
+            55.2,
+            45.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 117,
+      "image": "raw_frames/frame_0117.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            534.94,
+            229.91,
+            55.19,
+            45.59
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 118,
+      "image": "raw_frames/frame_0118.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            536.26,
+            231.28,
+            55.17,
+            45.58
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 119,
+      "image": "raw_frames/frame_0119.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            537.65,
+            232.86,
+            55.14,
+            45.56
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 120,
+      "image": "raw_frames/frame_0120.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            539.11,
+            234.62,
+            55.1,
+            45.54
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 121,
+      "image": "raw_frames/frame_0121.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            540.66,
+            236.55,
+            55.05,
+            45.52
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 122,
+      "image": "raw_frames/frame_0122.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            542.28,
+            238.64,
+            55.0,
+            45.5
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 123,
+      "image": "raw_frames/frame_0123.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            543.98,
+            240.87,
+            54.95,
+            45.47
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 124,
+      "image": "raw_frames/frame_0124.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            545.78,
+            243.22,
+            54.89,
+            45.44
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 125,
+      "image": "raw_frames/frame_0125.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            547.66,
+            245.69,
+            54.82,
+            45.41
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 126,
+      "image": "raw_frames/frame_0126.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            549.63,
+            248.25,
+            54.76,
+            45.38
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 127,
+      "image": "raw_frames/frame_0127.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            551.7,
+            250.89,
+            54.69,
+            45.35
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 128,
+      "image": "raw_frames/frame_0128.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            553.87,
+            253.59,
+            54.62,
+            45.31
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 129,
+      "image": "raw_frames/frame_0129.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            556.13,
+            256.35,
+            54.55,
+            45.27
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 130,
+      "image": "raw_frames/frame_0130.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            558.51,
+            259.14,
+            54.48,
+            45.23
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 131,
+      "image": "raw_frames/frame_0131.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            560.99,
+            261.96,
+            54.41,
+            45.19
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 132,
+      "image": "raw_frames/frame_0132.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            563.58,
+            264.79,
+            54.34,
+            45.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 133,
+      "image": "raw_frames/frame_0133.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            566.28,
+            267.62,
+            54.28,
+            45.1
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 134,
+      "image": "raw_frames/frame_0134.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            569.1,
+            270.43,
+            54.22,
+            45.06
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 135,
+      "image": "raw_frames/frame_0135.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            572.04,
+            273.21,
+            54.16,
+            45.01
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 136,
+      "image": "raw_frames/frame_0136.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            575.1,
+            275.96,
+            54.11,
+            44.96
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 137,
+      "image": "raw_frames/frame_0137.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            578.29,
+            278.65,
+            54.06,
+            44.91
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 138,
+      "image": "raw_frames/frame_0138.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            581.61,
+            281.27,
+            54.02,
+            44.86
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 139,
+      "image": "raw_frames/frame_0139.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            585.06,
+            283.82,
+            53.98,
+            44.81
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 140,
+      "image": "raw_frames/frame_0140.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            588.64,
+            286.28,
+            53.95,
+            44.76
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 141,
+      "image": "raw_frames/frame_0141.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            592.37,
+            288.64,
+            53.93,
+            44.71
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 142,
+      "image": "raw_frames/frame_0142.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            596.25,
+            290.89,
+            53.92,
+            44.65
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 143,
+      "image": "raw_frames/frame_0143.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            600.27,
+            293.02,
+            53.92,
+            44.6
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 144,
+      "image": "raw_frames/frame_0144.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            604.45,
+            295.02,
+            53.92,
+            44.55
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 145,
+      "image": "raw_frames/frame_0145.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            608.78,
+            296.87,
+            53.94,
+            44.5
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 146,
+      "image": "raw_frames/frame_0146.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            613.28,
+            298.57,
+            53.97,
+            44.44
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 147,
+      "image": "raw_frames/frame_0147.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            617.94,
+            300.11,
+            54.01,
+            44.39
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 148,
+      "image": "raw_frames/frame_0148.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            622.78,
+            301.48,
+            54.06,
+            44.34
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 149,
+      "image": "raw_frames/frame_0149.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            627.78,
+            302.69,
+            54.12,
+            44.29
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 150,
+      "image": "raw_frames/frame_0150.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            632.92,
+            303.76,
+            54.2,
+            44.24
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 151,
+      "image": "raw_frames/frame_0151.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            638.16,
+            304.71,
+            54.28,
+            44.2
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 152,
+      "image": "raw_frames/frame_0152.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            643.44,
+            305.55,
+            54.38,
+            44.15
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 153,
+      "image": "raw_frames/frame_0153.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            648.73,
+            306.28,
+            54.48,
+            44.11
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 154,
+      "image": "raw_frames/frame_0154.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            653.98,
+            306.9,
+            54.58,
+            44.07
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 155,
+      "image": "raw_frames/frame_0155.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            659.15,
+            307.44,
+            54.69,
+            44.03
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 156,
+      "image": "raw_frames/frame_0156.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            664.21,
+            307.89,
+            54.8,
+            44.0
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 157,
+      "image": "raw_frames/frame_0157.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            669.1,
+            308.27,
+            54.91,
+            43.96
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 158,
+      "image": "raw_frames/frame_0158.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            673.79,
+            308.57,
+            55.02,
+            43.93
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 159,
+      "image": "raw_frames/frame_0159.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            678.24,
+            308.81,
+            55.12,
+            43.91
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 160,
+      "image": "raw_frames/frame_0160.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            682.4,
+            309.0,
+            55.22,
+            43.88
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 161,
+      "image": "raw_frames/frame_0161.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            686.23,
+            309.14,
+            55.32,
+            43.86
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 162,
+      "image": "raw_frames/frame_0162.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            689.68,
+            309.23,
+            55.41,
+            43.84
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 163,
+      "image": "raw_frames/frame_0163.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            692.72,
+            309.29,
+            55.48,
+            43.82
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 164,
+      "image": "raw_frames/frame_0164.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            695.31,
+            309.33,
+            55.55,
+            43.81
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 165,
+      "image": "raw_frames/frame_0165.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            697.4,
+            309.35,
+            55.61,
+            43.8
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 166,
+      "image": "raw_frames/frame_0166.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            698.94,
+            309.35,
+            55.65,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 167,
+      "image": "raw_frames/frame_0167.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            699.9,
+            309.34,
+            55.67,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 168,
+      "image": "raw_frames/frame_0168.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 169,
+      "image": "raw_frames/frame_0169.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 170,
+      "image": "raw_frames/frame_0170.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 171,
+      "image": "raw_frames/frame_0171.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 172,
+      "image": "raw_frames/frame_0172.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 173,
+      "image": "raw_frames/frame_0173.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 174,
+      "image": "raw_frames/frame_0174.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 175,
+      "image": "raw_frames/frame_0175.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 176,
+      "image": "raw_frames/frame_0176.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 177,
+      "image": "raw_frames/frame_0177.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 178,
+      "image": "raw_frames/frame_0178.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 179,
+      "image": "raw_frames/frame_0179.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    },
+    {
+      "frame": 180,
+      "image": "raw_frames/frame_0180.png",
+      "annotations": [
+        {
+          "label": "red_payload",
+          "bbox_xywh": [
+            204.09,
+            309.34,
+            55.68,
+            43.79
+          ]
+        },
+        {
+          "label": "yellow_payload",
+          "bbox_xywh": [
+            700.23,
+            309.34,
+            55.68,
+            43.79
+          ]
+        }
+      ],
+      "coordinate_frame": "fixed_payload_camera"
+    }
+  ]
+}

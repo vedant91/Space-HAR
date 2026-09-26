@@ -28,15 +28,18 @@ over a long render (blender/README.md). Pass `--raytracing` on a real GPU.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 import bpy
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import build_scene                                    # noqa: E402
 from bas_har import render as R                       # noqa: E402
+from bas_har import groundtruth as GT                 # noqa: E402
 
 SEQUENCES = {
     "nominal": list(range(1, 9)),
@@ -76,6 +79,8 @@ def _parse_args(argv):
     ap.add_argument("--height", type=int, default=720)
     ap.add_argument("--raytracing", action="store_true",
                     help="Enable screen-space raytracing (needs a real GPU)")
+    ap.add_argument("--annotations", action="store_true",
+                    help="Export exact 3D pose and payload labels for a showcase overlay")
     ap.add_argument("--check", action="store_true",
                     help="Run the self-check and exit without rendering")
     return ap.parse_args(argv)
@@ -128,7 +133,27 @@ def main():
     written = sorted(frame_dir.glob("*.png"))
     if not written:
         raise SystemExit("render produced no frames")
+    # The compositor reads this sidecar instead of guessing step boundaries
+    # from a frame count. ProtocolAnimator deliberately varies durations per
+    # take, so guessing would put the recovery alert on the wrong action.
+    meta_path = frame_dir / "protocol_meta.json"
+    meta_path.write_text(json.dumps({
+        "camera": args.camera,
+        "sequence_name": args.sequence,
+        "fps": fps,
+        "n_frames": n,
+        "sequence": meta["sequence"],
+        "spans": meta["spans"],
+    }, indent=2), encoding="utf-8")
+    if args.annotations:
+        labels = GT.collect_take(scene, cam, built["crew"]["rig"], built["payload"],
+                                 meta["labels"], scene.frame_start, scene.frame_end)
+        np.save(frame_dir / "pose_2d.npy", labels["pose_2d"])
+        (frame_dir / "payload.json").write_text(json.dumps(labels["payload"]),
+                                                  encoding="utf-8")
+        print(f"ANNOTATIONS_OK {frame_dir}", flush=True)
     print(f"FRAMES_OK {len(written)} in {frame_dir}", flush=True)
+    print(f"META_OK {meta_path}", flush=True)
     print(f"NEXT python tools/frames_to_video.py "
           f"{frame_dir} {out} --fps {fps}", flush=True)
 

@@ -33,6 +33,7 @@ from bas_har import render as R             # noqa: E402
 def build(seed: int = 3,
           body_roll_deg: float = 0.0,
           facing_deg: float = 0.0,
+          body_pitch_deg: float = 0.0,
           lighting: str = "nominal",
           distractors: str = "moderate",
           crew_offset=(0.0, -0.50, 1.00),
@@ -52,7 +53,8 @@ def build(seed: int = 3,
     payload = MOD.build_payload(mats, coll)
     crew = A.build_astronaut(mats, coll, location=crew_offset,
                              body_roll_deg=body_roll_deg,
-                             facing_deg=facing_deg, rng=rng)
+                             facing_deg=facing_deg,
+                             body_pitch_deg=body_pitch_deg, rng=rng)
     lights = MOD.build_lighting(mats, coll, rng, lighting)
     cameras = R.build_camera_rig(coll)
 

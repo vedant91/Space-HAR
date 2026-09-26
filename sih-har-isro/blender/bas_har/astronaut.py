@@ -457,6 +457,7 @@ def build_astronaut(mats: Dict, coll,
                     location=(0.0, -0.50, 1.00),
                     body_roll_deg: float = 0.0,
                     facing_deg: float = 0.0,
+                    body_pitch_deg: float = 0.0,
                     rng=None,
                     leg_tuck: float = 1.0) -> Dict:
     """Build the rigged crew member and place them in the module.
@@ -517,10 +518,21 @@ def build_astronaut(mats: Dict, coll,
     for obj in targets.values():
         obj.parent = root
 
-    root.location = Vector(location)
-    root.rotation_euler = Euler((0.0,
-                                 math.radians(body_roll_deg),
-                                 math.radians(facing_deg)))
+    # The crew rotates about the shoulder-centre working point, not the rig's
+    # arbitrary origin near the pelvis. In microgravity a crew member can
+    # change attitude while their hands remain restrained on the payload rack;
+    # rolling around the pelvis pulled the shoulders away from world-anchored
+    # IK goals and made legitimate protocol reaches impossible above ~10 deg.
+    shoulder_l = rig.pose.bones["upperarm.L"].head
+    shoulder_r = rig.pose.bones["upperarm.R"].head
+    work_pivot = (shoulder_l + shoulder_r) * 0.5
+    # X = pitch (head toward/away from the rack), Y = roll about the rack
+    # normal, Z = facing. Pitch is the out-of-plane case upright_pose cannot
+    # undo by rotating the image, so it has to exist in the dataset.
+    root_rot = Euler((math.radians(body_pitch_deg), math.radians(body_roll_deg),
+                      math.radians(facing_deg)))
+    root.rotation_euler = root_rot
+    root.location = Vector(location) + work_pivot - root_rot.to_matrix() @ work_pivot
     bpy.context.view_layer.update()
 
     # The hand IK goals are deliberately re-parented out to world space, while
