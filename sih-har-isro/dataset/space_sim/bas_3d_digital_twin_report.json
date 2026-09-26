@@ -1,0 +1,7 @@
+{
+  "renderer": "procedural_3d_rack_coordinate_digital_twin",
+  "frames": 576,
+  "fps": 30,
+  "physics": "zero-g inertia, ventilation disturbance, rack-zone latching",
+  "overlay": "SIM-REFERENCE boxes; live HAR pipeline renders model detections"
+}

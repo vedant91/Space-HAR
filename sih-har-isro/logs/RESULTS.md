@@ -8,8 +8,13 @@ Reproduce with:
 
 ```bash
 tools/render_dataset_resilient.sh dataset/blender study   # ~3 h, CPU-only
-tools/retrain_and_evaluate.sh
+tools/retrain_and_evaluate.sh dataset/blender orient_180,orient_-45,light_single_fail
 ```
+
+These figures come from the old 12-take `study` render, whose frames no
+longer exist on disk. The current dataset is `dataset/blender_core`
+(`tools/retrain_and_evaluate.sh dataset/blender_core`); its results replace
+this table when they land, and are not directly comparable to it.
 
 Chance accuracy is **0.125** (8 protocol steps).
 
