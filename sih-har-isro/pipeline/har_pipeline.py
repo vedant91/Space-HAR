@@ -40,12 +40,15 @@ from config.experiment_config import (
     VOICE_ENABLED, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
     STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES,
     MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
-    MEDIAPIPE_DOWNSCALE, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
+    POSE_INPUT_WIDTH, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
-    UPRIGHT_POSE, UPRIGHT_POSE_MIN_SCORE,
+    UPRIGHT_POSE, UPRIGHT_POSE_MIN_SCORE, SAMPLE_EVERY, FEATURE_LAYOUT,
 )
-from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
+from pipeline.rack_frame import RackFrameNormalizer
+from pipeline.features import (
+    SampleWindow, LAYOUT_DIMS, build_frame_features, contract_of,
+)
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
@@ -95,10 +98,10 @@ class ThreadedInference:
         self._hsv_result = None
 
     def run_parallel(self, frame_bgr: np.ndarray, frame_rgb_full: np.ndarray,
-                     hsv_detector, mp_wrapper):
+                     hsv_detector, mp_wrapper, pose_hint: Optional[list] = None):
         """
-        Run HSV detection and MediaPipe Pose in parallel threads.
-        mp_wrapper is an OptimizedMPWrapper instance.
+        Run HSV detection (this frame) and MediaPipe Pose (this frame, hinted
+        with `pose_hint`, the PREVIOUS frame's detections) in parallel.
         Returns: (detections, skeleton_features)
         """
         self._mp_result = None
@@ -114,9 +117,7 @@ class ThreadedInference:
         def _run_mediapipe():
             try:
                 if mp_wrapper is not None:
-                    # PoseBackend.process() returns the 132-dim vector directly;
-                    # there is no intermediate results object to unpack.
-                    self._mp_result = mp_wrapper.process(frame_rgb_full)
+                    self._mp_result = mp_wrapper.process(frame_rgb_full, detections=pose_hint)
                 else:
                     self._mp_result = np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
             except Exception as e:
@@ -139,28 +140,70 @@ class ThreadedInference:
         return self._hsv_result, self._mp_result
 
 
+def to_frame_size(frame_bgr: np.ndarray) -> np.ndarray:
+    """Every source - camera, video file, rendered PNG - is brought to
+    FRAME_WIDTH x FRAME_HEIGHT before perception, live and offline alike: the
+    HSV detector's area thresholds are in pixels, so a 900-px render and a
+    1280-px camera frame must reach it at the same size."""
+    if frame_bgr.shape[1] != FRAME_WIDTH or frame_bgr.shape[0] != FRAME_HEIGHT:
+        return cv2.resize(frame_bgr, (FRAME_WIDTH, FRAME_HEIGHT))
+    return frame_bgr
+
+
+def perceive(frame_bgr: np.ndarray, frame_rgb: np.ndarray, hsv_detector, mp_wrapper,
+             prev_detections: Optional[list], threaded: Optional[ThreadedInference] = None,
+             timings: Optional[dict] = None):
+    """One frame -> (this frame's HSV detections, raw 132-dim pose).
+
+    The ONE perception step for the live loop (run() and process_frame()),
+    tools/build_sequences.py and tools/evaluate_real.py. Pose is hinted with
+    the PREVIOUS frame's detections (None on a take's first frame, so every
+    path runs the upright coarse angle search once): that is what lets HSV and
+    pose run in parallel live, and because training and scoring do the same,
+    threading changes latency but never the features. `threaded` only changes
+    how the work is scheduled, not its result. `timings` (sequential only)
+    receives hsv_ms / pose_ms.
+    """
+    if threaded is not None:
+        return threaded.run_parallel(frame_bgr, frame_rgb, hsv_detector, mp_wrapper,
+                                     pose_hint=prev_detections)
+    t0 = time.perf_counter()
+    dets = hsv_detector.detect(frame_bgr)
+    t1 = time.perf_counter()
+    pose = (mp_wrapper.process(frame_rgb, detections=prev_detections)
+            if mp_wrapper is not None else np.zeros(POSE_FEATURE_DIM, dtype=np.float32))
+    if timings is not None:
+        timings["hsv_ms"] = (t1 - t0) * 1000.0
+        timings["pose_ms"] = (time.perf_counter() - t1) * 1000.0
+    return dets, pose
+
+
 class OptimizedMPWrapper:
     """
-    Pose estimator with configurable downscaling.
+    The pose stage: training (tools/build_sequences.py), scoring
+    (tools/evaluate_real.py) and the live pipeline all construct this with
+    config defaults, so pose runs identically everywhere - same complexity,
+    same confidences, same upright search, same input size.
 
-    Kept as a named class (rather than using PoseBackend directly) because it
-    is the pipeline's stable seam for pose: `har_pipeline` and the simulation
-    harness both construct it, and the underlying MediaPipe API has now
-    changed once already. `process()` returns the 132-dim feature vector
-    directly — the old version returned MediaPipe's results object and left
-    every caller to unpack `.pose_landmarks.landmark`, which is precisely the
-    coupling that broke when Solutions was removed.
+    The input is resized to POSE_INPUT_WIDTH pixels wide (height by the
+    frame's aspect) BEFORE the pose estimator sees it, so a 900-px render and
+    a 1280-px camera frame reach MediaPipe at the same pixel size. Landmarks
+    are image-normalised, so this does not change their meaning.
+
+    Kept as a named class (rather than using PoseBackend directly) because
+    the underlying MediaPipe API has changed once already. `process()`
+    returns the 132-dim feature vector directly.
     """
 
-    def __init__(self, complexity: int = 0,
-                 min_det_conf: float = 0.3,
-                 min_trk_conf: float = 0.3,
-                 downscale: int = 2,
+    def __init__(self, complexity: int = MEDIAPIPE_MODEL_COMPLEXITY,
+                 min_det_conf: float = MEDIAPIPE_MIN_DET_CONF,
+                 min_trk_conf: float = MEDIAPIPE_MIN_TRK_CONF,
+                 frame_wh: tuple = (FRAME_WIDTH, FRAME_HEIGHT),
                  static_image_mode: bool = False,
                  upright: Optional[bool] = None):
-        self.downscale = downscale
-        self.small_w = FRAME_WIDTH // downscale
-        self.small_h = FRAME_HEIGHT // downscale
+        w, h = frame_wh
+        self.small_w = int(POSE_INPUT_WIDTH)
+        self.small_h = max(int(round(h * POSE_INPUT_WIDTH / float(w))), 16)
         self.upright = UPRIGHT_POSE if upright is None else upright
 
         if self.upright:
@@ -171,25 +214,25 @@ class OptimizedMPWrapper:
                 complexity=complexity,
                 min_det_conf=min_det_conf,
                 min_trk_conf=min_trk_conf,
-                downscale=downscale,
-                frame_width=FRAME_WIDTH,
-                frame_height=FRAME_HEIGHT,
+                downscale=1,
+                frame_width=self.small_w,
+                frame_height=self.small_h,
             )
         else:
             self._backend = PoseBackend(
                 complexity=complexity,
                 min_det_conf=min_det_conf,
                 min_trk_conf=min_trk_conf,
-                downscale=downscale,
-                frame_width=FRAME_WIDTH,
-                frame_height=FRAME_HEIGHT,
+                downscale=1,
+                frame_width=self.small_w,
+                frame_height=self.small_h,
                 static_image_mode=static_image_mode,
             )
         if self._backend.available:
             logger.info(
                 "Pose backend '%s' ready (upright=%s, complexity=%d, det=%.1f, "
-                "trk=%.1f, downscale=%d)", self._backend.backend, self.upright,
-                complexity, min_det_conf, min_trk_conf, downscale)
+                "trk=%.1f, input=%dx%d)", self._backend.backend, self.upright,
+                complexity, min_det_conf, min_trk_conf, self.small_w, self.small_h)
 
     @property
     def available(self) -> bool:
@@ -201,14 +244,16 @@ class OptimizedMPWrapper:
 
     def process(self, frame_rgb_full: np.ndarray,
                 detections: Optional[list] = None) -> np.ndarray:
-        """Full-resolution RGB frame -> (132,) float32 features.
+        """RGB frame (any size) -> (132,) float32 features.
 
-        `detections` (this frame's HSV output) is optional and only used by
-        the upright estimator, which reads the rack's roll from the main-box
-        rect as its first guess. Omitting it is not a failure - the coarse
-        angle search then does the work and the result latches - which is why
-        the threaded path, where HSV has not finished yet, can still pass None.
+        `detections` is the upright estimator's rack-roll hint. Every caller
+        goes through perceive(), which passes the PREVIOUS frame's HSV output
+        here (None on the first frame: the coarse angle search then does the
+        work and the result latches).
         """
+        if frame_rgb_full.shape[1] != self.small_w or frame_rgb_full.shape[0] != self.small_h:
+            frame_rgb_full = cv2.resize(frame_rgb_full, (self.small_w, self.small_h),
+                                        interpolation=cv2.INTER_LINEAR)
         if self.upright:
             return self._backend.process(
                 frame_rgb_full, detections=detections,
@@ -253,7 +298,14 @@ class HARPipeline:
                  enable_voice: Optional[bool] = None,
                  enable_recording: bool = True,
                  enable_cnn_ensemble: Optional[bool] = None,
-                 use_threaded: Optional[bool] = None):
+                 use_threaded: Optional[bool] = None,
+                 lstm_path: Optional[str] = None):
+        """`lstm_path`: serve this .pt checkpoint (PyTorch) instead of the
+        promoted models/lstm_classifier.{onnx,pt}. Either way the pipeline
+        builds exactly the inputs the loaded model records it was trained on
+        (layout, sample rate, rack normalisation), names it on the HUD banner
+        and in a WARNING, and refuses to start only when a model's input dim
+        contradicts its own recorded layout."""
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -265,7 +317,15 @@ class HARPipeline:
         self.streamer: Optional[NetworkStreamer] = None
         self.enable_cnn_ensemble = (CNN_ENSEMBLE_ENABLED if enable_cnn_ensemble is None
                                     else enable_cnn_ensemble)
+        self.lstm_path      = lstm_path
+        # The model input contract. Config until _load_models() adopts the
+        # loaded checkpoint's recorded contract.
+        self.feature_layout = FEATURE_LAYOUT
+        self.sample_every   = SAMPLE_EVERY
+        self.model_banner   = ""
         self.frame_idx      = 0
+        self._prev_dets     = None   # previous frame's HSV output: the pose hint
+        self._file_fps      = None   # set by run() for file sources
         self._running       = False
         self._last_pred     = (0, 0.0)
 
@@ -311,7 +371,10 @@ class HARPipeline:
         self.threaded = ThreadedInference() if threaded_flag else None
 
         # ── Sequence buffer (for LSTM) ─────────────────────────
-        self.skeleton_buffer: Deque[np.ndarray] = deque(maxlen=SEQUENCE_WINDOW)
+        # Resampling window (pipeline/features.py): timestamped frames in,
+        # samples out on a fixed sample_every/FPS clock. Built after
+        # _load_models() so it uses the loaded model's contract.
+        self.skeleton_buffer = SampleWindow(SEQUENCE_WINDOW, self.sample_every, FPS)
         # ── Frame-stack buffer (for the optional CNN ensemble signal) ──
         # Only populated when enable_cnn_ensemble — zero cost otherwise.
         self.frame_stack_buffer: Deque[np.ndarray] = deque(maxlen=CNN_NUM_FRAMES_IN)
@@ -338,15 +401,69 @@ class HARPipeline:
 
     def _load_models(self):
         """Load LSTM and CNN models. Gracefully skip if not trained yet."""
-        # MediaPipe Pose (optimized)
+        # MediaPipe Pose: config defaults, the same pose stage training uses.
         if MP_AVAILABLE:
-            self.mp_wrapper = OptimizedMPWrapper(
-                complexity=MEDIAPIPE_MODEL_COMPLEXITY,
-                min_det_conf=MEDIAPIPE_MIN_DET_CONF,
-                min_trk_conf=MEDIAPIPE_MIN_TRK_CONF,
-                downscale=MEDIAPIPE_DOWNSCALE,
-            )
+            self.mp_wrapper = OptimizedMPWrapper()
 
+        self._lstm_label_map = {}
+        self.model_banner = "MODEL none - no step classifier loaded"
+        if self.lstm_path:
+            self._load_explicit_lstm(self.lstm_path)
+        else:
+            self._load_promoted_lstm()
+        self._load_cnn()
+
+    def _adopt_contract(self, name: str, meta: Optional[dict], input_dim: Optional[int]):
+        """Build exactly the inputs this model was trained on: its recorded
+        feature_layout, sample_every and rack_normalized (no fields = legacy
+        pose132, every frame; unrecorded rack = config). Refuse only a model
+        whose actual input dim contradicts its own recorded layout - then
+        there is no way to know which of the two is true."""
+        from pipeline.hmr_backend import check_pose_source
+        # The pose source actually running (a requested HMR that failed to
+        # load means MediaPipe is), against the one the model was trained on.
+        check_pose_source(name, meta or {}, self.hmr.backend_name if self.hmr else "none")
+        contract = contract_of(meta or {})
+        layout = contract["feature_layout"]
+        want = LAYOUT_DIMS.get(layout)
+        if want is None or (input_dim is not None and int(input_dim) != want):
+            raise RuntimeError(
+                f"{name}: model takes {input_dim}-dim frames but records layout "
+                f"{layout!r} ({want}-dim). Refusing to start rather than guess.")
+        self.feature_layout = layout
+        self.sample_every = contract["sample_every"]
+        rack = contract["rack_normalized"]
+        if rack is not None:
+            if rack and self.rack_normalizer is None:
+                self.rack_normalizer = RackFrameNormalizer(angle_ema=RACK_ANGLE_EMA,
+                                                           scale_ema=RACK_SCALE_EMA)
+            elif not rack:
+                self.rack_normalizer = None
+        rack_txt = ("on" if self.rack_normalizer is not None else "off") + (
+            "" if rack is not None else " (unrecorded, from config)")
+        self.model_banner = (
+            f"MODEL {Path(name).name} | {layout} ({want}-d) | "
+            f"1 sample / {1000.0 * self.sample_every / FPS:.0f} ms | rack {rack_txt}")
+        if layout != FEATURE_LAYOUT or self.sample_every != SAMPLE_EVERY:
+            self.model_banner += " | NOT THE DEPLOYED CONTRACT"
+        logger.warning("Serving %s", self.model_banner)
+
+    def _load_explicit_lstm(self, path: str):
+        """Serve a chosen .pt (PyTorch) under the contract it records."""
+        from train.train_lstm import HARLSTMClassifier
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        self._adopt_contract(path, ckpt, ckpt["feature_dim"])
+        self.lstm_model = HARLSTMClassifier(
+            feature_dim=ckpt["feature_dim"], hidden_size=ckpt["hidden_size"],
+            num_layers=ckpt["num_layers"], num_classes=ckpt["num_classes"])
+        self.lstm_model.load_state_dict(ckpt["model_state"])
+        self.lstm_model.eval()
+        self._lstm_label_map = {int(k): int(v) for k, v in ckpt.get("idx_to_label", {}).items()}
+
+    def _load_promoted_lstm(self):
+        """Load models/lstm_classifier.{onnx,pt} and serve it under the
+        contract its .pt records - loudly (banner + WARNING), so whichever
+        model is running is never a surprise."""
         # LSTM — prefer ONNX, fallback to PyTorch
         if LSTM_USE_ONNX and ORT_AVAILABLE and Path(LSTM_ONNX_PATH).exists():
             try:
@@ -361,20 +478,34 @@ class HARPipeline:
                 logger.info("LSTM ONNX session loaded: %s", LSTM_ONNX_PATH)
             except Exception as e:
                 logger.warning("LSTM ONNX load failed: %s", e)
+        onnx_dim = None
+        if self.lstm_ort_sess is not None:
+            onnx_dim = self.lstm_ort_sess.get_inputs()[0].shape[-1]
+            onnx_dim = onnx_dim if isinstance(onnx_dim, int) else None
 
-        # Load label map from .pt checkpoint (needed for both ONNX and PyTorch paths)
-        self._lstm_label_map = {}
+        # Label map + recorded contract live in the .pt beside the ONNX.
+        ckpt = None
         if Path(LSTM_PATH).exists():
             try:
                 ckpt = torch.load(LSTM_PATH, map_location="cpu", weights_only=False)
                 raw_map = ckpt.get("idx_to_label", {})
                 self._lstm_label_map = {int(k): int(v) for k, v in raw_map.items()}
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("LSTM checkpoint %s unreadable: %s", LSTM_PATH, e)
 
-        if self.lstm_ort_sess is None and Path(LSTM_PATH).exists():
+        if ckpt is not None:
+            self._adopt_contract(LSTM_PATH, ckpt, ckpt.get("feature_dim"))
+            if onnx_dim is not None and onnx_dim != LAYOUT_DIMS[self.feature_layout]:
+                raise RuntimeError(
+                    f"{LSTM_ONNX_PATH} takes {onnx_dim}-dim frames but {LSTM_PATH} records "
+                    f"layout {self.feature_layout!r} ({LAYOUT_DIMS[self.feature_layout]}-dim): "
+                    f"the pair was not promoted together.")
+        elif self.lstm_ort_sess is not None:
+            # No .pt: nothing records a contract, so it can only be legacy.
+            self._adopt_contract(LSTM_ONNX_PATH, None, onnx_dim)
+
+        if self.lstm_ort_sess is None and ckpt is not None:
             try:
-                ckpt = torch.load(LSTM_PATH, map_location="cpu")
                 from train.train_lstm import HARLSTMClassifier
                 self.lstm_model = HARLSTMClassifier(
                     feature_dim  = ckpt["feature_dim"],
@@ -384,15 +515,13 @@ class HARPipeline:
                 )
                 self.lstm_model.load_state_dict(ckpt["model_state"])
                 self.lstm_model.eval()
-                raw_map = ckpt.get("idx_to_label", {})
-                self._lstm_label_map = {int(k): int(v) for k, v in raw_map.items()}
                 logger.info("LSTM loaded (PyTorch): val_acc=%.3f", ckpt.get("val_acc", 0))
             except Exception as e:
                 logger.warning("LSTM load failed: %s", e)
-        else:
-            if self.lstm_ort_sess is None:
-                logger.warning("LSTM not found at %s — train first.", LSTM_PATH)
+        elif self.lstm_ort_sess is None:
+            logger.warning("LSTM not found at %s — train first.", LSTM_PATH)
 
+    def _load_cnn(self):
         # CNN (ONNX preferred for speed) — only loaded eagerly when the
         # ensemble is actually enabled; otherwise this used to load a session
         # that nothing ever called (pure startup memory/latency for zero
@@ -499,26 +628,16 @@ class HARPipeline:
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
-    def _extract_skeleton_features_optimized(self, frame_rgb: np.ndarray,
-                                             detections: Optional[list] = None) -> np.ndarray:
-        """
-        Run optimized MediaPipe Pose and return 132-dim feature vector.
-        Uses pre-allocated buffers and downscaled frames.
-        """
-        if self.mp_wrapper is None:
-            return np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
-        return self.mp_wrapper.process(frame_rgb, detections=detections)
-
     def _run_lstm_inference(self) -> tuple[int, float]:
         """
         Run LSTM on current skeleton buffer.
         Returns (predicted_step_id, confidence).
         Prefers ONNX Runtime for speed.
         """
-        if len(self.skeleton_buffer) < SEQUENCE_WINDOW:
+        if not self.skeleton_buffer.full:
             return 0, 0.0
 
-        seq = np.stack(list(self.skeleton_buffer), axis=0)  # (T, features)
+        seq = self.skeleton_buffer.array()                   # (T, features)
         x = seq[np.newaxis, ...].astype(np.float32)          # (1, T, features)
 
         # ── ONNX Runtime path (faster) ──────────────────────
@@ -662,6 +781,34 @@ class HARPipeline:
         self.state_machine.feed_prediction(fused_step, fused_conf)
         return fused_step, fused_conf
 
+    def _ingest(self, features: np.ndarray, t: float, label=None) -> int:
+        """Offer one timestamped frame's model features to the window; classify
+        and feed the state machine once per SAMPLE it emits (possibly 0, 1 or
+        several per frame). This is the single sampling gate for BOTH run()
+        and process_frame(), and a sample is the unit STEP_CONFIRM_FRAMES is
+        expressed in. `label` (sim/eval only) rides along with the sample.
+        Returns the number of samples emitted."""
+        def on_sample():
+            if self.skeleton_buffer.full:
+                self._last_pred = self._predict_and_feed_state_machine()
+        resets = self.skeleton_buffer.gap_resets
+        n = self.skeleton_buffer.push(features, t, label, on_sample)
+        if self.skeleton_buffer.gap_resets != resets:
+            logger.warning("Frame gap > %.1f s: model window cleared, warming up again.",
+                           self.skeleton_buffer.max_gap)
+        return n
+
+    def _perceive(self, frame: np.ndarray, timings: Optional[dict] = None):
+        """HSV + pose for the current frame via the shared perceive()."""
+        dets, pose = perceive(frame, self._frame_rgb_full, self.hsv_detector,
+                              self.mp_wrapper, self._prev_dets, self.threaded, timings)
+        self._prev_dets = dets
+        return dets, pose
+
+    def _frame_features(self, skel: np.ndarray, detections: list) -> np.ndarray:
+        return build_frame_features(skel, detections, (FRAME_WIDTH, FRAME_HEIGHT),
+                                    self.rack_normalizer, self.feature_layout)
+
     def _annotate_frame(self, frame: np.ndarray,
                         detections: list,
                         pred_step: int,
@@ -725,6 +872,14 @@ class HARPipeline:
             cv2.putText(vis, f"Rack frame: {self.rack_normalizer.rack_angle_deg:.1f} deg",
                         (10, 122), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 220, 255), 1)
 
+        # Which model is running, and on what inputs - always on screen.
+        if self.model_banner:
+            warn = "NOT THE DEPLOYED" in self.model_banner or "none" in self.model_banner
+            y = frame.shape[0] - 12
+            cv2.rectangle(vis, (0, y - 20), (frame.shape[1], frame.shape[0]), (20, 20, 20), -1)
+            cv2.putText(vis, self.model_banner, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (0, 190, 255) if warn else (200, 200, 200), 1)
+
         # FPS + latency
         if len(self._times) > 1:
             avg_ms = np.mean(list(self._times)) * 1000
@@ -738,53 +893,57 @@ class HARPipeline:
 
     def process_frame(self, frame: np.ndarray,
                       injected_skel: Optional[np.ndarray] = None,
-                      annotate: bool = False) -> dict:
+                      annotate: bool = False,
+                      timestamp: Optional[float] = None,
+                      label: Optional[int] = None) -> dict:
         """
         Process a single BGR frame. Always runs HSV + MediaPipe for real latency.
         If injected_skel is provided it is used for LSTM (oracle pose) so accuracy
         can be measured independently of MediaPipe on synthetic figures.
+
+        `timestamp` is the frame's capture time in seconds; when absent the
+        frame is assumed to sit on the nominal FPS clock ((n-1)/FPS), which
+        keeps sim/showcase runs deterministic. `label` (ground-truth step id,
+        sim/eval only) travels with the model window's samples so a caller can
+        score exactly what the classifier saw (skeleton_buffer.labels()).
         """
         t0 = time.perf_counter()
 
         if frame is None or frame.size == 0:
             return {
                 "pred_step": 0, "confidence": 0.0, "detections": [], "vis": None,
+                "sampled": False,
                 "timings_ms": {"hsv": 0.0, "mediapipe": 0.0, "lstm": 0.0, "total": 0.0},
             }
 
-        if frame.shape[1] != FRAME_WIDTH or frame.shape[0] != FRAME_HEIGHT:
-            frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+        frame = to_frame_size(frame)
 
         self.frame_idx += 1
         cv2.cvtColor(frame, cv2.COLOR_BGR2RGB, dst=self._frame_rgb_full)
 
-        t_hsv = time.perf_counter()
-        detections = self.hsv_detector.detect(frame)
-        hsv_ms = (time.perf_counter() - t_hsv) * 1000.0
-
-        t_mp = time.perf_counter()
+        t_perc = time.perf_counter()
+        timings = {}
         if self.hmr is not None and self.hmr.available:
             # Stage 2: root-relative 3D from the HMR mesh (same 132-dim contract).
+            detections = self.hsv_detector.detect(frame)
+            timings["hsv_ms"] = (time.perf_counter() - t_perc) * 1000.0
             skel_mp, _ = self.hmr.get_pose_features(self._frame_rgb_full)
+            self._prev_dets = detections
         else:
-            skel_mp = self._extract_skeleton_features_optimized(
-                self._frame_rgb_full, detections=detections)
-        mp_ms = (time.perf_counter() - t_mp) * 1000.0
+            detections, skel_mp = self._perceive(frame, timings)
+        perc_ms = (time.perf_counter() - t_perc) * 1000.0
+        hsv_ms = timings.get("hsv_ms", 0.0)          # threaded: not separable
+        mp_ms = timings.get("pose_ms", perc_ms - hsv_ms)
 
         skel = injected_skel if injected_skel is not None else skel_mp
-        if self.rack_normalizer is not None:
-            skel = self.rack_normalizer.normalize(
-                skel, rack_rect=pick_rack_rect(detections)
-            )
-        self.skeleton_buffer.append(np.asarray(skel, dtype=np.float32).reshape(-1))
+        feats = self._frame_features(skel, detections)
         if self.enable_cnn_ensemble:
             self._append_cnn_frame(self._frame_rgb_full)
 
         t_lstm = time.perf_counter()
+        t = timestamp if timestamp is not None else (self.frame_idx - 1) / float(FPS)
+        n_samples = self._ingest(feats, t, label)
         pred_step, pred_conf = self._last_pred
-        if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
-            pred_step, pred_conf = self._predict_and_feed_state_machine()
-            self._last_pred = (pred_step, pred_conf)
         lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
         vis = self._annotate_frame(frame, detections, pred_step, pred_conf) if annotate else None
@@ -796,6 +955,8 @@ class HARPipeline:
             "confidence": float(pred_conf),
             "detections": detections,
             "vis": vis,
+            "sampled": n_samples > 0,   # this frame emitted >= 1 model sample
+            "samples": int(n_samples),
             "timings_ms": {
                 "hsv": float(hsv_ms),
                 "mediapipe": float(mp_ms),
@@ -808,6 +969,7 @@ class HARPipeline:
         """Clear buffers and state machine for a new simulation trial."""
         self.frame_idx = 0
         self._last_pred = (0, 0.0)
+        self._prev_dets = None            # first frame of a trial gets no pose hint
         self.skeleton_buffer.clear()
         self.frame_stack_buffer.clear()
         self._times.clear()
@@ -835,6 +997,7 @@ class HARPipeline:
         summary["streaming_active"] = self.streamer is not None and self.streamer.available
         summary["stream_target"] = (f"{self.stream_host}:{self.stream_port}"
                                     if self.enable_streaming else None)
+        summary["model_banner"] = self.model_banner
         try:
             self.gui_queue.put_nowait(("status", summary))
         except queue.Full:
@@ -862,6 +1025,18 @@ class HARPipeline:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, FPS)
+        # Frame timestamps: a camera frame is stamped with its capture time; a
+        # video file with its own timeline (i / file fps), since decode speed
+        # is not the time the scene was captured at.
+        self._file_fps = None
+        if isinstance(self.source, str):
+            self._file_fps = cap.get(cv2.CAP_PROP_FPS)
+            if not self._file_fps or self._file_fps <= 0:
+                # e.g. an image sequence reports -1; every frame would look
+                # like a >0.5 s gap and the window would never fill.
+                logger.warning("Source %s reports fps=%s; assuming %d fps.",
+                               self.source, self._file_fps, FPS)
+                self._file_fps = float(FPS)
 
         # Video writer (local storage)
         if self.enable_recording:
@@ -890,10 +1065,9 @@ class HARPipeline:
         self.exp_logger.log_experiment_start()
         self._running = True
 
-        pred_step, pred_conf = 0, 0.0   # Last prediction (persisted between frames)
-
         while self._running:
             ret, frame = cap.read()
+            t_capture = time.monotonic()
             if not ret:
                 logger.info("Video source exhausted.")
                 break
@@ -905,8 +1079,7 @@ class HARPipeline:
             # frame desyncs it. Normalize once, here, before anything writes
             # or converts the frame — process_frame() already does this;
             # run() didn't.
-            if frame.shape[1] != FRAME_WIDTH or frame.shape[0] != FRAME_HEIGHT:
-                frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+            frame = to_frame_size(frame)
 
             self.frame_idx += 1
             t_start = time.time()
@@ -939,28 +1112,17 @@ class HARPipeline:
             # ── Convert to RGB (shared buffer) ──────────────
             cv2.cvtColor(frame, cv2.COLOR_BGR2RGB, dst=self._frame_rgb_full)
 
-            # ── Parallel or sequential inference ─────────────
-            if self.threaded:
-                detections, skel = self.threaded.run_parallel(
-                    frame, self._frame_rgb_full,
-                    self.hsv_detector, self.mp_wrapper,
-                )
-            else:
-                detections = self.hsv_detector.detect(frame)
-                skel = self._extract_skeleton_features_optimized(
-                    self._frame_rgb_full, detections=detections)
+            # ── Parallel or sequential inference (same result either way) ──
+            detections, skel = self._perceive(frame)
 
-            if self.rack_normalizer is not None:
-                skel = self.rack_normalizer.normalize(
-                    skel, rack_rect=pick_rack_rect(detections)
-                )
-            self.skeleton_buffer.append(skel)
+            feats = self._frame_features(skel, detections)
             if self.enable_cnn_ensemble:
                 self._append_cnn_frame(self._frame_rgb_full)
 
             # ── LSTM (+ optional CNN ensemble) inference ─────
-            if len(self.skeleton_buffer) >= SEQUENCE_WINDOW:
-                pred_step, pred_conf = self._predict_and_feed_state_machine()
+            t = ((self.frame_idx - 1) / self._file_fps) if self._file_fps else t_capture
+            self._ingest(feats, t)
+            pred_step, pred_conf = self._last_pred
 
             # ── Build annotated frame & push to GUI ──────────
             vis = self._annotate_frame(frame, detections, pred_step, pred_conf)

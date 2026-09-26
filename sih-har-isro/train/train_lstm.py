@@ -42,13 +42,14 @@ from config.experiment_config import (
     LSTM_EPOCHS, LSTM_BATCH_SIZE, LSTM_LEARNING_RATE,
     LSTM_HIDDEN_SIZE, LSTM_NUM_LAYERS, LSTM_DROPOUT,
     TRAIN_VAL_SPLIT, SEQUENCE_WINDOW,
-    LSTM_PATH, LSTM_ONNX_PATH, SKELETON_FEATURES,
+    LSTM_PATH, LSTM_ONNX_PATH, MODEL_FEATURE_DIM,
 )
+from pipeline.features import LAYOUT_DIMS, contract_of  # noqa: E402
 
-# Feature dimension: MediaPipe Pose only (33×4 = 132), no hands, for speed.
-# Single source of truth is config.SKELETON_FEATURES — this used to
-# re-derive the same 132 independently.
-FEATURE_DIM = SKELETON_FEATURES
+# The deployed model input: pose + object channels (config.MODEL_FEATURE_DIM,
+# 143). Other layouts still train (e.g. the pose-only baseline), but the live
+# pipeline will refuse them, so training one says so loudly.
+FEATURE_DIM = MODEL_FEATURE_DIM
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -169,6 +170,25 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     X = np.load(str(X_path))
     y = np.load(str(y_path))
     logger.info("Loaded dataset: X=%s, y=%s", X.shape, y.shape)
+
+    # The input contract the sequences were built under (metadata.json from
+    # tools/build_sequences.py). It is recorded in the checkpoint so the live
+    # pipeline and evaluate_real build exactly these inputs, or refuse.
+    meta_path = Path(data_dir) / "metadata.json"
+    data_meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    contract = contract_of(data_meta)
+    # What produced the pose (pipeline/hmr_backend.check_pose_source refuses
+    # to serve the checkpoint under a different HMR_BACKEND).
+    pose_rec = {k: data_meta[k] for k in ("pose_source", "hmr_backend") if k in data_meta}
+    if LAYOUT_DIMS.get(contract["feature_layout"]) != X.shape[-1]:
+        raise ValueError(f"{data_dir}: metadata says layout {contract['feature_layout']!r} "
+                         f"({LAYOUT_DIMS.get(contract['feature_layout'])}-dim) but X is "
+                         f"{X.shape[-1]}-dim")
+    if X.shape[-1] != FEATURE_DIM:
+        logger.warning("Training layout %r (%d-dim), NOT the deployed %d-dim layout: "
+                       "the live pipeline will refuse this checkpoint.",
+                       contract["feature_layout"], X.shape[-1], FEATURE_DIM)
+    logger.info("Input contract: %s | pose: %s", contract, pose_rec or "unrecorded (MediaPipe)")
     logger.info("Class distribution: %s", {int(k): int(v) for k, v in zip(*np.unique(y, return_counts=True))})
 
     # ── Dataset split ─────────────────────────────────────────
@@ -282,6 +302,9 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
                 "idx_to_label": dataset.idx_to_label,
                 "val_acc": val_acc,
                 "epoch": epoch,
+                "window": SEQUENCE_WINDOW,
+                **contract,   # feature_layout, sample_every, rack_normalized
+                **pose_rec,   # pose_source, hmr_backend
             }, output_path)
             logger.info("  ✓ New best model saved (val_acc=%.3f)", val_acc)
         else:

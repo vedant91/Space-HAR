@@ -102,7 +102,8 @@ class PoseBackend:
 
     `process` takes a full-resolution RGB frame and handles its own
     downscaling, so callers keep the latency behaviour the pipeline was tuned
-    for (config.MEDIAPIPE_DOWNSCALE).
+    for (callers normally pass an already POSE_INPUT_WIDTH-sized frame via
+    har_pipeline.OptimizedMPWrapper, with downscale=1).
     """
 
     def __init__(self,

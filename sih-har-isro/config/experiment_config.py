@@ -99,10 +99,17 @@ FPS = 30
 PROCESS_EVERY_N_FRAMES = 1  # Process every frame for max latency (was 2 for speed)
 
 # ── Latency Optimization Settings ─────────────────────────────
+# Pose settings are ONE value for training, scoring and the live loop
+# (pipeline/har_pipeline.OptimizedMPWrapper is the only pose stage). Measured
+# at 1280x720 on rendered frames: complexity 0 at 640 px 45.8 ms/frame vs
+# complexity 1 at full res 60.6 ms, both detecting 60/60.
 MEDIAPIPE_MODEL_COMPLEXITY = 0   # 0=fastest, 1=balanced, 2=accurate
 MEDIAPIPE_MIN_DET_CONF = 0.3    # Lower = faster (fewer re-detections)
 MEDIAPIPE_MIN_TRK_CONF = 0.3    # Lower = faster tracking
-MEDIAPIPE_DOWNSCALE = 2         # Process MediaPipe at FRAME_WIDTH/DOWNSCALE
+# Pose input is specified by pixel WIDTH, not a downscale factor, so a 900-px
+# render and a 1280-px camera frame reach MediaPipe at the same size
+# (height follows the frame's aspect ratio).
+POSE_INPUT_WIDTH = 640
 HSV_DOWNSCALE = 2               # Process HSV at FRAME_WIDTH/HSV_DOWNSCALE
 USE_THREADED_INFERENCE = True    # Parallelize HSV + MediaPipe in threads
 LSTM_USE_ONNX = True            # Use ONNX Runtime for LSTM (faster than PyTorch)
@@ -112,7 +119,7 @@ LSTM_USE_ONNX = True            # Use ONNX Runtime for LSTM (faster than PyTorch
 # image/floor frame. Roll comes from the HSV main_box rect (fallback: torso),
 # origin is the torso center, scale is torso length. Output stays 132-dim, so
 # the LSTM contract is unchanged — retrain with the same flag for best results.
-RACK_FRAME_NORMALIZE = False    # Enable after retraining data with --rack-normalize
+RACK_FRAME_NORMALIZE = True     # training must match: build_sequences.py --rack-normalize
 RACK_ANGLE_EMA = 0.85           # Rack roll smoothing (0=raw, 1=frozen)
 RACK_SCALE_EMA = 0.90           # Torso-scale smoothing
 # Stage 0 (runs BEFORE pose estimation): canonicalise the IMAGE, not just the
@@ -163,12 +170,42 @@ LSTM_ONNX_PATH = os.path.join(MODEL_DIR, "lstm_classifier.onnx")  # ONNX for CPU
 # No YOLOv8 — object detection uses HSV color segmentation (no training needed)
 
 # ── LSTM / Sequence Settings ──────────────────────────────────
-SEQUENCE_WINDOW = 30        # Frames for LSTM input (1 sec @ 30fps)
-SKELETON_FEATURES = 33 * 4  # MediaPipe: 33 landmarks × (x, y, z, visibility)
+SEQUENCE_WINDOW = 30        # Samples per LSTM input window
+# The model sees samples on a fixed clock of period SAMPLE_EVERY / FPS
+# (100 ms), so the 30-sample window spans 3.0 s instead of 1.0 s: a protocol
+# step takes 4-6 s and a 1 s glimpse cannot tell arriving from leaving. The
+# live loop runs ~15-22 fps, never 30, so frames are timestamped and
+# resampled onto that grid (pipeline/features.SampleWindow); on rendered
+# frames at exactly i/30 s this is identical to keeping every 3rd frame.
+# HSV, pose and the rack EMA still run on every frame
+# (PROCESS_EVERY_N_FRAMES stays 1).
+SAMPLE_EVERY = 3
+# A gap longer than this between consecutive frames clears the window and
+# warms up again, rather than inventing motion across it.
+MAX_FRAME_GAP_S = 0.5
+SKELETON_FEATURES = 33 * 4  # MediaPipe: 33 landmarks × (x, y, z, visibility) — the POSE contract
+# Object channels appended after the pose: 3 boxes (red, yellow, main) x
+# (cx, cy, visible) + left/right wrist distance to the nearest visible box.
+OBJECT_FEATURES = 3 * 3 + 2
+MODEL_FEATURE_DIM = SKELETON_FEATURES + OBJECT_FEATURES   # the MODEL input contract (143)
+# The layout the live pipeline builds and expects its model to be trained on.
+# Names and dims live in pipeline/features.py ("pose132" is the legacy
+# pose-only layout of every checkpoint written before layouts were recorded).
+FEATURE_LAYOUT = "pose132+obj11"
+# Fraction of a window that must share its majority step label to be used for
+# training or scoring. One value for both, or they disagree about what a
+# window is (build_sequences used 0.75 while evaluate_real used 0.6).
+WINDOW_PURITY = 0.75
 NUM_STEPS = len(EXPERIMENT_STEPS) + 1  # +1 for "idle/unknown"
 
 # ── State Machine Thresholds ──────────────────────────────────
-STEP_CONFIRM_FRAMES = 15    # Consecutive frames needed to confirm a step
+# Counted in SAMPLES, not camera frames: the pipeline feeds the state machine
+# once per sample on the 100 ms clock. 5 samples = 0.5 s, the same wall-clock
+# debounce the old 15 frames @ 30 fps gave. Worst-case deviation-alert
+# latency: 3.0 s window turnover + 0.5 s debounce + up to one camera frame
+# before the grid sample is emitted (~67 ms at 15 fps) + that frame's
+# processing (~66 ms) = ~3.6 s (was ~1.5 s with a 1 s window).
+STEP_CONFIRM_FRAMES = 5     # Consecutive samples needed to confirm a step
 STEP_CONFIDENCE_THRESHOLD = 0.65
 
 # ── CNN Ensemble (optional, off by default) ────────────────────

@@ -28,6 +28,7 @@ from config.experiment_config import (
 from pipeline.hsv_detector import HSVBoxDetector
 from pipeline.state_machine import ExperimentStateMachine
 from simulation.renderer import render_protocol, render_step_clip
+from simulation.digital_twin_3d import draw_camera_har_overlay, render_protocol_3d
 
 logger = logging.getLogger(__name__)
 
@@ -195,28 +196,27 @@ def run_pipeline_on_clip(
     oracle_correct = 0
     oracle_total = 0
     visual_preds = []
-    label_window: List[int] = []
 
     for i, (frame, meta) in enumerate(zip(frames, metas)):
         injected = meta["pose"] if inject_pose else None
-        result = pipeline.process_frame(frame, injected_skel=injected, annotate=False)
+        # The step id rides along with the pipeline's own model samples, so the
+        # window scored below holds the labels of exactly what the classifier saw.
+        result = pipeline.process_frame(frame, injected_skel=injected, annotate=False,
+                                        label=int(meta["step_id"]))
         if i >= warmup:
             latencies.append(result["timings_ms"]["total"])
             for k, v in result["timings_ms"].items():
                 breakdown[k].append(v)
 
-        label_window.append(int(meta["step_id"]))
-        if len(label_window) > SEQUENCE_WINDOW:
-            label_window.pop(0)
-
         # Score only windows that are a single step (mixed boundary windows
-        # are not a fair accuracy test of the classifier).
-        if (len(label_window) == SEQUENCE_WINDOW
-                and len(set(label_window)) == 1
-                and result["pred_step"] > 0):
-            oracle_total += 1
-            if int(result["pred_step"]) == int(label_window[-1]):
-                oracle_correct += 1
+        # are not a fair accuracy test of the classifier), once per new
+        # prediction rather than once per camera frame.
+        if result["sampled"] and pipeline.skeleton_buffer.full:
+            labs = pipeline.skeleton_buffer.labels()
+            if len(set(labs)) == 1 and result["pred_step"] > 0:
+                oracle_total += 1
+                if int(result["pred_step"]) == int(labs[-1]):
+                    oracle_correct += 1
         visual_preds.append(int(result["pred_step"]))
 
     sm = pipeline.state_machine.get_status_summary()
@@ -294,6 +294,25 @@ def generate_sim_assets(out_dir: str, frames_per_step: int = 72, seed: int = 5) 
     }
 
 
+def generate_3d_demo_assets(out_dir: str = "dataset/space_sim", frames_per_step: int = 72,
+                            seed: int = 7) -> Dict:
+    """Create the 3D digital-twin camera video used in the SIH demonstration."""
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    frames, metas = render_protocol_3d(frames_per_step=frames_per_step, seed=seed)
+    annotated = [draw_camera_har_overlay(frame, meta) for frame, meta in zip(frames, metas)]
+    save_video(annotated, out / "bas_3d_digital_twin_har.mp4")
+    cv2.imwrite(str(out / "bas_3d_digital_twin_preview.jpg"), annotated[len(annotated)//2])
+    report = {
+        "renderer": "procedural_3d_rack_coordinate_digital_twin",
+        "frames": len(frames), "fps": 30,
+        "physics": "zero-g inertia, ventilation disturbance, rack-zone latching",
+        "overlay": "SIM-REFERENCE boxes; live HAR pipeline renders model detections",
+    }
+    (out / "bas_3d_digital_twin_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return {"video": str(out / "bas_3d_digital_twin_har.mp4"), "preview": str(out / "bas_3d_digital_twin_preview.jpg"), **report}
+
+
 def run_full_space_sim(
     out_dir: str = "dataset/space_sim",
     frames_per_step: int = 72,
@@ -329,6 +348,8 @@ def run_full_space_sim(
     recovery_guidance = any("now correct" in text.lower() for text in recovery_pipe["voice_history"])
 
     report = {
+        "recovery_oracle_step_acc": recovery_pipe.get("oracle_step_acc"),
+        "recovery_oracle_n": recovery_pipe.get("oracle_n"),
         **hsv,
         **sm,
         **lstm_test,
