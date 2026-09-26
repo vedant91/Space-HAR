@@ -79,13 +79,30 @@ class YOLOBoxDetector:
         dets = []
         for box in r.boxes:
             cls_id = int(box.cls[0])
-            label = DETECTION_CLASSES.get(cls_id, str(cls_id))
+            raw_label = DETECTION_CLASSES.get(cls_id, str(cls_id))
+            # main_box_open/main_box_closed are two separate TRAINING
+            # classes (a genuinely learnable visual distinction — see
+            # simulation/renderer.py's lid graphic) but ONE semantic
+            # label at this API boundary, so every existing
+            # `d.label == "main_box"` check downstream (rack_frame's
+            # pick_rack_rect, anomaly_monitor's DRIFT_TRACKED_LABELS,
+            # features.BOX_LABELS, ...) keeps working unchanged whether
+            # HSV or YOLO is the active backend. Lid state itself is
+            # still available via Detection.lid_state for anything that
+            # wants it.
+            if raw_label == "main_box_open":
+                label, lid_state = "main_box", "open"
+            elif raw_label == "main_box_closed":
+                label, lid_state = "main_box", "closed"
+            else:
+                label, lid_state = raw_label, None
             x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
             conf = float(box.conf[0])
             area = max(0, x2 - x1) * max(0, y2 - y1)
             centroid = ((x1 + x2) // 2, (y1 + y2) // 2)
             dets.append(Detection(label=label, bbox=(x1, y1, x2, y2),
-                                  confidence=conf, centroid=centroid, area=area))
+                                  confidence=conf, centroid=centroid, area=area,
+                                  lid_state=lid_state))
         return dets
 
     def draw(self, frame_bgr: np.ndarray,

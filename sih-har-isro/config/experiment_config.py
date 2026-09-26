@@ -34,15 +34,33 @@ PROCEDURE_PACK_ID = _ACTIVE_PACK.experiment_id
 PROCEDURE_PACK_NAME = _ACTIVE_PACK.name
 PROCEDURE_PACK_PATH = str(_PACK_PATH)
 # ── YOLO Detection Classes ────────────────────────────────────
+# main_box is split into main_box_open/main_box_closed here because that's
+# a genuinely LEARNABLE visual distinction now that simulation/renderer.py
+# draws a real lid graphic difference between the two states (previously
+# both states rendered pixel-identical main_box pixels — splitting the
+# label without splitting the pixels would have taught YOLO to guess from
+# nearby red/yellow-box visibility instead of the box itself). HSV can't
+# tell lid state from color, so it still only ever emits plain "main_box";
+# YOLOBoxDetector.detect() normalizes its two lid classes back to
+# label="main_box" + a separate lid_state field, so every existing
+# `d.label == "main_box"` check downstream (rack_frame.pick_rack_rect,
+# anomaly_monitor.DRIFT_TRACKED_LABELS, features.BOX_LABELS, ...) works
+# unchanged with either detector backend. person is new: HANDOFF's
+# concern about fine-tuning erasing COCO's pretrained person-detection
+# doesn't apply here — we provide our OWN explicit synthetic person
+# bboxes in this same training set, not relying on inherited behavior
+# surviving fine-tuning.
 DETECTION_CLASSES = {
     0: "hand",
     1: "red_box",
     2: "yellow_box",
-    3: "main_box",
+    3: "main_box_open",
+    4: "main_box_closed",
+    5: "person",
 }
 CLASS_NAMES = list(DETECTION_CLASSES.values())
-# Named DETECTION_NUM_CLASSES (not NUM_CLASSES) — this is the HSV detection
-# class count (4: hand/red_box/yellow_box/main_box), unrelated to the step
+# Named DETECTION_NUM_CLASSES (not NUM_CLASSES) — this is the YOLO/HSV
+# detection class count, unrelated to the step
 # classifiers' class count (NUM_STEPS, 9). A generic "NUM_CLASSES" name here
 # previously collided in meaning with train_cnn.py's own same-named local.
 DETECTION_NUM_CLASSES = len(CLASS_NAMES)

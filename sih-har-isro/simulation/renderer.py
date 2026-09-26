@@ -320,9 +320,19 @@ def render_frame(
     red_visible = step_id >= 2 and not closed_lid
     yel_visible = step_id >= 2 and not closed_lid
     if closed_lid:
+        # A genuinely visible lid marking, not just re-drawing the same box
+        # twice: a darker flap band across the top ~35% with a center seam,
+        # like a closed hinged lid. Needed so main_box_open/main_box_closed
+        # are actually distinguishable pixels for YOLO to learn from — the
+        # boxes rendered identically before this (see build_yolo_detection_
+        # dataset.py's commit message for what that would have taught it
+        # to guess from instead: nearby red/yellow-box visibility, not the
+        # main box itself).
         x1, y1, x2, y2 = boxes["main_box"]
-        cv2.rectangle(frame, (x1, y1), (x2, y2), WHITE_BGR, -1)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (180, 180, 180), 3)
+        lid_h = int((y2 - y1) * 0.35)
+        cv2.rectangle(frame, (x1, y1), (x2, y1 + lid_h), (150, 150, 165), -1)
+        cv2.rectangle(frame, (x1, y1), (x2, y1 + lid_h), (100, 100, 115), 2)
+        cv2.line(frame, ((x1 + x2) // 2, y1), ((x1 + x2) // 2, y1 + lid_h), (100, 100, 115), 2)
 
     _draw_astronaut(frame, pose)
 
@@ -345,6 +355,19 @@ def render_frame(
     cv2.rectangle(overlay, (0, 0), (width, 40), (200, 210, 220), -1)
     cv2.addWeighted(overlay, 0.15, frame, 0.85, 0, frame)
 
+    # Person bbox from the pose landmarks' own extent, margin added so the
+    # box covers the drawn limb thickness (_draw_astronaut strokes lines
+    # with real width around each landmark, not just at it).
+    valid_xy = pose[pose[:, 3] > 0.1, :2]
+    if valid_xy.shape[0] > 0:
+        px1 = int(valid_xy[:, 0].min() * width) - 20
+        py1 = int(valid_xy[:, 1].min() * height) - 20
+        px2 = int(valid_xy[:, 0].max() * width) + 20
+        py2 = int(valid_xy[:, 1].max() * height) + 20
+        person_bbox = (max(0, px1), max(0, py1), min(width, px2), min(height, py2))
+    else:
+        person_bbox = None
+
     meta = {
         "step_id": int(step_id),
         "t": float(t),
@@ -352,6 +375,8 @@ def render_frame(
         "red_visible": bool(red_visible),
         "yellow_visible": bool(yel_visible),
         "main_visible": True,
+        "closed_lid": bool(closed_lid),
+        "person_bbox": person_bbox,
         "pose": pose_flat.astype(np.float32),
         "microgravity": {
             "red_velocity": world.red.velocity.round(5).tolist() if world else [0.0, 0.0],

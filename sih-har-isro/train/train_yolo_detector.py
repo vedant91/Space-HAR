@@ -2,9 +2,15 @@
 YOLO Detector — Fine-tune Script (opt-in, DETECTOR_BACKEND="yolo")
 ====================================================================
 Fine-tunes a pretrained COCO YOLO checkpoint (config.YOLO_BASE_CHECKPOINT) on
-our own synthetic renderer bboxes for the 4 DETECTION_CLASSES — COCO itself
-has no red_box/yellow_box/hand classes, so the pretrained weights are only
-ever a feature-extractor starting point, never used as-is at inference time.
+our own synthetic renderer bboxes for the 6 DETECTION_CLASSES (hand,
+red_box, yellow_box, main_box_open, main_box_closed, person) — COCO itself
+has no red_box/yellow_box/main_box classes, so the pretrained weights are
+only ever a feature-extractor starting point, never used as-is at
+inference time. COCO DOES have a person class, but we don't rely on that
+surviving fine-tuning — this dataset provides our own explicit synthetic
+person bboxes (simulation/renderer.py's person_bbox meta field) as one of
+this fine-tune's own trained classes, same as every other class here, so
+there's no catastrophic-forgetting risk to guard against.
 
 hsv_detector.py's own docstring already concludes HSV beats a trained
 detector for this exact task (measured 1.000/1.000 precision/recall). This

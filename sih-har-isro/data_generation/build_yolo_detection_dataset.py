@@ -67,9 +67,19 @@ def _yolo_labels_for_frame(meta: Dict, w: int, h: int) -> List[str]:
     lines = []
     boxes = meta["boxes"]
     if meta.get("main_visible"):
+        # main_box_open/main_box_closed, not a single main_box class: the
+        # renderer now draws a real distinct lid graphic for closed_lid
+        # (see simulation/renderer.py), so this is a genuinely learnable
+        # visual distinction, not just a label split with identical pixels.
+        main_label = "main_box_closed" if meta.get("closed_lid") else "main_box_open"
         norm = _clip_and_normalize(boxes["main_box"], w, h)
         if norm:
-            lines.append(f"{_LABEL_TO_ID['main_box']} " + " ".join(f"{v:.6f}" for v in norm))
+            lines.append(f"{_LABEL_TO_ID[main_label]} " + " ".join(f"{v:.6f}" for v in norm))
+    person_bbox = meta.get("person_bbox")
+    if person_bbox is not None:
+        norm = _clip_and_normalize(person_bbox, w, h)
+        if norm:
+            lines.append(f"{_LABEL_TO_ID['person']} " + " ".join(f"{v:.6f}" for v in norm))
     if meta.get("red_visible"):
         norm = _clip_and_normalize(boxes["red_box"], w, h)
         if norm:

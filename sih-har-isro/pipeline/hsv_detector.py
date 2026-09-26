@@ -47,6 +47,7 @@ def draw_detections(frame_bgr: np.ndarray, detections: List["Detection"]) -> np.
         "yellow_box": (0, 215, 255),
         "main_box":   (200, 200, 200),
         "hand":       (60, 220, 60),
+        "person":     (220, 130, 20),
     }
     for det in detections:
         x1, y1, x2, y2 = det.bbox
@@ -61,13 +62,20 @@ def draw_detections(frame_bgr: np.ndarray, detections: List["Detection"]) -> np.
 
 @dataclass
 class Detection:
-    label: str           # "red_box", "yellow_box", "main_box"
+    label: str           # "red_box", "yellow_box", "main_box", "hand", "person"
     bbox: Tuple[int, int, int, int]   # x1, y1, x2, y2
     confidence: float    # 0-1 based on area ratio
     centroid: Tuple[int, int]
     area: int
     mask: Optional[np.ndarray] = None  # Binary mask for this detection
     rect: Optional[Tuple[float, float, float]] = None  # ((cx,cy),(w,h),angle_deg) minAreaRect — rack roll anchor
+    # "open" | "closed" | None (unknown/not applicable). Only the YOLO
+    # backend ever sets this (from its main_box_open/main_box_closed
+    # training classes, normalized back to label="main_box" so every
+    # existing `d.label == "main_box"` check keeps working with either
+    # backend — see pipeline/yolo_detector.py). HSV genuinely can't tell
+    # lid state from color alone, so it always leaves this None.
+    lid_state: Optional[str] = None
 
 
 class HSVBoxDetector:
