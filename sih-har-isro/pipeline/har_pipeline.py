@@ -44,6 +44,7 @@ from config.experiment_config import (
     CAMERA_INDEX, FRAME_WIDTH, FRAME_HEIGHT, FPS,
     PROCESS_EVERY_N_FRAMES, SEQUENCE_WINDOW,
     LSTM_PATH, CNN_MODEL_PATH, CNN_ONNX_PATH, LSTM_ONNX_PATH, LSTM_USE_ONNX,
+    MODEL_FEATURE_DIM,
     VOICE_ENABLED, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
     STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
     RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
@@ -178,7 +179,8 @@ class HARPipeline:
                  earth_delay_s: Optional[float] = None,
                  uplink_mode: Optional[str] = None,
                  rack_frame_normalize: Optional[bool] = None,
-                 detector_backend: Optional[str] = None):
+                 detector_backend: Optional[str] = None,
+                 lstm_path: Optional[str] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -273,7 +275,7 @@ class HARPipeline:
         self.lstm_model     = None
         self.lstm_ort_sess  = None  # ONNX Runtime session for LSTM
         self.cnn_session    = None  # ONNX Runtime session for CNN
-        self._load_models()
+        self._load_models(lstm_path=lstm_path)
 
         # ── Threaded inference ─────────────────────────────────
         threaded_flag = USE_THREADED_INFERENCE if use_threaded is None else use_threaded
@@ -325,7 +327,7 @@ class HARPipeline:
 
     # ── Model Loading ──────────────────────────────────────────────────────────
 
-    def _load_models(self):
+    def _load_models(self, lstm_path: Optional[str] = None):
         """Load pose/LSTM/CNN models. Gracefully skip if not trained yet."""
         # Custom pose net (trained from scratch — see pipeline/pose_net.py)
         self.pose_wrapper = PoseNetWrapper()
@@ -333,59 +335,7 @@ class HARPipeline:
             logger.warning("PoseNet not trained yet (models/pose_net.onnx|.pt missing) — "
                            "pose features will be all-zero until train/train_posenet.py is run.")
 
-        # LSTM — prefer ONNX, fallback to PyTorch
-        if LSTM_USE_ONNX and ORT_AVAILABLE and Path(LSTM_ONNX_PATH).exists():
-            try:
-                sess_opts = ort.SessionOptions()
-                sess_opts.intra_op_num_threads = 4
-                sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                self.lstm_ort_sess = ort.InferenceSession(
-                    str(LSTM_ONNX_PATH),
-                    sess_options=sess_opts,
-                    providers=["CPUExecutionProvider"],
-                )
-                logger.info("LSTM ONNX session loaded: %s", LSTM_ONNX_PATH)
-            except Exception as e:
-                logger.warning("LSTM ONNX load failed: %s", e)
-
-        # Load label map from .pt checkpoint (needed for both ONNX and PyTorch paths)
-        self._lstm_label_map = {}
-        if Path(LSTM_PATH).exists():
-            try:
-                ckpt = torch.load(LSTM_PATH, map_location="cpu", weights_only=False)
-                raw_map = ckpt.get("idx_to_label", {})
-                self._lstm_label_map = {int(k): int(v) for k, v in raw_map.items()}
-            except Exception:
-                pass
-
-        if self.lstm_ort_sess is None and Path(LSTM_PATH).exists():
-            try:
-                # weights_only=False: PyTorch 2.6+ defaults this to True, which
-                # rejects our checkpoint's numpy-typed label-map values
-                # ("Unsupported global: numpy._core.multiarray.scalar") and
-                # silently falls through to logger.warning below — leaving
-                # self.lstm_model None, i.e. every LSTM prediction is (0, 0.0)
-                # forever. These are self-produced checkpoints (train_lstm.py),
-                # not third-party weights, so trusting them here is safe —
-                # matches the other torch.load call just above.
-                ckpt = torch.load(LSTM_PATH, map_location="cpu", weights_only=False)
-                from train.train_lstm import HARLSTMClassifier
-                self.lstm_model = HARLSTMClassifier(
-                    feature_dim  = ckpt["feature_dim"],
-                    hidden_size  = ckpt["hidden_size"],
-                    num_layers   = ckpt["num_layers"],
-                    num_classes  = ckpt["num_classes"],
-                )
-                self.lstm_model.load_state_dict(ckpt["model_state"])
-                self.lstm_model.eval()
-                raw_map = ckpt.get("idx_to_label", {})
-                self._lstm_label_map = {int(k): int(v) for k, v in raw_map.items()}
-                logger.info("LSTM loaded (PyTorch): val_acc=%.3f", ckpt.get("val_acc", 0))
-            except Exception as e:
-                logger.warning("LSTM load failed: %s", e)
-        else:
-            if self.lstm_ort_sess is None:
-                logger.warning("LSTM not found at %s — train first.", LSTM_PATH)
+        self._load_lstm(lstm_path)
 
         # CNN (ONNX preferred for speed) — only loaded eagerly when the
         # ensemble is actually enabled; otherwise this used to load a session
@@ -422,6 +372,98 @@ class HARPipeline:
             if self.cnn_session is None:
                 logger.warning("CNN ensemble enabled but no usable CNN model found/loaded — "
                                "ensemble will behave as LSTM-only until a CNN is trained.")
+
+    def _load_lstm(self, lstm_path: Optional[str] = None):
+        """Load the LSTM step classifier, enforcing the checkpoint's own
+        contract: feature_layout ("pose132" | "pose132+obj11"; legacy — no
+        fields recorded — means "pose132" at 132-dim, every frame) must
+        match its recorded feature_dim, and — for the default (non-override)
+        path — a promoted .onnx beside the .pt must actually be the SAME
+        checkpoint, not just A checkpoint. An .onnx re-exported from a
+        different .pt left at the promoted path would otherwise silently
+        serve predictions from one model under another's label map.
+
+        lstm_path=None uses the promoted pair (LSTM_PATH + LSTM_ONNX_PATH,
+        ONNX preferred for speed once they're confirmed to agree). An
+        explicit lstm_path names one exact checkpoint to serve — bypasses
+        the promoted ONNX entirely (you asked for THIS .pt, not whatever
+        happens to sit at the promoted ONNX path) and always runs it via
+        PyTorch.
+        """
+        self.lstm_ort_sess = None
+        self.lstm_model = None
+        self._lstm_label_map = {}
+        self.feature_layout = "pose132"
+        self.sample_every = 1
+        self.model_banner = "LSTM: not loaded"
+
+        pt_path = Path(lstm_path) if lstm_path is not None else Path(LSTM_PATH)
+        if not pt_path.exists():
+            logger.warning("LSTM not found at %s — train first.", pt_path)
+            return
+
+        try:
+            # weights_only=False: PyTorch 2.6+ defaults this to True, which
+            # rejects our checkpoint's numpy-typed label-map values
+            # ("Unsupported global: numpy._core.multiarray.scalar"). These
+            # are self-produced checkpoints (train_lstm.py), not third-party
+            # weights, so trusting them here is safe.
+            ckpt = torch.load(pt_path, map_location="cpu", weights_only=False)
+        except Exception as e:
+            logger.warning("LSTM load failed: %s", e)
+            return
+
+        feature_layout = ckpt.get("feature_layout") or "pose132"
+        sample_every = ckpt.get("sample_every") or 1
+        actual_dim = ckpt["feature_dim"]
+        expected_dim = {"pose132": SKELETON_FEATURES,
+                        "pose132+obj11": MODEL_FEATURE_DIM}.get(feature_layout)
+        if expected_dim is not None and actual_dim != expected_dim:
+            raise RuntimeError(
+                f"LSTM checkpoint {pt_path.name} records feature_layout={feature_layout!r} "
+                f"(expects {expected_dim}-dim input) but feature_dim={actual_dim} — the "
+                f"checkpoint's own contract is self-contradictory, refusing to load it."
+            )
+        self.feature_layout = feature_layout
+        self.sample_every = sample_every
+
+        from train.train_lstm import HARLSTMClassifier
+        self.lstm_model = HARLSTMClassifier(
+            feature_dim=actual_dim, hidden_size=ckpt["hidden_size"],
+            num_layers=ckpt["num_layers"], num_classes=ckpt["num_classes"],
+        )
+        self.lstm_model.load_state_dict(ckpt["model_state"])
+        self.lstm_model.eval()
+        raw_map = ckpt.get("idx_to_label", {})
+        self._lstm_label_map = {int(k): int(v) for k, v in raw_map.items()}
+        self.model_banner = f"LSTM: {pt_path.name} (val_acc={ckpt.get('val_acc', 0):.3f})"
+        logger.info("LSTM loaded (PyTorch): %s", self.model_banner)
+
+        if lstm_path is not None:
+            return  # explicit override — never touch the promoted ONNX
+
+        if LSTM_USE_ONNX and ORT_AVAILABLE and Path(LSTM_ONNX_PATH).exists():
+            try:
+                sess_opts = ort.SessionOptions()
+                sess_opts.intra_op_num_threads = 4
+                sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                sess = ort.InferenceSession(
+                    str(LSTM_ONNX_PATH), sess_options=sess_opts,
+                    providers=["CPUExecutionProvider"],
+                )
+                onnx_dim = sess.get_inputs()[0].shape[-1]
+                if isinstance(onnx_dim, int) and onnx_dim != actual_dim:
+                    raise RuntimeError(
+                        f"Promoted LSTM mismatch: {LSTM_ONNX_PATH} expects {onnx_dim}-dim "
+                        f"input but {pt_path.name} is {actual_dim}-dim — the pair was not "
+                        f"promoted together (see tools/promote_model.py)."
+                    )
+                self.lstm_ort_sess = sess
+                logger.info("LSTM ONNX session loaded: %s", LSTM_ONNX_PATH)
+            except RuntimeError:
+                raise
+            except Exception as e:
+                logger.warning("LSTM ONNX load failed: %s", e)
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 

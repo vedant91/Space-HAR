@@ -43,7 +43,7 @@
 
 set -euo pipefail
 
-usage() { sed -n '/^# Usage:/,/^$/s/^#\( \|$\)//p' "${BASH_SOURCE[0]}"; }
+usage() { sed -n '/^# Usage:/,/^$/{s/^# //; s/^#$//; p;}' "${BASH_SOURCE[0]}"; }
 
 case "${1:-}" in
     -h|--help) usage; exit 0 ;;
@@ -55,7 +55,7 @@ esac
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-PY="${PY:-python}"
+PY="${PY:-$(command -v python3 || command -v python || echo python)}"
 DATASET="${1%/}"
 HOLDOUT="${2:-orient_180,orient_-60,yaw_90,pitch_60}"
 ERROR_TAGS="skip,recover"

@@ -289,8 +289,14 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     return best_val_acc
 
 
-def _export_lstm_onnx(model_pt_path: str):
-    """Export trained LSTM model to ONNX for CPU-optimized inference."""
+def _export_lstm_onnx(model_pt_path: str, output_path: str = None):
+    """Export trained LSTM model to ONNX for CPU-optimized inference.
+    output_path defaults to LSTM_ONNX_PATH (the promoted-model location);
+    an explicit path lets callers (tools/promote_model.py, tests) export a
+    specific checkpoint to a specific file without touching the promoted
+    pair."""
+    if output_path is None:
+        output_path = LSTM_ONNX_PATH
     if not os.path.exists(model_pt_path):
         logger.error("Model not found at %s — cannot export ONNX.", model_pt_path)
         return
@@ -328,8 +334,8 @@ def _export_lstm_onnx(model_pt_path: str):
         # written for, only on torch versions that have the param at all.
         if "dynamo" in inspect.signature(torch.onnx.export).parameters:
             export_kwargs["dynamo"] = False
-        torch.onnx.export(model, dummy, LSTM_ONNX_PATH, **export_kwargs)
-        logger.info("LSTM ONNX saved: %s", LSTM_ONNX_PATH)
+        torch.onnx.export(model, dummy, output_path, **export_kwargs)
+        logger.info("LSTM ONNX saved: %s", output_path)
     except Exception as e:
         logger.error("LSTM ONNX export failed: %s", e)
 
