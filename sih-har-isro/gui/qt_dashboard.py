@@ -182,6 +182,15 @@ class Dashboard(QMainWindow):
         self.watchdog_label = QLabel("System health: waiting for first heartbeat...")
         self.watchdog_label.setStyleSheet("color:#7a9; font-size:11px;")
 
+        # Every alert this session has fired (typed anomalies A4/A5/A6/A7 +
+        # recovery holds) — newest first, capped so it can't grow unbounded
+        # across a long-running session. The banner above only ever shows
+        # the LATEST/active one; this is the history, so nothing (like a
+        # drifting box that cleared 10s ago) gets silently lost.
+        self.alerts_list = QListWidget()
+        self.alerts_list.setStyleSheet("font-size:11px;")
+        self._alerts_max = 100
+
         left = QVBoxLayout()
         left.addWidget(self.video_label, 1)
         left.addWidget(self.footer_label)
@@ -194,6 +203,8 @@ class Dashboard(QMainWindow):
         right.addWidget(self.alert_label)
         right.addWidget(QLabel("<b>Step checklist</b>"))
         right.addWidget(self.step_list, 1)
+        right.addWidget(QLabel("<b>Alerts log</b>"))
+        right.addWidget(self.alerts_list, 1)
 
         left_w = QWidget(); left_w.setLayout(left)
         right_w = QWidget(); right_w.setLayout(right)
@@ -820,13 +831,35 @@ class Dashboard(QMainWindow):
             f"font-size:14px; padding:6px; border-radius:4px; background:{color}; color:white;")
         self.alert_label.setProperty("sticky", sticky)
         self.alert_label.setVisible(True)
+        self._log_alert(text, color)
 
     def _clear_alert(self):
         self.alert_label.setVisible(False)
         self.alert_label.setProperty("sticky", False)
 
+    def _log_alert(self, text: str, color: str):
+        """Append to the Live Monitor alerts log (newest first). Called from
+        every alert path (typed anomalies, recovery holds) via _show_alert,
+        plus directly for "cleared" events which never show a banner.
+
+        _on_status re-fires _show_alert every single frame while a hold
+        stays active (that's fine for the banner — same text is a no-op
+        redraw) but would spam this log with an identical line per frame —
+        skip if it's the same text as the most recent entry."""
+        if self.alerts_list.count() > 0 and self.alerts_list.item(0).data(Qt.ItemDataRole.UserRole) == text:
+            return
+        item = QListWidgetItem(f"[{time.strftime('%H:%M:%S')}] {text}")
+        item.setData(Qt.ItemDataRole.UserRole, text)
+        item.setForeground(QColor(color))
+        self.alerts_list.insertItem(0, item)
+        while self.alerts_list.count() > self._alerts_max:
+            self.alerts_list.takeItem(self.alerts_list.count() - 1)
+
     def _on_anomaly(self, payload: dict):
-        """Typed anomaly (A4/A5/A7 — see pipeline/anomaly_monitor.py)."""
+        """Typed anomaly (A4/A5/A6/A7 — see pipeline/anomaly_monitor.py).
+        A6 (object drift) codes look like "A6:red_box" — per-box, not a
+        single shared flag, so two boxes drifting at once track and clear
+        independently."""
         code = payload.get("code", "?")
         severity = payload.get("severity", "hold")
         message = payload.get("message", "")
@@ -839,6 +872,8 @@ class Dashboard(QMainWindow):
 
     def _on_anomaly_cleared(self, payload: dict):
         code = payload.get("code", "?")
+        message = payload.get("message", "cleared")
+        self._log_alert(f"✓ [{code}] {message}", "#4a9")
         self._active_anomaly_codes = getattr(self, "_active_anomaly_codes", set())
         self._active_anomaly_codes.discard(code)
         if not self._active_anomaly_codes and self.alert_label.property("sticky"):

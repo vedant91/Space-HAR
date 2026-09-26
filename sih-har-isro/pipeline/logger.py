@@ -151,7 +151,8 @@ class ExperimentLogger:
     def log_anomaly(self, code: str, severity: str, message: str, **extra):
         """Typed anomaly event — see pipeline/anomaly_monitor.py and the
         research brief's anomaly taxonomy (A1-A9). `code` is e.g. "A4"
-        (forbidden zone), "A5" (dwell/timeout), "A7" (occlusion/abstain).
+        (forbidden zone), "A5" (dwell/timeout), "A6:red_box" (object drift,
+        per-label), "A7" (occlusion/abstain).
         `severity` is "soft" | "hold" | "abstain" | "cleared"."""
         ts = self._elapsed()
         text = f"[{ts}] [ANOMALY]   anomaly_code={code} severity={severity} | {message}"

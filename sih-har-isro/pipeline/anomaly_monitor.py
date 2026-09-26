@@ -1,11 +1,12 @@
 """
-Typed Anomaly Monitor — A4 (forbidden zone), A5 (dwell/timeout), A7 (occlusion)
+Typed Anomaly Monitor — A4 (forbidden zone), A5 (dwell/timeout), A6 (object
+drift), A7 (occlusion)
 ==================================================================================
-Concrete implementations of three items from the research brief's anomaly
+Concrete implementations of items from the research brief's anomaly
 taxonomy (BAS_Onboard_Edge_Vision_LLM_Context.md section 7). A1 (wrong step)
 and A2 (skipped step) already exist via pipeline/state_machine.py's own
 skip/out-of-sequence detection; A8 (model disagreement) already exists via
-har_pipeline.py's CNN/LSTM ensemble fusion. A3/A6/A9 are future work.
+har_pipeline.py's CNN/LSTM ensemble fusion. A3/A9 are future work.
 
 Design rule (unchanged from the rest of this project): **models/heuristics
 propose, the FSM decides.** This monitor never advances or confirms a step —
@@ -22,6 +23,13 @@ reasons outside the FSM's own sequence bookkeeping.
     progress. Soft prompt (voice/log only) at 70% of the step's `timeout_s`
     (from the pack); a hard HOLD at 100%. Per-step, so it resets cleanly
     when the FSM actually advances.
+
+  A6 object-drift HOLD — a tracked box (red/yellow/main) is moving fast
+    with no hand near it. Boxes don't come to rest on their own in
+    microgravity, so fast + untethered means it's drifting away rather than
+    being deliberately handled. Edge-triggered per box, so one drifting box
+    doesn't mask another; the hold code is per-label ("A6:red_box") so two
+    boxes drifting at once clear independently.
 
   A7 occlusion/abstain — N consecutive frames with zero HSV detections at
     all (no boxes, no hand) is treated as "the camera can't see the rack" —
@@ -59,6 +67,18 @@ class AnomalyMonitor:
 
     OCCLUSION_STREAK_FRAMES = 10  # ~0.3-0.4s at 24-30fps
 
+    # A6 tuning: normalized (0..1 of frame width/height) units.
+    DRIFT_SPEED_THRESHOLD = 0.35   # frame-widths/sec to count as "moving fast"
+    DRIFT_HAND_PROXIMITY = 0.12    # a hand this close counts as "being handled"
+    DRIFT_TRACKED_LABELS = ("red_box", "yellow_box", "main_box")
+    DRIFT_MAX_DT = 1.0             # gap this large means the box just reappeared, not teleported
+    # A single frame-to-frame HSV centroid delta is noisy (lighting/detector
+    # jitter alone clears DRIFT_SPEED_THRESHOLD constantly — measured 707
+    # spurious A6 holds in one 94s real clip before this existed). Same fix
+    # as A7's OCCLUSION_STREAK_FRAMES: require sustained fast+untethered
+    # motion before firing, clear on the first good frame.
+    DRIFT_STREAK_FRAMES = 5        # ~0.15-0.2s at 24-30fps
+
     def __init__(self, frame_width: int, frame_height: int, fps: float = 30.0):
         self.fw, self.fh, self.fps = frame_width, frame_height, fps
         self._occlusion_streak = 0
@@ -67,6 +87,9 @@ class AnomalyMonitor:
         self._step_timer_start: Dict[int, float] = {}
         self._step_soft_prompted: Set[int] = set()
         self._step_escalated: Set[int] = set()
+        self._drift_last: Dict[str, Tuple[float, float, float]] = {}  # label -> (x_norm, y_norm, t)
+        self._drift_active: Set[str] = set()
+        self._drift_streak: Dict[str, int] = {}
 
     def reset(self) -> None:
         self._occlusion_streak = 0
@@ -75,6 +98,9 @@ class AnomalyMonitor:
         self._step_timer_start.clear()
         self._step_soft_prompted.clear()
         self._step_escalated.clear()
+        self._drift_streak.clear()
+        self._drift_last.clear()
+        self._drift_active.clear()
 
     def clear_step_timer(self, step_id: int) -> None:
         """Call when a step completes, so a repeated run (or the same pack
@@ -158,6 +184,68 @@ class AnomalyMonitor:
             return ("A5", False, "cleared", f"Step {step_id} progressed — dwell hold cleared", {})
         return None
 
+    # ── A6 — untethered object drift ─────────────────────────────────────
+
+    def _check_drift(self, detections: List) -> List[Tuple[str, bool, str, str, dict]]:
+        """A tracked box moving fast with nobody's hand near it. In
+        microgravity a released object doesn't settle by itself, so this is
+        the closest thing to "it's floating away" this pipeline can see from
+        one fixed camera. Per-label state (not one shared flag like A4/A5/A7)
+        because more than one box can be drifting at once and they need to
+        clear independently — the returned code is "A6:<label>", not "A6"."""
+        now = time.perf_counter()
+        events: List[Tuple[str, bool, str, str, dict]] = []
+        seen: Set[str] = set()
+
+        hand_points = [(d.centroid[0] / self.fw, d.centroid[1] / self.fh)
+                       for d in detections if getattr(d, "label", None) == "hand"]
+
+        for d in detections:
+            label = getattr(d, "label", None)
+            if label not in self.DRIFT_TRACKED_LABELS:
+                continue
+            seen.add(label)
+            x, y = d.centroid[0] / self.fw, d.centroid[1] / self.fh
+            prev = self._drift_last.get(label)
+            self._drift_last[label] = (x, y, now)
+            if prev is None:
+                continue
+            px, py, pt = prev
+            dt = now - pt
+            if dt <= 0 or dt > self.DRIFT_MAX_DT:
+                continue  # box just reappeared after a gap — not a real speed sample
+
+            speed = ((x - px) ** 2 + (y - py) ** 2) ** 0.5 / dt
+            hand_near = any(((x - hx) ** 2 + (y - hy) ** 2) ** 0.5 <= self.DRIFT_HAND_PROXIMITY
+                            for hx, hy in hand_points)
+            drifting_now = speed >= self.DRIFT_SPEED_THRESHOLD and not hand_near
+            self._drift_streak[label] = self._drift_streak.get(label, 0) + 1 if drifting_now else 0
+
+            code = f"A6:{label}"
+            if (self._drift_streak[label] >= self.DRIFT_STREAK_FRAMES
+                    and label not in self._drift_active):
+                self._drift_active.add(label)
+                events.append((code, True, "hold",
+                              f"{label.replace('_', ' ')} is drifting untethered "
+                              f"({speed:.2f} frame-widths/s, no hand nearby)",
+                              {"label": label, "speed": round(speed, 3)}))
+            elif not drifting_now and label in self._drift_active:
+                self._drift_active.discard(label)
+                events.append((code, False, "cleared",
+                              f"{label.replace('_', ' ')} drift stopped", {"label": label}))
+
+        # A box no longer detected at all can't keep reporting a speed —
+        # release its hold so it doesn't get stuck (A7 owns "can't see it").
+        for label in list(self._drift_active):
+            if label not in seen:
+                self._drift_active.discard(label)
+                self._drift_last.pop(label, None)
+                self._drift_streak.pop(label, None)
+                events.append((f"A6:{label}", False, "cleared",
+                              f"{label.replace('_', ' ')} out of view — drift hold released",
+                              {"label": label}))
+        return events
+
     # ── A7 — occlusion / abstain ─────────────────────────────────────────
 
     def _check_occlusion(self, detections: List) -> Optional[Tuple[str, bool, str, str, dict]]:
@@ -185,7 +273,7 @@ class AnomalyMonitor:
 
     def step(self, detections: List, current_step: Optional[dict],
             current_step_status: Optional[str]) -> List[Tuple[str, bool, str, str, dict]]:
-        """Run all three checks for one frame. Returns a list of
+        """Run all four checks for one frame. Returns a list of
         (code, active, severity, message, extra) tuples — empty most frames."""
         events = []
         for check in (
@@ -195,4 +283,80 @@ class AnomalyMonitor:
         ):
             if check is not None:
                 events.append(check)
+        events.extend(self._check_drift(detections))  # can fire >1 event/frame (multi-box)
         return events
+
+
+def _selftest() -> None:
+    """Smallest runnable check for A6 (object drift) — the other three
+    checks (A4/A5/A7) already had integration coverage through a real
+    HARPipeline per the project history; this covers the new one.
+
+    Also regression-covers the debounce: a real run against
+    recordings/experiment_20260830_223615.mp4 fired A6 707 times (vs. 1
+    real A5 hold) before DRIFT_STREAK_FRAMES existed — pure HSV-centroid
+    jitter, one frame at a time, cleared threshold. Test 1 below asserts
+    no event fires before the streak is reached, not just that one
+    eventually does."""
+    import time as _time
+    from types import SimpleNamespace as _NS
+
+    def det(label, x, y):
+        return _NS(label=label, centroid=(x, y))
+
+    fw = fh = 100  # 1 normalized unit == 100px, keeps the math readable
+    N = AnomalyMonitor.DRIFT_STREAK_FRAMES
+    dt = 0.02  # 10px/dt = 5 units/s, comfortably over DRIFT_SPEED_THRESHOLD
+
+    # 1) Fast + untethered, sustained for the full streak -> fires (not
+    #    before), then clears the instant it stops moving.
+    m = AnomalyMonitor(fw, fh, fps=30.0)
+    x = 0
+    m._check_drift([det("red_box", x, 50)])  # prime — no prior sample yet
+    fired: list = []
+    for i in range(N):
+        x += 10
+        _time.sleep(dt)
+        fired = m._check_drift([det("red_box", x, 50)])
+        if i < N - 1:
+            assert fired == [], f"fired early at streak={i + 1}/{N}: {fired}"
+    assert len(fired) == 1 and fired[0][:3] == ("A6:red_box", True, "hold"), fired
+
+    _time.sleep(dt)
+    cleared = m._check_drift([det("red_box", x, 50)])  # stayed put
+    assert len(cleared) == 1 and cleared[0][:3] == ("A6:red_box", False, "cleared"), cleared
+
+    # 2) Same fast motion, but a hand is right there the whole time -> never
+    #    fires (being handled, not drifting away) — streak never builds.
+    m2 = AnomalyMonitor(fw, fh, fps=30.0)
+    x = 0
+    m2._check_drift([det("yellow_box", x, 50), det("hand", x + 2, 50)])
+    all_events: list = []
+    for _ in range(N + 2):
+        x += 10
+        _time.sleep(dt)
+        all_events += m2._check_drift([det("yellow_box", x, 50), det("hand", x + 2, 50)])
+    assert all_events == [], all_events
+
+    # 3) Two boxes drifting at once clear INDEPENDENTLY (distinct codes).
+    m3 = AnomalyMonitor(fw, fh, fps=30.0)
+    rx = ry = 0
+    m3._check_drift([det("red_box", rx, 0), det("yellow_box", ry, 0)])
+    last: list = []
+    for _ in range(N):
+        rx += 10
+        ry += 10
+        _time.sleep(dt)
+        last = m3._check_drift([det("red_box", rx, 0), det("yellow_box", ry, 0)])
+    assert {e[0] for e in last} == {"A6:red_box", "A6:yellow_box"}, last
+
+    _time.sleep(dt)  # red stops, yellow keeps drifting
+    only_red_stops = m3._check_drift([det("red_box", rx, 0), det("yellow_box", ry + 10, 0)])
+    assert [e[0] for e in only_red_stops] == ["A6:red_box"], only_red_stops
+    assert m3._drift_active == {"yellow_box"}, m3._drift_active
+
+    print("anomaly_monitor A6 selftest: OK")
+
+
+if __name__ == "__main__":
+    _selftest()
