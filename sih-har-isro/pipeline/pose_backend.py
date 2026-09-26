@@ -176,8 +176,19 @@ class PoseBackend:
 
             running_mode = (vision.RunningMode.IMAGE if self._static
                             else vision.RunningMode.VIDEO)
+            # Explicit CPU delegate: MediaPipe's Tasks API defaults to GPU
+            # where available, and on this platform (macOS/Metal, no display
+            # context) that isn't a graceful fallback — it's a HARD process
+            # crash at the C++ level ("Check failed: service_ Service is
+            # unavailable", not a catchable Python exception) the moment
+            # inference actually runs. "Runs on offline standalone system"
+            # means this has to work headless/server-side too, so CPU is the
+            # only delegate that's actually safe to default to here.
             options = vision.PoseLandmarkerOptions(
-                base_options=mp_python.BaseOptions(model_asset_path=str(path)),
+                base_options=mp_python.BaseOptions(
+                    model_asset_path=str(path),
+                    delegate=mp_python.BaseOptions.Delegate.CPU,
+                ),
                 running_mode=running_mode,
                 num_poses=1,
                 min_pose_detection_confidence=float(min_det_conf),
