@@ -52,7 +52,9 @@ from config.experiment_config import (
     UPLINK_MODE, CLIP_PRE_ROLL_S, CLIP_POST_ROLL_S, CLIP_OUTPUT_DIR,
     SESSION_METRICS_PATH, DETECTOR_BACKEND,
 )
-from pipeline.rack_frame import RackFrameNormalizer, pick_rack_rect
+from pipeline.rack_frame import (
+    RackFrameNormalizer, pick_rack_rect, estimate_rack_pose, rack_pose_to_line_angle,
+)
 from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
@@ -180,7 +182,8 @@ class HARPipeline:
                  uplink_mode: Optional[str] = None,
                  rack_frame_normalize: Optional[bool] = None,
                  detector_backend: Optional[str] = None,
-                 lstm_path: Optional[str] = None):
+                 lstm_path: Optional[str] = None,
+                 hmr_backend: Optional[str] = None):
 
         self.source         = source
         self.gui_queue      = gui_queue
@@ -263,12 +266,20 @@ class HARPipeline:
                 scale_ema=RACK_SCALE_EMA,
             )
             logger.info("Rack-frame normalization ENABLED (pose is rack-relative).")
-        # Stage 2: retired — see pipeline/hmr_backend.py's module docstring.
-        # Always reports unavailable; kept only so old configs/imports don't break.
+        # Stage 2: optional 3D HMR (config.HMR_BACKEND, off by default).
+        # "custom" = train/hmr3d_model.py's from-scratch-fine-tuned MobileNetV3
+        # regression head (real, trained on our own synthetic ground truth;
+        # its backbone starts from ImageNet weights the same way the YOLO
+        # detector's backbone starts from pretrained COCO — see
+        # pipeline/hmr_backend.py's module docstring). "romp"/"mediapipe" are
+        # the older fallback paths. HMRBackend.available reports False (and
+        # this falls back to PoseNet, below) if the requested backend or its
+        # checkpoint isn't actually present — never crashes construction.
+        _hmr_backend = HMR_BACKEND if hmr_backend is None else hmr_backend
         self.hmr = None
-        if HMR_BACKEND not in ("none", "posenet", "mediapipe", ""):
+        if _hmr_backend not in ("none", "posenet", "mediapipe", ""):
             from pipeline.hmr_backend import HMRBackend
-            self.hmr = HMRBackend(backend=HMR_BACKEND)
+            self.hmr = HMRBackend(backend=_hmr_backend)
 
         # ── Models ────────────────────────────────────────────
         self.pose_wrapper   = None
@@ -693,6 +704,20 @@ class HARPipeline:
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
+    def _rack_normalize_kwargs(self, frame_bgr: np.ndarray, detections: list) -> dict:
+        """Which rotation source RackFrameNormalizer.normalize() should use
+        this frame: a real ArUco solvePnP angle when a printed rack marker
+        is visible (more precise — see pipeline/rack_frame.py's
+        estimate_rack_pose), falling back to the existing HSV main_box-rect
+        angle otherwise (unchanged behavior when no marker is present, which
+        is the common case — this is pure upside, never worse than before).
+        Never raises: estimate_rack_pose already returns None on anything
+        from zero-markers to a bad solvePnP conditioning."""
+        pose = estimate_rack_pose(frame_bgr)
+        if pose is not None:
+            return {"rack_angle_deg": rack_pose_to_line_angle(pose)}
+        return {"rack_rect": pick_rack_rect(detections)}
+
     def _extract_skeleton_features_optimized(self, frame_rgb: np.ndarray) -> np.ndarray:
         """Run the custom PoseNet and return the 132-dim feature vector."""
         if self.pose_wrapper is None:
@@ -979,7 +1004,7 @@ class HARPipeline:
         skel = injected_skel if injected_skel is not None else skel_pose
         if self.rack_normalizer is not None:
             skel = self.rack_normalizer.normalize(
-                skel, rack_rect=pick_rack_rect(detections)
+                skel, **self._rack_normalize_kwargs(frame, detections)
             )
         self.skeleton_buffer.append(np.asarray(skel, dtype=np.float32).reshape(-1))
         if self.enable_cnn_ensemble:
@@ -1023,6 +1048,8 @@ class HARPipeline:
 
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
+        if self.hmr is not None:
+            self.hmr.reset()  # drop the tracked body and the cached HMR result
         self.anomaly_monitor.reset()
         if self.clip_uplink is not None:
             self.clip_uplink.reset()
@@ -1174,7 +1201,16 @@ class HARPipeline:
             cv2.cvtColor(frame, cv2.COLOR_BGR2RGB, dst=self._frame_rgb_full)
 
             # ── Parallel or sequential inference ─────────────
-            if self.threaded:
+            # HMR forces the sequential path: ThreadedInference.run_parallel
+            # only knows how to call PoseNetWrapper, and HMRBackend's own
+            # MediaPipe crop step (VIDEO mode expects one calling thread with
+            # monotonic timestamps) isn't safe to run off the main thread
+            # here. This was the actual gap — process_frame() (the eval/test
+            # entry point) already checked self.hmr; run() (what a live
+            # webcam session actually calls) silently never did, in EITHER
+            # branch, so HMR_BACKEND="custom" would construct a real working
+            # HMRBackend and then never call it.
+            if self.threaded and self.hmr is None:
                 detections, skel = self.threaded.run_parallel(
                     frame, self._frame_rgb_full,
                     self.hsv_detector, self.pose_wrapper,
@@ -1185,12 +1221,15 @@ class HARPipeline:
                 detections = self.hsv_detector.detect(frame)
                 hsv_ms = (time.perf_counter() - t_hsv) * 1000.0
                 t_pose = time.perf_counter()
-                skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
+                if self.hmr is not None and self.hmr.available:
+                    skel, _ = self.hmr.get_pose_features(self._frame_rgb_full)
+                else:
+                    skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
                 pose_ms = (time.perf_counter() - t_pose) * 1000.0
 
             if self.rack_normalizer is not None:
                 skel = self.rack_normalizer.normalize(
-                    skel, rack_rect=pick_rack_rect(detections)
+                    skel, **self._rack_normalize_kwargs(frame, detections)
                 )
             self.skeleton_buffer.append(skel)
             if self.enable_cnn_ensemble:
