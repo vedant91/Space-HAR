@@ -893,10 +893,50 @@ class HARPipeline:
         self.state_machine.feed_prediction(fused_step, fused_conf)
         return fused_step, fused_conf
 
+    # MediaPipe-style landmark indices, consistent with pipeline/rack_frame.py
+    # and every other module in this codebase that reads the 132-dim contract.
+    _SKELETON_EDGES = (
+        (11, 12),  # shoulders
+        (11, 13), (13, 15),  # left arm: shoulder-elbow-wrist
+        (12, 14), (14, 16),  # right arm
+        (23, 24),  # hips
+        (11, 23), (12, 24),  # torso sides
+        (23, 25), (25, 27),  # left leg: hip-knee-ankle
+        (24, 26), (26, 28),  # right leg
+    )
+
+    def _draw_skeleton(self, vis: np.ndarray, skel_pose: Optional[np.ndarray],
+                       vis_threshold: float = 0.3) -> np.ndarray:
+        """Draw the pose the classifier actually received this frame — image-
+        normalized (x, y) landmarks, drawn only where visibility clears
+        vis_threshold. skel_pose is the RAW pose (before rack normalization,
+        which rotates/rescales into rack-space and is no longer meaningful as
+        image pixel coordinates) — pass process_frame()'s own skel_pose, not
+        the rack-normalized skel that goes into skeleton_buffer. None or an
+        all-zero vector (no usable pose this frame) draws nothing, silently —
+        same 'absence is honest' convention as every detector in this repo."""
+        if skel_pose is None:
+            return vis
+        h, w = vis.shape[:2]
+        p = np.asarray(skel_pose, dtype=np.float32).reshape(-1, 4)
+        if p.shape[0] < 29 or not np.any(p[:, 3] > vis_threshold):
+            return vis
+        pts = {}
+        for idx in range(p.shape[0]):
+            if p[idx, 3] > vis_threshold:
+                pts[idx] = (int(p[idx, 0] * w), int(p[idx, 1] * h))
+        for a, b in self._SKELETON_EDGES:
+            if a in pts and b in pts:
+                cv2.line(vis, pts[a], pts[b], (0, 220, 255), 2)
+        for xy in pts.values():
+            cv2.circle(vis, xy, 4, (0, 255, 150), -1)
+        return vis
+
     def _annotate_frame(self, frame: np.ndarray,
                         detections: list,
                         pred_step: int,
-                        confidence: float) -> np.ndarray:
+                        confidence: float,
+                        skel_pose: Optional[np.ndarray] = None) -> np.ndarray:
         """Draw HUD overlay on frame with space physics simulation."""
         vis = frame.copy()
 
@@ -931,6 +971,7 @@ class HARPipeline:
 
         # Draw HSV detections
         vis = self.hsv_detector.draw(vis, detections)
+        vis = self._draw_skeleton(vis, skel_pose)
 
         # Status overlay
         sm_status = self.state_machine.get_status_summary()
@@ -1021,7 +1062,8 @@ class HARPipeline:
             self._last_pred = (pred_step, pred_conf)
         lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
-        vis = self._annotate_frame(frame, detections, pred_step, pred_conf) if annotate else None
+        vis = self._annotate_frame(frame, detections, pred_step, pred_conf,
+                                   skel_pose=skel_pose) if annotate else None
         total_ms = (time.perf_counter() - t0) * 1000.0
         self._times.append(total_ms / 1000.0)
 
@@ -1227,6 +1269,10 @@ class HARPipeline:
                     skel = self._extract_skeleton_features_optimized(self._frame_rgb_full)
                 pose_ms = (time.perf_counter() - t_pose) * 1000.0
 
+            skel_pose = skel  # raw, image-normalized — rack_normalizer below
+                              # rotates/rescales into rack-space; keep this
+                              # copy for _draw_skeleton, which draws in image
+                              # pixel coordinates, not rack-space.
             if self.rack_normalizer is not None:
                 skel = self.rack_normalizer.normalize(
                     skel, **self._rack_normalize_kwargs(frame, detections)
@@ -1246,7 +1292,8 @@ class HARPipeline:
             lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
             # ── Build annotated frame & push to GUI ──────────
-            vis = self._annotate_frame(frame, detections, pred_step, pred_conf)
+            vis = self._annotate_frame(frame, detections, pred_step, pred_conf,
+                                       skel_pose=skel_pose)
             total_ms = (time.time() - t_start) * 1000.0
 
             if self.gui_queue:
