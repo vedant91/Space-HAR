@@ -1,0 +1,186 @@
+{
+  "take_0001": {
+    "tag": "orient_30",
+    "frames": 972,
+    "before": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.041,
+      "pck05": 0.217,
+      "ms_per_frame": 63.4
+    },
+    "after": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.031,
+      "pck05": 0.221,
+      "ms_per_frame": 39.7,
+      "romp_runs_per_frame": 0.05,
+      "mp_hit_rate": 1.0,
+      "retries": 5,
+      "retry_switched": 5,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0002": {
+    "tag": "orient_60",
+    "frames": 902,
+    "before": {
+      "n": 91,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.056,
+      "ms_per_frame": 68.4
+    },
+    "after": {
+      "n": 91,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.045,
+      "ms_per_frame": 40.5,
+      "romp_runs_per_frame": 0.037,
+      "mp_hit_rate": 1.0,
+      "retries": 3,
+      "retry_switched": 3,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0003": {
+    "tag": "orient_90",
+    "frames": 962,
+    "before": {
+      "n": 97,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.013,
+      "ms_per_frame": 64.2
+    },
+    "after": {
+      "n": 97,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.019,
+      "ms_per_frame": 52.3,
+      "romp_runs_per_frame": 0.096,
+      "mp_hit_rate": 1.0,
+      "retries": 2,
+      "retry_switched": 2,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0004": {
+    "tag": "orient_180",
+    "frames": 976,
+    "before": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.367,
+      "pck05": 0.381,
+      "ms_per_frame": 65.7
+    },
+    "after": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.602,
+      "pck05": 0.52,
+      "ms_per_frame": 77.1,
+      "romp_runs_per_frame": 0.139,
+      "mp_hit_rate": 0.975,
+      "retries": 5,
+      "retry_switched": 5,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0007": {
+    "tag": "orient_-90",
+    "frames": 1089,
+    "before": {
+      "n": 109,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.087,
+      "ms_per_frame": 64.7
+    },
+    "after": {
+      "n": 109,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.081,
+      "ms_per_frame": 94.6,
+      "romp_runs_per_frame": 0.181,
+      "mp_hit_rate": 0.895,
+      "retries": 12,
+      "retry_switched": 12,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0013": {
+    "tag": "pitch_60",
+    "frames": 942,
+    "before": {
+      "n": 95,
+      "detect_rate": 1.0,
+      "tracked": 0.737,
+      "pck05": 0.561,
+      "ms_per_frame": 59.1
+    },
+    "after": {
+      "n": 95,
+      "detect_rate": 1.0,
+      "tracked": 0.368,
+      "pck05": 0.463,
+      "ms_per_frame": 33.8,
+      "romp_runs_per_frame": 0.034,
+      "mp_hit_rate": 1.0,
+      "retries": 1,
+      "retry_switched": 1,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0015": {
+    "tag": "light_dim_90",
+    "frames": 1020,
+    "before": {
+      "n": 102,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.029,
+      "ms_per_frame": 61.2
+    },
+    "after": {
+      "n": 102,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.023,
+      "ms_per_frame": 50.6,
+      "romp_runs_per_frame": 0.098,
+      "mp_hit_rate": 0.992,
+      "retries": 9,
+      "retry_switched": 9,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0017": {
+    "tag": "light_single_fail_180",
+    "frames": 933,
+    "before": {
+      "n": 94,
+      "detect_rate": 1.0,
+      "tracked": 0.234,
+      "pck05": 0.242,
+      "ms_per_frame": 76.4
+    },
+    "after": {
+      "n": 94,
+      "detect_rate": 1.0,
+      "tracked": 0.479,
+      "pck05": 0.464,
+      "ms_per_frame": 114.1,
+      "romp_runs_per_frame": 0.132,
+      "mp_hit_rate": 0.734,
+      "retries": 3,
+      "retry_switched": 3,
+      "yolo_proposals": 0
+    }
+  }
+}
