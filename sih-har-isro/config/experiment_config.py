@@ -381,9 +381,22 @@ MIN_BOX_AREA_PX  = 800              # Minimum contour area to consider a detecti
 # actually produced by HSVBoxDetector — see _detect_hand). Broad skin-tone
 # band intersected with motion (frame-differencing), not a learned model;
 # calibrate_from_roi("hand", ...) narrows this for a specific skin tone/light.
-HSV_SKIN_LOWER = (0, 25, 60)
-HSV_SKIN_UPPER = (25, 150, 255)
-MIN_HAND_AREA_PX = 500              # Hands can be smaller/farther than boxes
+# Measured on real ISS footage (gloved astronaut, no visible skin at all):
+# the old (0,25,60)-(25,150,255) band matched 16.7% of the frame — the
+# entire suit/equipment/wall under this lighting, not hands specifically —
+# because sat>=25 is nearly "any slightly warm gray". Tightened to what
+# actually separates from background on that footage (0.6% match, and only
+# the visor's red reflection / red labels, not the white gloves — there is
+# no skin-tone signal at all on a gloved hand; this band change can only
+# stop it lying with confident wrong boxes, not make it see gloves. A real
+# gloved-hand detector needs the YOLO "hand" class retrained on real labeled
+# data — see tools/extract_real_frames.py.
+HSV_SKIN_LOWER = (0, 60, 80)
+HSV_SKIN_UPPER = (20, 150, 255)
+MIN_HAND_AREA_PX = 3000             # 500 let the tightened band's residual noise
+# (small blobs on the visor's red reflection, ~700-2400px) still pass; the real
+# false positives on that footage measured 700-2400px, so 3000 clears them with
+# margin (35/39 sampled frames had a false "hand" box before this, 1/39 after).
 HAND_MOTION_THRESHOLD = 18          # Frame-diff gray-level threshold for "moving"
 HAND_TOP_EXCLUDE_FRAC = 0.15        # Exclude top of frame (head/helmet skin tone)
 
