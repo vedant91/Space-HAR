@@ -129,6 +129,18 @@ class ExperimentStateMachine:
             return self.current_step["id"]
         return -1
 
+    def force_hold(self, code: str, message: str) -> None:
+        """An external anomaly monitor is asking the FSM to hold, for a
+        reason outside the FSM's own sequence logic. Idempotent per code."""
+        self.external_holds[code] = message
+
+    def clear_hold(self, code: str) -> None:
+        self.external_holds.pop(code, None)
+
+    @property
+    def is_externally_held(self) -> bool:
+        return bool(self.external_holds)
+
     def feed_prediction(self, predicted_step_id: int, confidence: float,
                         entropy: Optional[float] = None):
         """
@@ -353,5 +365,30 @@ if __name__ == "__main__":
     assert sm2.step_records[0].status == StepStatus.IN_PROGRESS, \
         "omitting entropy must behave exactly as before this gate existed"
 
+    # force_hold/clear_hold/is_externally_held: the anomaly monitor's whole
+    # contract (pipeline/anomaly_monitor.py -> _sync_anomaly_event ->
+    # force_hold/clear_hold). Regression coverage for real: these three got
+    # silently deleted in an earlier merge conflict resolution (kept only
+    # the entropy-gate signature, lost the methods that wrote external_holds)
+    # and nothing caught it until a live run crashed on the first anomaly.
+    sm3 = ExperimentStateMachine()
+    assert not sm3.is_externally_held
+    sm3.force_hold("A6:red_box", "red box is drifting untethered")
+    assert sm3.is_externally_held
+    for _ in range(STEP_CONFIRM_FRAMES):
+        sm3.feed_prediction(1, 0.9)  # models still propose
+    assert sm3.step_records[0].status == StepStatus.PENDING, \
+        "feed_prediction must no-op entirely while externally held"
+    sm3.force_hold("A5", "step 1 dwell timeout")  # a second, independent code
+    sm3.clear_hold("A6:red_box")
+    assert sm3.is_externally_held, "A5 still holds after only A6:red_box clears"
+    sm3.clear_hold("A5")
+    assert not sm3.is_externally_held
+    for _ in range(STEP_CONFIRM_FRAMES):
+        sm3.feed_prediction(1, 0.9)
+    assert sm3.step_records[0].status == StepStatus.IN_PROGRESS, \
+        "feed_prediction must resume once every hold clears"
+
     print("state_machine smoke test passed (entropy gate blocks/admits correctly, "
-         "default-None path unaffected).")
+         "default-None path unaffected, force_hold/clear_hold/is_externally_held "
+         "block+resume correctly including independent multi-code holds).")
