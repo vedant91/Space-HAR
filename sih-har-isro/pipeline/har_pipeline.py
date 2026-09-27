@@ -699,14 +699,16 @@ class HARPipeline:
             return np.zeros(POSE_FEATURE_DIM, dtype=np.float32)
         return self.pose_wrapper.process(frame_rgb)
 
-    def _run_lstm_inference(self) -> tuple[int, float]:
+    def _run_lstm_inference(self) -> tuple[int, float, float]:
         """
         Run LSTM on current skeleton buffer.
-        Returns (predicted_step_id, confidence).
-        Prefers ONNX Runtime for speed.
+        Returns (predicted_step_id, confidence, entropy). entropy is the
+        Shannon entropy (nats) of the full softmax - see config.STEP_ENTROPY_MAX
+        for why this rides alongside the scalar confidence rather than
+        replacing it. Prefers ONNX Runtime for speed.
         """
         if len(self.skeleton_buffer) < SEQUENCE_WINDOW:
-            return 0, 0.0
+            return 0, 0.0, 0.0
 
         seq = np.stack(list(self.skeleton_buffer), axis=0)  # (T, features)
         x = seq[np.newaxis, ...].astype(np.float32)          # (1, T, features)
@@ -721,11 +723,11 @@ class HARPipeline:
             step_id = self._lstm_label_map.get(cls_idx, cls_idx + 1)
             if isinstance(step_id, str):
                 step_id = int(step_id)
-            return int(step_id), conf
+            return int(step_id), conf, self._entropy(probs)
 
         # ── PyTorch fallback ─────────────────────────────────
         if self.lstm_model is None:
-            return 0, 0.0
+            return 0, 0.0, 0.0
 
         x_t = torch.from_numpy(x)
         with torch.no_grad():
@@ -734,17 +736,27 @@ class HARPipeline:
             conf, cls_idx = probs.max(0)
             conf = conf.item()
             cls_idx = cls_idx.item()
+            entropy = self._entropy(probs.cpu().numpy())
 
         step_id = self._lstm_label_map.get(cls_idx, cls_idx + 1)
         if isinstance(step_id, str):
             step_id = int(step_id)
-        return int(step_id), conf
+        return int(step_id), conf, entropy
 
     @staticmethod
     def _softmax(x):
         """NumPy softmax for ONNX path."""
         e = np.exp(x - np.max(x))
         return e / e.sum()
+
+    @staticmethod
+    def _entropy(probs) -> float:
+        """Shannon entropy in nats. 0.0 for a one-hot distribution, ln(N) for
+        uniform over N classes. eps guards log(0) on a hard 0/1 probability
+        (float softmax output can round exactly to 0.0)."""
+        p = np.asarray(probs, dtype=np.float64)
+        eps = 1e-12
+        return float(-np.sum(p * np.log(p + eps)))
 
     # ── Optional CNN ensemble signal (off by default, see config) ───────────
 
@@ -840,10 +852,10 @@ class HARPipeline:
         HUD/GUI display — when uncertain, this is the LSTM's own raw result
         (for display continuity only; the state machine was not fed).
         """
-        lstm_step, lstm_conf = self._run_lstm_inference()
+        lstm_step, lstm_conf, lstm_entropy = self._run_lstm_inference()
 
         if not self.enable_cnn_ensemble or len(self.frame_stack_buffer) < CNN_NUM_FRAMES_IN:
-            self.state_machine.feed_prediction(lstm_step, lstm_conf)
+            self.state_machine.feed_prediction(lstm_step, lstm_conf, entropy=lstm_entropy)
             return lstm_step, lstm_conf
 
         cnn_step, cnn_conf = self._run_cnn_inference()
@@ -1008,6 +1020,7 @@ class HARPipeline:
         self.skeleton_buffer.clear()
         self.frame_stack_buffer.clear()
         self._times.clear()
+
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.anomaly_monitor.reset()

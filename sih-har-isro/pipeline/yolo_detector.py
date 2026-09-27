@@ -52,6 +52,13 @@ class YOLOBoxDetector:
 
         if Path(model_path).exists():
             try:
+                # Never let ultralytics attempt a network fetch — matches the
+                # PS's "runs on offline standalone system" requirement. Found
+                # in The-final's independently-built yolo_detector.py during
+                # the merge; worth having regardless of which detector wins.
+                import os
+                os.environ.setdefault("YOLO_AUTOINSTALL", "False")
+                os.environ.setdefault("YOLO_OFFLINE", "True")
                 from ultralytics import YOLO
                 self._model = YOLO(model_path)
                 logger.info("YOLO detector loaded: %s", model_path)

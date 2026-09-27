@@ -11,7 +11,9 @@ from enum import Enum, auto
 from typing import Optional, Callable, List, Dict
 from dataclasses import dataclass, field
 
-from config.experiment_config import EXPERIMENT_STEPS, STEP_CONFIRM_FRAMES, STEP_CONFIDENCE_THRESHOLD
+from config.experiment_config import (
+    EXPERIMENT_STEPS, STEP_CONFIRM_FRAMES, STEP_CONFIDENCE_THRESHOLD, STEP_ENTROPY_MAX,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,22 +129,18 @@ class ExperimentStateMachine:
             return self.current_step["id"]
         return -1
 
-    def force_hold(self, code: str, message: str) -> None:
-        """An external anomaly monitor is asking the FSM to hold, for a
-        reason outside the FSM's own sequence logic. Idempotent per code."""
-        self.external_holds[code] = message
-
-    def clear_hold(self, code: str) -> None:
-        self.external_holds.pop(code, None)
-
-    @property
-    def is_externally_held(self) -> bool:
-        return bool(self.external_holds)
-
-    def feed_prediction(self, predicted_step_id: int, confidence: float):
+    def feed_prediction(self, predicted_step_id: int, confidence: float,
+                        entropy: Optional[float] = None):
         """
         Feed a raw model prediction (step id, confidence).
         Uses a confirmation buffer to debounce noisy predictions.
+
+        `entropy` (Shannon entropy of the full softmax, nats) is optional and
+        defaults to None, which skips the entropy gate entirely - callers
+        that only have a scalar confidence (tools/evaluate_real.py,
+        simulation/space_sim.py, tools/showcase_overlay.py) are unaffected.
+        See config.STEP_ENTROPY_MAX for why a top-1 confidence above
+        threshold is not always a trustworthy signal on its own.
         """
         if self.experiment_complete:
             return
@@ -154,6 +152,9 @@ class ExperimentStateMachine:
 
         if confidence < STEP_CONFIDENCE_THRESHOLD:
             return  # Ignore low-confidence predictions
+
+        if entropy is not None and entropy > STEP_ENTROPY_MAX:
+            return  # Confident top-1, but the rest of the distribution is too spread out to trust
 
         if predicted_step_id <= 0:
             return  # Idle/unknown
@@ -325,3 +326,32 @@ class ExperimentStateMachine:
         """Reset machine for a new experiment run."""
         self.__init__()
         logger.info("State machine reset.")
+
+
+if __name__ == "__main__":
+    # High confidence alone must not be enough if the rest of the distribution
+    # is too spread out (STEP_ENTROPY_MAX) - confirm step 1 fails to advance
+    # under high entropy, then succeeds once entropy drops, at the same
+    # confidence throughout.
+    sm = ExperimentStateMachine()
+    assert sm.expected_step_id == 1
+    for _ in range(STEP_CONFIRM_FRAMES):
+        sm.feed_prediction(1, 0.9, entropy=STEP_ENTROPY_MAX + 0.5)
+    assert sm.current_step_idx == 0 and sm.step_records[0].status == StepStatus.PENDING, \
+        "high entropy at high confidence must not confirm a step"
+
+    for _ in range(STEP_CONFIRM_FRAMES):
+        sm.feed_prediction(1, 0.9, entropy=STEP_ENTROPY_MAX - 0.5)
+    assert sm.step_records[0].status == StepStatus.IN_PROGRESS, \
+        "low entropy at the same confidence must confirm the step"
+
+    # entropy=None (the default) must reproduce today's behaviour exactly -
+    # existing callers that never pass it are unaffected.
+    sm2 = ExperimentStateMachine()
+    for _ in range(STEP_CONFIRM_FRAMES):
+        sm2.feed_prediction(1, 0.9)
+    assert sm2.step_records[0].status == StepStatus.IN_PROGRESS, \
+        "omitting entropy must behave exactly as before this gate existed"
+
+    print("state_machine smoke test passed (entropy gate blocks/admits correctly, "
+         "default-None path unaffected).")

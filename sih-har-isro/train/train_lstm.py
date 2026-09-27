@@ -19,7 +19,10 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, Subset
-from sklearn.model_selection import GroupShuffleSplit
+# GroupShuffleSplit is training-only (used below in the dataset split), imported
+# lazily there instead of here — this module's HARLSTMClassifier class is also
+# imported by the live pipeline (pipeline/har_pipeline.py), which must not need
+# scikit-learn installed just to load a trained model.
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -174,6 +177,7 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
 
     groups_path = Path(data_dir) / "groups.npy"
     if groups_path.exists():
+        from sklearn.model_selection import GroupShuffleSplit
         groups = np.load(str(groups_path))
         gss = GroupShuffleSplit(n_splits=1, train_size=TRAIN_VAL_SPLIT, random_state=seed)
         train_idx, val_idx = next(gss.split(X, y, groups=groups))

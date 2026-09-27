@@ -16,11 +16,23 @@ torch>=2.1.0
 torchvision>=0.16.0
 
 # ── ONNX for CPU-optimized inference ─────────────────────────
-onnx>=1.14.0
+# Upper-bounded: onnx>=1.17 pulls a protobuf major version that mediapipe==
+# 0.10.14 (below) can't load — both packages import fine under
+# onnx==1.16.2 + protobuf==4.25.x, but an unpinned upgrade silently breaks
+# the mediapipe path with no error until you actually run inference.
+onnx>=1.14.0,<1.17.0
 onnxruntime>=1.16.0
 
 # ── Optional YOLO detector backend (off by default, see DETECTOR_BACKEND) ─
 ultralytics>=8.3.0
+
+# ── Optional 3D HMR backend (off by default, HMR_BACKEND="none" — see
+# pipeline/hmr_backend.py). "custom" uses train/hmr3d_model.py's own
+# from-scratch-fine-tuned MobileNetV3 backbone, but needs MediaPipe for the
+# initial crop/tracking step. Pinned to 0.10.14: newer MediaPipe dropped the
+# legacy mp.solutions API this project's pose_backend.py falls back to, and
+# (see the onnx note above) is the version verified compatible with onnx.
+mediapipe==0.10.14
 
 # ── Data augmentation ─────────────────────────────────────────
 albumentations>=1.3.0
