@@ -146,6 +146,20 @@ def build_plan(name: str) -> list:
         # Unseen camera geometry, evaluation only (excluded from training).
         plan.append(dict(base, seed=600, roll=0.0, cameras=["payload_wide"],
                          tag="heldout_view"))
+        # Dense roll ladder, 40-85 deg both directions: the original sweep
+        # jumps 30 -> 60 -> 90 with exactly one take per angle, and the
+        # custom HMR model (train/hmr3d_model.py) goes from 0.80 tracked at
+        # 30 deg to 0.00 at 60 - too sharp a cliff across 30 deg to be pure
+        # self-occlusion, which should degrade gradually. Filling the gap
+        # tests whether that cliff is sparse-data or a real information
+        # limit. APPENDED, never inserted: indices are assigned by list
+        # position (see main()), so anything added here must come after
+        # every existing entry or it silently renumbers takes 0-22 that
+        # dataset/hmr3d_cache, dataset/seq_blender_core*, and every reported
+        # number in docs/ already key by that exact index.
+        for i, roll in enumerate((40.0, 50.0, 65.0, 75.0, 85.0,
+                                  -40.0, -50.0, -65.0, -75.0, -85.0)):
+            plan.append(dict(base, seed=700 + i, roll=roll, tag=f"orient_{int(roll)}"))
         return plan
 
     raise SystemExit(f"unknown plan '{name}'")

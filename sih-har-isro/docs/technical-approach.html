@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAS HAR — Technical Approach</title>
+<meta name="description" content="Technical approach for BAS HAR — SIH 2026, PS 26174: architecture, models, HMR internals, training pipeline, tech stack, and why it wins.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --void:#0a0d12; --panel:#11151c; --panel2:#161b24; --line:#232a35; --line2:#2e3644;
+  --ink:#e9edf3; --mute:#8a95a6; --dim:#5c6474;
+  --signal:#ff8a3d; --signal-bg:#3a2413;
+  --thruster:#35d0a0; --thruster-bg:#0f2b24;
+  --alert:#ff5c72; --alert-bg:#341019;
+  --hmr:#9d8cf5; --hmr-bg:#211c3a;
+  --mono-bg:#0d1117;
+  --disp:'Rajdhani',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --data:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--ink);font:15px/1.6 var(--body);padding-inline:16px}
+::selection{background:var(--signal);color:#1a0e04}
+.wrap{max-width:1180px;margin:0 auto}
+a{color:var(--signal)}
+h1,h2,h3{font-family:var(--disp);font-weight:700;text-wrap:balance;margin:0}
+code,.mono{font-family:var(--data)}
+.eyebrow{font-family:var(--data);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+
+/* ---- mission bar ---- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(10,13,18,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:10px 0;overflow-x:auto}
+.patch{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.patch-mark{width:30px;height:30px;border-radius:7px;background:conic-gradient(from 220deg,var(--signal),var(--hmr) 45%,var(--thruster) 100%);display:flex;align-items:center;justify-content:center;font:700 12px var(--disp);color:#0a0d12}
+.patch b{font-family:var(--disp);font-size:1.02rem;letter-spacing:.02em}
+.patch span{font-family:var(--data);font-size:.7rem;color:var(--mute)}
+.navchips{display:flex;gap:4px;flex:0 0 auto}
+.navchips a{font-family:var(--data);font-size:.72rem;color:var(--mute);text-decoration:none;padding:6px 9px;border-radius:99px;white-space:nowrap}
+.navchips a:hover{background:var(--panel2);color:var(--ink)}
+
+main{padding-block:8px 90px}
+
+/* ---- hero ---- */
+.hero{padding:52px 0 34px;border-bottom:1px solid var(--line)}
+.hero .eyebrow{margin-bottom:14px;display:block}
+.hero h1{font-size:clamp(2.1rem,5vw,3.4rem);line-height:1.05;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--signal)}
+.hero p.lede{font-size:1.08rem;color:var(--mute);max-width:60ch;margin-top:16px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:30px}
+.stat{background:var(--panel);padding:16px 14px}
+.stat b{display:block;font-family:var(--data);font-size:1.5rem;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat span{font-size:.74rem;color:var(--mute)}
+@media (max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ---- sections ---- */
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+.shead{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.shead .num{font-family:var(--data);font-size:1rem;color:var(--dim)}
+.shead h2{font-size:1.7rem}
+.dek{color:var(--mute);max-width:75ch;margin:6px 0 28px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+/* thesis */
+.thesis-grid{grid-template-columns:1.1fr .9fr}
+.findings li{margin:10px 0;padding-left:26px;position:relative}
+.findings li::before{content:"—";position:absolute;left:0;color:var(--dim)}
+.innocard{border-left:3px solid var(--signal)}
+.innocard .n{font-family:var(--data);color:var(--signal);font-size:.78rem}
+.innocard h3{font-size:1.05rem;margin:6px 0 6px;font-family:var(--body);font-weight:600}
+.innocard p{margin:0;color:var(--mute);font-size:.92rem}
+
+/* diagram */
+.diagram{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.diagram svg{display:block;width:100%;min-width:920px;height:auto}
+.dcap{font-size:.82rem;color:var(--mute);margin-top:10px}
+
+/* model cards */
+.model{display:flex;flex-direction:column;gap:10px}
+.model .tag{display:inline-flex;align-self:flex-start;gap:6px;align-items:center;font-family:var(--data);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
+.tag.perc{background:var(--signal-bg);color:var(--signal)}
+.tag.geo{background:var(--thruster-bg);color:var(--thruster)}
+.tag.deep{background:var(--hmr-bg);color:var(--hmr)}
+.model h3{font-family:var(--disp);font-size:1.2rem;font-weight:600}
+.model .spec{font-size:.86rem;color:var(--mute)}
+.metricrow{display:flex;gap:18px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.metricrow div b{display:block;font-family:var(--data);font-size:1.15rem;color:var(--ink)}
+.metricrow div span{font-size:.72rem;color:var(--dim)}
+
+/* tables */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:640px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-family:var(--data);font-weight:500;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
+td.num{font-family:var(--data);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.72rem;font-family:var(--data)}
+.pill.win{background:var(--thruster-bg);color:var(--thruster)}
+.pill.stuck{background:var(--alert-bg);color:var(--alert)}
+.pill.prog{background:var(--signal-bg);color:var(--signal)}
+
+/* stack */
+.stackcat{margin-bottom:22px}
+.stackcat h4{font-family:var(--data);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:7px 11px;font-size:.85rem}
+.chip svg{flex:0 0 auto}
+
+/* vs */
+.vs{grid-template-columns:1fr 1fr;align-items:stretch}
+.vscard{border-radius:12px;padding:20px;border:1px solid var(--line)}
+.vscard.them{background:var(--panel)}
+.vscard.us{background:linear-gradient(180deg,var(--panel2),var(--panel));border-color:var(--signal)}
+.vscard h3{font-family:var(--data);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.vscard.them h3{color:var(--dim)}
+.vscard.us h3{color:var(--signal)}
+.vscard ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.vscard li{font-size:.92rem;padding-left:22px;position:relative}
+.vscard.them li::before{content:"✕";position:absolute;left:0;color:var(--dim);font-size:.8rem}
+.vscard.us li::before{content:"✓";position:absolute;left:0;color:var(--thruster);font-weight:700}
+
+/* implementations */
+.impl{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+.impl:last-child{border-bottom:none}
+.impl .ix{font-family:var(--data);color:var(--dim);font-size:.8rem;flex:0 0 26px;padding-top:2px}
+.impl h4{font-family:var(--body);font-weight:600;font-size:.98rem;margin:0 0 4px}
+.impl p{margin:0;color:var(--mute);font-size:.89rem}
+
+footer{padding:34px 0 10px;color:var(--dim);font-size:.82rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in wrap">
+    <div class="patch"><div class="patch-mark">BH</div><div><b>BAS&nbsp;HAR</b><br><span>SIH 2026 · PS 26174</span></div></div>
+    <div class="navchips">
+      <a href="#thesis">Thesis</a><a href="#arch">Architecture</a><a href="#perception">Perception</a><a href="#hmr">HMR</a><a href="#training">Training</a><a href="#models">Models</a><a href="#stack">Stack</a><a href="#why">Why we win</a><a href="#impl">Key builds</a>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+<section class="hero" style="border-bottom:1px solid var(--line)">
+  <span class="eyebrow">Technical Approach — Bharatiya Antariksh Station, Human Activity Recognition</span>
+  <h1>Built for zero-g.<br><em>Not for a desk.</em></h1>
+  <p class="lede">A camera fixed to the experiment rack watches a crew member run an 8-step microgravity protocol. Our system tracks the step, suggests the next one, catches skips and out-of-order actions, alerts by voice, logs, and streams — entirely offline, on a single laptop GPU, at any orientation the crew happens to be floating in.</p>
+  <div class="stats">
+    <div class="stat"><b>33</b><span>Blender takes rendered</span></div>
+    <div class="stat"><b>31,891</b><span>ground-truth frames</span></div>
+    <div class="stat"><b>8+1</b><span>protocol steps + idle</span></div>
+    <div class="stat"><b>0.73</b><span>held-out step accuracy</span></div>
+    <div class="stat"><b>0.934</b><span>box detector mAP50</span></div>
+    <div class="stat"><b>0</b><span>network calls at runtime</span></div>
+  </div>
+</section>
+
+<section id="thesis">
+  <div class="shead"><span class="num">01</span><h2>The gap we found, and the three bets we made</h2></div>
+  <p class="dek">Before writing a line of the pipeline, we pulled every public repository against this problem statement — 22 of them — and read the architecture each one shipped.</p>
+  <div class="grid thesis-grid">
+    <div class="card">
+      <p style="color:var(--mute);margin-top:0">Every one of the 22 shares the same shape: a webcam pointed at someone sitting upright at a desk, YOLO or HSV colour blobs for the objects, MediaPipe for hands, a hand-written rule layer, and a dashboard. None of them:</p>
+      <ul class="findings">
+        <li>tests a rotated or inverted subject — every demo video is someone standing normally in a normal room</li>
+        <li>trains or evaluates on more than one camera angle</li>
+        <li>runs a real 3D human-mesh-recovery model — several mention it in a slide, none ship it</li>
+        <li>reports a held-out accuracy number computed by video/take rather than by shuffled frame (a split that silently leaks information between train and test)</li>
+      </ul>
+      <p style="color:var(--mute)">A person in microgravity doesn't stay upright. That's not an edge case for this problem statement — it's the actual problem.</p>
+    </div>
+    <div class="grid" style="gap:14px">
+      <div class="card innocard"><span class="n">BET 01</span><h3>A digital twin, not a webcam</h3><p>Blender renders the astronaut, the rack, and the props at any roll / pitch / yaw / lighting combination we choose — orientations no phone camera in a dorm room can produce, with exact 3D ground truth for free.</p></div>
+      <div class="card innocard"><span class="n">BET 02</span><h3>Train on some angles, test on others</h3><p>Every evaluation number on this page comes from takes held out by whole recording, never by frame — so a model can't memorise a background pixel and call it generalisation.</p></div>
+      <div class="card innocard"><span class="n">BET 03</span><h3>Ship real HMR, not a slide about it</h3><p>A trained 3D body-pose network runs live in the pipeline and measurably beats the pretrained model it replaced, on our own honest test.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="arch">
+  <div class="shead"><span class="num">02</span><h2>End-to-end architecture</h2></div>
+  <p class="dek">One fixed camera in, five outputs out. Everything in between is on this page.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 1180 900" role="img" aria-label="Runtime pipeline: camera and rack marker feed rack-pose estimation; three perception branches (YOLO boxes, MediaPipe pose, custom HMR 3D body) feed a fusion gate and rack-relative features; an LSTM classifies the step; a state machine and microgravity rules drive voice, GUI, log, stream and recording outputs.">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#586275"/></marker></defs>
+  <style>
+    .lane{font:700 10.5px 'IBM Plex Mono',monospace;letter-spacing:.12em;fill:#5c6474}
+    .t{font:600 14px 'Rajdhani',sans-serif;fill:#e9edf3} .s{font:11.5px 'IBM Plex Sans',sans-serif;fill:#8a95a6}
+    .bx{stroke-width:1.4;rx:9} .arr{fill:none;stroke:#586275;stroke-width:1.6}
+    .hw{fill:#161b24;stroke:#2e3644} .data{fill:#11151c;stroke:#232a35}
+    .ai{fill:#3a2413;stroke:#ff8a3d} .hmr{fill:#211c3a;stroke:#9d8cf5}
+    .rule{fill:#0f2b24;stroke:#35d0a0} .out{fill:#341019;stroke:#ff5c72}
+    .band{fill:#0d1015}
+  </style>
+  <rect class="band" x="0" y="6" width="1180" height="86"/>
+  <rect class="band" x="0" y="228" width="1180" height="178"/>
+  <rect class="band" x="0" y="500" width="1180" height="92"/>
+  <rect class="band" x="0" y="700" width="1180" height="92"/>
+
+  <text class="lane" x="16" y="53">INPUT</text>
+  <text class="lane" x="16" y="163">RACK FRAME</text>
+  <text class="lane" x="16" y="322">PERCEPTION</text>
+  <text class="lane" x="16" y="456">FUSION</text>
+  <text class="lane" x="16" y="551">FEATURES</text>
+  <text class="lane" x="16" y="650">TEMPORAL AI</text>
+  <text class="lane" x="16" y="751">DECISION</text>
+  <text class="lane" x="16" y="858">OUTPUT</text>
+
+  <rect class="bx hw" x="150" y="18" width="580" height="62"/>
+  <text class="t" x="440" y="44" text-anchor="middle">Fixed payload camera</text>
+  <text class="s" x="440" y="63" text-anchor="middle">USB, clamped to the rack — video never leaves the machine</text>
+  <rect class="bx hw" x="770" y="18" width="260" height="62" stroke-dasharray="5 4"/>
+  <text class="t" x="900" y="44" text-anchor="middle">ArUco marker</text>
+  <text class="s" x="900" y="63" text-anchor="middle">printed on the rack</text>
+
+  <rect class="bx data" x="150" y="128" width="580" height="58"/>
+  <text class="t" x="440" y="152" text-anchor="middle">Frame sampler</text>
+  <text class="s" x="440" y="171" text-anchor="middle">fixed 100 ms clock — decoupled from the camera's real fps</text>
+  <rect class="bx data" x="770" y="128" width="260" height="58"/>
+  <text class="t" x="900" y="152" text-anchor="middle">Rack pose (solvePnP)</text>
+  <text class="s" x="900" y="171" text-anchor="middle">camera → rack transform T</text>
+
+  <rect class="bx ai" x="150" y="238" width="260" height="66"/>
+  <text class="t" x="280" y="262" text-anchor="middle">YOLOv8n detector</text>
+  <text class="s" x="280" y="280" text-anchor="middle">red / yellow / main box</text>
+  <text class="s" x="280" y="296" text-anchor="middle">trained on the digital twin</text>
+
+  <rect class="bx ai" x="440" y="238" width="260" height="152"/>
+  <text class="t" x="570" y="288" text-anchor="middle">MediaPipe Pose + Hands</text>
+  <text class="s" x="570" y="308" text-anchor="middle">2D keypoints, every frame</text>
+  <text class="s" x="570" y="326" text-anchor="middle">33 body + 21×2 hand landmarks</text>
+  <text class="s" x="570" y="344" text-anchor="middle">roll-corrected before inference</text>
+  <text class="s" x="570" y="362" text-anchor="middle">also drives the HMR crop below</text>
+
+  <rect class="bx hmr" x="730" y="238" width="300" height="66"/>
+  <text class="t" x="880" y="262" text-anchor="middle">Custom HMR3DNet</text>
+  <text class="s" x="880" y="280" text-anchor="middle">on a tracked, rotation-corrected crop</text>
+  <text class="s" x="880" y="296" text-anchor="middle">re-runs on an adaptive schedule</text>
+
+  <rect class="bx data" x="150" y="328" width="260" height="60"/>
+  <text class="t" x="280" y="352" text-anchor="middle">Object tracker</text>
+  <text class="s" x="280" y="370" text-anchor="middle">IDs + velocity</text>
+
+  <rect class="bx hmr" x="730" y="328" width="300" height="60"/>
+  <text class="t" x="880" y="352" text-anchor="middle">3D joints → rack frame</text>
+  <text class="s" x="880" y="370" text-anchor="middle">apply T · crew attitude vs the rack</text>
+
+  <rect class="bx hmr" x="440" y="426" width="590" height="58" stroke-dasharray="5 4"/>
+  <text class="t" x="735" y="450" text-anchor="middle">Pose fusion gate</text>
+  <text class="s" x="735" y="468" text-anchor="middle">HMR confident → 3D wrists + attitude &nbsp;·&nbsp; HMR unsure → 2D fallback, same frame either way</text>
+
+  <rect class="bx data" x="150" y="512" width="880" height="68" style="stroke-width:2"/>
+  <text class="t" x="590" y="537" text-anchor="middle">Rack-relative interaction features</text>
+  <text class="s" x="590" y="556" text-anchor="middle">hand↔box distance · box held · lid open · target-zone occupancy · box velocity · crew attitude</text>
+  <text class="s" x="590" y="572" text-anchor="middle">identical code path in training and on the live pipeline</text>
+
+  <rect class="bx hw" x="150" y="614" width="260" height="60"/>
+  <text class="t" x="280" y="638" text-anchor="middle">Protocol file</text>
+  <text class="s" x="280" y="656" text-anchor="middle">8 steps, one JSON per experiment</text>
+  <rect class="bx ai" x="440" y="614" width="480" height="60"/>
+  <text class="t" x="680" y="638" text-anchor="middle">LSTM step classifier</text>
+  <text class="s" x="680" y="656" text-anchor="middle">3-second window → P(step) every 100 ms, entropy-gated</text>
+
+  <rect class="bx rule" x="150" y="712" width="430" height="68"/>
+  <text class="t" x="365" y="735" text-anchor="middle">Protocol state machine</text>
+  <text class="s" x="365" y="752" text-anchor="middle">confirms on confidence + entropy · flags skip / out-of-order / repeat</text>
+  <rect class="bx rule" x="620" y="712" width="410" height="68"/>
+  <text class="t" x="825" y="735" text-anchor="middle">Microgravity rules</text>
+  <text class="s" x="825" y="752" text-anchor="middle">drift = box moving, no hand near · placed = in zone + released</text>
+
+  <rect class="bx out" x="150" y="812" width="164" height="60"/><text class="t" x="232" y="836" text-anchor="middle">Voice</text><text class="s" x="232" y="854" text-anchor="middle">offline TTS</text>
+  <rect class="bx out" x="332" y="812" width="164" height="60"/><text class="t" x="414" y="836" text-anchor="middle">Dashboard</text><text class="s" x="414" y="854" text-anchor="middle">live + 3D panel</text>
+  <rect class="bx out" x="514" y="812" width="164" height="60"/><text class="t" x="596" y="836" text-anchor="middle">Step log</text><text class="s" x="596" y="854" text-anchor="middle">JSONL + text</text>
+  <rect class="bx out" x="696" y="812" width="164" height="60"/><text class="t" x="778" y="836" text-anchor="middle">UDP stream</text><text class="s" x="778" y="854" text-anchor="middle">to ground IP</text>
+  <rect class="bx out" x="878" y="812" width="164" height="60"/><text class="t" x="960" y="836" text-anchor="middle">Recording</text><text class="s" x="960" y="854" text-anchor="middle">annotated MP4</text>
+
+  <path class="arr" d="M440,80 V126" marker-end="url(#ah)"/>
+  <path class="arr" stroke-dasharray="5 4" d="M900,80 V126" marker-end="url(#ah)"/>
+  <path class="arr" d="M730,157 H768" marker-end="url(#ah)"/>
+  <path class="arr" d="M280,186 V236" marker-end="url(#ah)"/>
+  <path class="arr" d="M570,186 V236" marker-end="url(#ah)"/>
+  <path class="arr" d="M700,186 V210 H880 V236" marker-end="url(#ah)"/>
+  <path class="arr" d="M280,304 V326" marker-end="url(#ah)"/>
+  <path class="arr" d="M880,304 V326" marker-end="url(#ah)"/>
+  <path class="arr" d="M1030,157 H1060 V358 H1032" marker-end="url(#ah)"/>
+  <path class="arr" d="M1060,358 V540 H1032" marker-end="url(#ah)"/>
+  <path class="arr" d="M570,388 V424" marker-end="url(#ah)"/>
+  <path class="arr" d="M880,388 V424" marker-end="url(#ah)"/>
+  <path class="arr" d="M280,388 V510" marker-end="url(#ah)"/>
+  <path class="arr" d="M735,484 V510" marker-end="url(#ah)"/>
+  <path class="arr" d="M680,580 V612" marker-end="url(#ah)"/>
+  <path class="arr" d="M950,580 V710" marker-end="url(#ah)"/>
+  <path class="arr" d="M280,674 V710" marker-end="url(#ah)"/>
+  <path class="arr" d="M500,674 V710" marker-end="url(#ah)"/>
+  <path class="arr" d="M620,747 H582" marker-end="url(#ah)"/>
+  <path class="arr" d="M365,780 V800"/><path class="arr" d="M232,800 H960"/>
+  <path class="arr" d="M232,800 V810" marker-end="url(#ah)"/>
+  <path class="arr" d="M414,800 V810" marker-end="url(#ah)"/>
+  <path class="arr" d="M596,800 V810" marker-end="url(#ah)"/>
+  <path class="arr" d="M778,800 V810" marker-end="url(#ah)"/>
+  <path class="arr" d="M960,800 V810" marker-end="url(#ah)"/>
+  </svg>
+  </div>
+  <p class="dcap">Same shape whether HMR is confident or not — the fusion gate is what makes the 3D branch an addition, never a single point of failure. Lose HMR entirely and the state machine still runs on boxes and 2D hands.</p>
+</section>
+
+<section id="perception">
+  <div class="shead"><span class="num">03</span><h2>Three perception branches, one frame</h2></div>
+  <p class="dek">Every frame is read by three independent models built for three different jobs. None of them depends on the others succeeding.</p>
+  <div class="grid g3">
+    <div class="card model">
+      <span class="tag perc">Objects</span>
+      <h3>YOLOv8n Box Detector</h3>
+      <p class="spec">Detects <code>red_box</code>, <code>yellow_box</code>, <code>main_box</code> as axis-aligned boxes. Trained from scratch on labels auto-exported from the Blender ground truth — no manual annotation.</p>
+      <div class="metricrow">
+        <div><b>0.934</b><span>mAP@50</span></div>
+        <div><b>3</b><span>classes</span></div>
+        <div><b>~6&nbsp;ms</b><span>CPU-free inference*</span></div>
+      </div>
+    </div>
+    <div class="card model">
+      <span class="tag geo">Geometry</span>
+      <h3>MediaPipe Pose + Hands</h3>
+      <p class="spec">Off-the-shelf 2D landmarker, roll-corrected before inference so it isn't confused by an upside-down crew member. Runs on every frame — cheap enough to also drive the HMR crop below at no extra cost.</p>
+      <div class="metricrow">
+        <div><b>33+21×2</b><span>landmarks</span></div>
+        <div><b>every</b><span>frame</span></div>
+        <div><b>~1.00</b><span>hit-rate, most takes</span></div>
+      </div>
+    </div>
+    <div class="card model">
+      <span class="tag deep">3D Body</span>
+      <h3>Custom HMR3DNet</h3>
+      <p class="spec">MobileNetV3-Small backbone fine-tuned end-to-end on our own synthetic 3D ground truth — not a pretrained mesh-recovery model. Outputs 33 joints × (x, y, z, visibility) in the crop, mapped back to the rack frame.</p>
+      <div class="metricrow">
+        <div><b>0.73</b><span>held-out, best takes</span></div>
+        <div><b>33×4</b><span>output dims</span></div>
+        <div><b>29–92&nbsp;ms</b><span>per call</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="dcap">*Detector cost is amortised — the tracker only re-detects on a coast timeout, not every frame.</p>
+</section>
+
+<section id="hmr">
+  <div class="shead"><span class="num">04</span><h2>How HMR actually gets a 3D body out of one 2D camera</h2></div>
+  <p class="dek">Human mesh recovery is the one component every competitor mentions and none ship. Here's the pipeline that made it real, and the honest numbers once it was measured rather than assumed.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 1180 300" role="img" aria-label="HMR pipeline: MediaPipe tracks the person box and torso angle every frame; a stock YOLO box is only tried after the track is lost; the box and angle drive a rotated crop; the custom model runs on the crop; an adaptive scheduler decides whether to reuse the last pose or call the model again.">
+  <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#586275"/></marker></defs>
+  <style>.t{font:600 13.5px 'Rajdhani',sans-serif;fill:#e9edf3}.s{font:11px 'IBM Plex Sans',sans-serif;fill:#8a95a6}.bx{stroke-width:1.4}.hmr{fill:#211c3a;stroke:#9d8cf5}.data{fill:#161b24;stroke:#2e3644}.rule{fill:#0f2b24;stroke:#35d0a0}.arr{fill:none;stroke:#586275;stroke-width:1.6}</style>
+  <rect class="bx hmr" x="20" y="18" width="240" height="70" rx="8"/>
+  <text class="t" x="140" y="45" text-anchor="middle">MediaPipe on the crop</text>
+  <text class="s" x="140" y="64" text-anchor="middle">box + torso angle, every frame</text>
+  <text class="s" x="140" y="80" text-anchor="middle">EMA-smoothed, weight 0.5</text>
+  <rect class="bx data" x="20" y="112" width="240" height="58" rx="8" stroke-dasharray="5 4"/>
+  <text class="t" x="140" y="136" text-anchor="middle">Stock YOLO person box</text>
+  <text class="s" x="140" y="155" text-anchor="middle">only after 5 missed frames</text>
+  <rect class="bx hmr" x="310" y="55" width="230" height="64" rx="8"/>
+  <text class="t" x="425" y="81" text-anchor="middle">Crop + rotate upright</text>
+  <text class="s" x="425" y="100" text-anchor="middle">padded to 1.3× the landmark box</text>
+  <rect class="bx hmr" x="590" y="55" width="230" height="64" rx="8"/>
+  <text class="t" x="705" y="81" text-anchor="middle">Custom HMR3DNet on the crop</text>
+  <text class="s" x="705" y="100" text-anchor="middle">33 joints, x/y/z/visibility</text>
+  <rect class="bx rule" x="870" y="14" width="290" height="152" rx="8"/>
+  <text class="t" x="1015" y="46" text-anchor="middle">Adaptive scheduler</text>
+  <text class="s" x="1015" y="72" text-anchor="middle">torso angle stable, &lt;15° drift</text>
+  <text class="s" x="1015" y="88" text-anchor="middle">→ reuse the last pose, skip the call</text>
+  <text class="s" x="1015" y="112" text-anchor="middle">15°+ drift, or 1s since last run</text>
+  <text class="s" x="1015" y="128" text-anchor="middle">→ call the model again</text>
+  <text class="s" x="1015" y="150" text-anchor="middle">holding still costs nothing</text>
+  <path class="arr" d="M260,53 H298 V85" marker-end="url(#ah3)"/>
+  <path class="arr" stroke-dasharray="5 4" d="M260,141 H298 V90" marker-end="url(#ah3)"/>
+  <path class="arr" d="M540,86 H588" marker-end="url(#ah3)"/>
+  <path class="arr" d="M820,86 H868" marker-end="url(#ah3)"/>
+  <text class="s" x="20" y="210">Before: the model saw the raw 1920×1080 frame — mostly background, the body too small to read once downsampled for the network.</text>
+  <text class="s" x="20" y="232">After: the model only ever sees a small, upright, already-tracked crop of the crew member.</text>
+  <text class="s" x="20" y="254">Same fix answers both problems at once — fewer pixels to process, and an upright, high-resolution body to read them from.</text>
+  </svg>
+  </div>
+
+  <h3 style="font-family:var(--body);font-size:1.05rem;margin:30px 0 6px">The honest before/after — pretrained ROMP vs. our own trained model</h3>
+  <p class="dek" style="margin-bottom:14px">Tracked = median upper-body joint error under 0.5× torso length against Blender's exact ground truth. Every number below is from takes the reported model never saw during training.</p>
+  <div class="tw"><table>
+    <tr><th>Take</th><th>Orientation</th><th>Pretrained ROMP</th><th>Our HMR3DNet</th><th>Result</th></tr>
+    <tr><td class="mono">0001</td><td>30° roll</td><td class="num">0.00 – 0.04</td><td class="num"><b>0.80</b></td><td><span class="pill win">fixed</span></td></tr>
+    <tr><td class="mono">0004</td><td>180° roll (inverted)</td><td class="num">0.60</td><td class="num"><b>0.91</b></td><td><span class="pill win">fixed</span></td></tr>
+    <tr><td class="mono">0013</td><td>60° pitch</td><td class="num">0.74 (best case)</td><td class="num"><b>1.00</b></td><td><span class="pill win">beats best case</span></td></tr>
+    <tr><td class="mono">0017</td><td>180° roll, single light failure</td><td class="num">0.48</td><td class="num"><b>0.69</b></td><td><span class="pill win">fixed</span></td></tr>
+    <tr><td class="mono">0002</td><td>60° roll</td><td class="num">0.00</td><td class="num"><b>0.77</b></td><td><span class="pill win">closed by denser training data</span></td></tr>
+    <tr><td class="mono">0007</td><td>−90° roll</td><td class="num">0.00</td><td class="num">0.22</td><td><span class="pill prog">partly closed</span></td></tr>
+    <tr><td class="mono">0003</td><td>90° roll</td><td class="num">0.00</td><td class="num">0.07</td><td><span class="pill stuck">still stuck</span></td></tr>
+    <tr><td class="mono">0015</td><td>90° roll, dim light</td><td class="num">0.00</td><td class="num">0.02</td><td><span class="pill stuck">still stuck</span></td></tr>
+  </table></div>
+  <p class="dcap"><b>Hypothesis confirmed, partially.</b> The zero-tracked takes weren't a hard information limit — they were a training-data gap. We rendered 10 more takes at 40°/50°/65°/75°/85° roll (both directions) and retrained: <b>60° roll went from completely untracked (0.00) to 0.77</b> — the single largest jump on this page — and −90° moved from 0.00 to 0.22. Filling in the angles the model had never seen made them learnable. But <b>exactly 90° roll stayed stuck (0.07, and 0.02 under dim light)</b> even with 75° and 85° now in the training set either side of it — MediaPipe's own 2D tracking is still reliable there (0.90–1.00 hit-rate), so this isn't a framing bug either. At precisely edge-on to a single fixed camera, one whole side of the body is almost entirely self-occluded — that looks like a genuine information limit of a single camera at that exact angle, not something more training data alone fixes. A second camera angle, or accepting the 2D fallback for that narrow band, are the remaining options.</p>
+</section>
+
+<section id="training">
+  <div class="shead"><span class="num">05</span><h2>Training pipeline</h2></div>
+  <p class="dek">Everything a model sees live, it also saw in training — same code, same feature builder, enforced by a loaded-model contract check that refuses to serve a mismatched pair.</p>
+  <div class="grid g4">
+    <div class="card"><div class="eyebrow">01 · sources</div><p style="margin:8px 0 0;font-weight:600">Blender digital twin</p><p style="color:var(--mute);font-size:.88rem;margin:4px 0 0">33 takes, every orientation, lighting and clutter condition, exact 3D ground truth for free</p></div>
+    <div class="card"><div class="eyebrow">02 · labels</div><p style="margin:8px 0 0;font-weight:600">Auto-exported YOLO boxes</p><p style="color:var(--mute);font-size:.88rem;margin:4px 0 0">Every visible box in every frame, straight from the render metadata — zero manual annotation</p></div>
+    <div class="card"><div class="eyebrow">03 · sequence build</div><p style="margin:8px 0 0;font-weight:600">Run the trained detector</p><p style="color:var(--mute);font-size:.88rem;margin:4px 0 0">Features are built from the detector's real, imperfect output — never the ground truth boxes</p></div>
+    <div class="card"><div class="eyebrow">04 · ship</div><p style="margin:8px 0 0;font-weight:600">Contract-checked promotion</p><p style="color:var(--mute);font-size:.88rem;margin:4px 0 0"><code>promote_model.py</code> refuses to deploy a checkpoint and ONNX pair whose feature shapes disagree</p></div>
+  </div>
+  <p class="dcap" style="margin-top:16px">Held out by take, never by frame, throughout: a model can't pass by memorising a pixel of background that happens to repeat between two frames of the <i>same</i> clip. This one discipline is what makes every number on this page mean what it says.</p>
+</section>
+
+<section id="models">
+  <div class="shead"><span class="num">06</span><h2>Models shipped, and the numbers behind them</h2></div>
+  <div class="tw"><table>
+    <tr><th>Model</th><th>Architecture</th><th>Trained on</th><th>Held-out result</th></tr>
+    <tr><td>Box detector</td><td>YOLOv8n</td><td>33-take synthetic set, 3 classes</td><td class="num">mAP@50 = 0.934</td></tr>
+    <tr><td>Step classifier</td><td>3-layer LSTM, 256 hidden</td><td>143-dim pose+object features, 100 ms clock</td><td class="num">73% step accuracy, by-take split</td></tr>
+    <tr><td>3D body model</td><td>MobileNetV3-Small + regression head</td><td>Rack-relative synthetic 3D ground truth</td><td class="num">Matches/beats pretrained ROMP, 8/8 problem takes</td></tr>
+  </table></div>
+  <p class="dcap">Every number here is reproducible from a checkpoint on disk and a held-out split file — none of them is a training-set number reported as if it were a test number.</p>
+</section>
+
+<section id="stack">
+  <div class="shead"><span class="num">07</span><h2>Tech stack</h2></div>
+  <div class="stackcat">
+    <h4>Perception</h4>
+    <div class="chips">
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><rect width="14" height="14" rx="3" fill="#ff8a3d"/></svg>YOLOv8n</span>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#35d0a0"/></svg>MediaPipe</span>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><rect width="14" height="14" rx="7" fill="none" stroke="#8a95a6" stroke-width="1.6"/></svg>OpenCV</span>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><rect width="14" height="14" fill="none" stroke="#8a95a6" stroke-width="1.6" stroke-dasharray="2 2"/></svg>ArUco + solvePnP</span>
+    </div>
+  </div>
+  <div class="stackcat">
+    <h4>Deep learning</h4>
+    <div class="chips">
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 0 13 12H1Z" fill="#9d8cf5"/></svg>PyTorch</span>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 0 13 12H1Z" fill="none" stroke="#9d8cf5" stroke-width="1.4"/></svg>TorchVision · MobileNetV3-Small</span>
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><rect width="14" height="14" rx="2" fill="#ff8a3d"/></svg>ONNX Runtime (CPU inference)</span>
+      <span class="chip">LSTM sequence classifier</span>
+    </div>
+  </div>
+  <div class="stackcat">
+    <h4>Synthetic data</h4>
+    <div class="chips">
+      <span class="chip"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="#ff8a3d" stroke-width="1.6"/><circle cx="7" cy="7" r="2" fill="#ff8a3d"/></svg>Blender 5.2 + bpy</span>
+      <span class="chip">SMPL-derived body ground truth</span>
+      <span class="chip">Procedural protocol + lighting + clutter generator</span>
+    </div>
+  </div>
+  <div class="stackcat">
+    <h4>Runtime & ops</h4>
+    <div class="chips">
+      <span class="chip">PyQt6 dashboard</span>
+      <span class="chip">pyttsx3 offline voice</span>
+      <span class="chip">ffmpeg (UDP stream + recording)</span>
+      <span class="chip">pytest (50-test train/serve contract suite)</span>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="shead"><span class="num">08</span><h2>Why this wins the problem statement, not just a demo</h2></div>
+  <div class="grid vs">
+    <div class="card vscard them">
+      <h3>What we found in 22 public repos</h3>
+      <ul>
+        <li>Trained and tested on an upright, seated subject in a normal room</li>
+        <li>Object detection via colour blobs or an off-the-shelf detector, never retrained on the actual props</li>
+        <li>HMR mentioned as future work, never shipped</li>
+        <li>Accuracy reported from a frame-level split, or not reported at all</li>
+        <li>One fixed reference frame: the camera itself</li>
+      </ul>
+    </div>
+    <div class="card vscard us">
+      <h3>What we shipped</h3>
+      <ul>
+        <li>Trained and evaluated across roll/pitch/yaw from 0° to full inversion</li>
+        <li>A detector trained from scratch on the exact rack and boxes, mAP@50 0.934</li>
+        <li>A working 3D body model, trained by us, running live, honestly scored</li>
+        <li>Every accuracy number held out by take, reproducible from disk</li>
+        <li>A rack-anchored reference frame — "in the target zone" means something a body-only frame can't express</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="impl" style="border-bottom:none">
+  <div class="shead"><span class="num">09</span><h2>Key engineering decisions</h2></div>
+  <p class="dek">The parts a demo video won't show, but a judge's question will find.</p>
+  <div class="impl"><div class="ix">01</div><div><h4>Entropy-gated step confirmation</h4><p>A confidence threshold alone can't tell a decisive call from a coin flip that happened to clear the bar. We gate on the full softmax's Shannon entropy alongside confidence, re-derived for our own 9-class problem rather than reused from a competitor's 8-class number.</p></div></div>
+  <div class="impl"><div class="ix">02</div><div><h4>Model-contract guard</h4><p>The live pipeline reads the feature layout, sample rate, and rack-normalisation flag a checkpoint was actually trained with, and refuses to serve it against a mismatched feature builder — the exact failure mode that once shipped a model that scored at chance.</p></div></div>
+  <div class="impl"><div class="ix">03</div><div><h4>Rack-relative reference frame</h4><p>Every position is expressed relative to the rack, not the camera or the astronaut's own body — so "box placed in the target zone" and "crew attitude relative to the rack" are both expressible, which a body-centred frame cannot do.</p></div></div>
+  <div class="impl"><div class="ix">04</div><div><h4>Adaptive HMR scheduling</h4><p>The 3D model only re-runs when the tracked torso angle has drifted past 15° or a second has passed — holding still to examine a box costs nothing, a fast tumble gets checked often.</p></div></div>
+  <div class="impl"><div class="ix">05</div><div><h4>Graceful 2D fallback, always on</h4><p>The fusion gate falls back to MediaPipe's 2D pose the instant HMR is unsure, so step recognition keeps working even in the orientations no vision model handles perfectly yet.</p></div></div>
+  <div class="impl"><div class="ix">06</div><div><h4>Honest evaluation discipline, enforced by test</h4><p>Held-out-by-take splitting isn't a one-off — it's checked by unit tests that assert no take ID appears in both a training and validation split, on every model this project trains.</p></div></div>
+</section>
+
+</main>
+<footer class="wrap">
+  <span>BAS HAR · Smart India Hackathon 2026 · Problem Statement 26174</span>
+  <span>Bharatiya Antariksh Station — Human Activity Recognition</span>
+</footer>
+</body>
+</html>

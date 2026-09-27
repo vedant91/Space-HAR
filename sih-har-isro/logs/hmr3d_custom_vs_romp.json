@@ -1,0 +1,114 @@
+{
+  "take_0001": {
+    "tag": "orient_30",
+    "frames": 972,
+    "after": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.796,
+      "pck05": 0.694,
+      "ms_per_frame": 28.7,
+      "romp_runs_per_frame": 0.05,
+      "mp_hit_rate": 1.0,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0002": {
+    "tag": "orient_60",
+    "frames": 902,
+    "after": {
+      "n": 91,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.065,
+      "ms_per_frame": 31.1,
+      "romp_runs_per_frame": 0.037,
+      "mp_hit_rate": 1.0,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0003": {
+    "tag": "orient_90",
+    "frames": 962,
+    "after": {
+      "n": 97,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.037,
+      "ms_per_frame": 34.9,
+      "romp_runs_per_frame": 0.096,
+      "mp_hit_rate": 1.0,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0004": {
+    "tag": "orient_180",
+    "frames": 976,
+    "after": {
+      "n": 98,
+      "detect_rate": 1.0,
+      "tracked": 0.908,
+      "pck05": 0.673,
+      "ms_per_frame": 49.0,
+      "romp_runs_per_frame": 0.139,
+      "mp_hit_rate": 0.975,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0007": {
+    "tag": "orient_-90",
+    "frames": 1089,
+    "after": {
+      "n": 109,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.133,
+      "ms_per_frame": 63.2,
+      "romp_runs_per_frame": 0.181,
+      "mp_hit_rate": 0.895,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0013": {
+    "tag": "pitch_60",
+    "frames": 942,
+    "after": {
+      "n": 95,
+      "detect_rate": 1.0,
+      "tracked": 1.0,
+      "pck05": 0.843,
+      "ms_per_frame": 29.4,
+      "romp_runs_per_frame": 0.034,
+      "mp_hit_rate": 1.0,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0015": {
+    "tag": "light_dim_90",
+    "frames": 1020,
+    "after": {
+      "n": 102,
+      "detect_rate": 1.0,
+      "tracked": 0.0,
+      "pck05": 0.02,
+      "ms_per_frame": 34.4,
+      "romp_runs_per_frame": 0.098,
+      "mp_hit_rate": 0.992,
+      "yolo_proposals": 0
+    }
+  },
+  "take_0017": {
+    "tag": "light_single_fail_180",
+    "frames": 933,
+    "after": {
+      "n": 94,
+      "detect_rate": 1.0,
+      "tracked": 0.691,
+      "pck05": 0.59,
+      "ms_per_frame": 92.3,
+      "romp_runs_per_frame": 0.132,
+      "mp_hit_rate": 0.734,
+      "yolo_proposals": 0
+    }
+  }
+}

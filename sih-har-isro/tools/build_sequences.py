@@ -163,13 +163,16 @@ def _frame_inputs(dataset_dir: str, take_dir: Path, cam_dir: Path, pose_source: 
             cached["stats"]["cache"] = "hit"
             return cached["poses"], cached["dets"], tuple(cached["wh"]), cached["stats"]
 
-    from pipeline.hsv_detector import HSVBoxDetector
-    from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size
+    from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size, _make_box_detector
 
     # Frames are brought to the live frame size first (to_frame_size), exactly
-    # as the live loop does to every source, so HSV and pose see the same pixels.
+    # as the live loop does to every source, so the detector and pose see the
+    # same pixels. _make_box_detector is the SAME DETECTOR_BACKEND switch the
+    # live pipeline uses - building sequences with HSV while serving YOLO (or
+    # the reverse) would be exactly the train/serve skew this project has
+    # already been burned by once.
     w, h = FRAME_WIDTH, FRAME_HEIGHT
-    detector = HSVBoxDetector(frame_width=w, frame_height=h)
+    detector = _make_box_detector(w, h)
     gt = None
     backend = None
     hmr = None

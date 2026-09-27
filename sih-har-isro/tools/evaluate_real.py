@@ -126,8 +126,7 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
                   upright: bool = True,
                   pose_source: str = "mediapipe") -> Optional[dict]:
     import cv2
-    from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size
-    from pipeline.hsv_detector import HSVBoxDetector
+    from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size, _make_box_detector
     from pipeline.rack_frame import RackFrameNormalizer
 
     meta_path = take_dir / "meta.json"
@@ -173,7 +172,7 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
         n = min(n, len(hmr_poses))
     else:
         backend = OptimizedMPWrapper(frame_wh=(fw, fh), upright=upright)
-        detector = HSVBoxDetector(frame_width=fw, frame_height=fh)
+        detector = _make_box_detector(fw, fh)
     normalizer = RackFrameNormalizer() if rack_normalize else None
     layout = runner.contract["feature_layout"] if runner is not None else "pose132"
     dim = LAYOUT_DIMS[layout]

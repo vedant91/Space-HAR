@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BAS HAR — Full Technical Architecture · SIH 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#07090e;color:#e2e8f0;font-family:'Inter',sans-serif}
+body{padding:20px;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:1560px}
+h1{font-size:.85rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#3d4e6a;margin-bottom:14px;font-family:'JetBrains Mono',monospace;text-align:center}
+svg{width:100%;height:auto;display:block;border-radius:14px;border:1px solid #14202e;box-shadow:0 0 60px rgba(0,0,0,.6)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>SIH 2026 · PS 26174 · Bharatiya Antariksh Station — Human Activity Recognition · Full Technical Architecture</h1>
+
+<svg viewBox="0 0 1760 1080" xmlns="http://www.w3.org/2000/svg" font-family="Inter,system-ui,sans-serif">
+<defs>
+<!-- Background -->
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0%" stop-color="#080b12"/>
+  <stop offset="100%" stop-color="#060810"/>
+</linearGradient>
+<!-- Glow filters -->
+<filter id="ga" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="gt" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="gv" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="ds"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity=".5"/></filter>
+<filter id="dsbig"><feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity=".6"/></filter>
+
+<!-- Arrow markers -->
+<marker id="a0" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5Z" fill="#3a4e65"/></marker>
+<marker id="aa" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5Z" fill="#ff8a3d"/></marker>
+<marker id="at" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5Z" fill="#35d0a0"/></marker>
+<marker id="av" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5Z" fill="#9d8cf5"/></marker>
+<marker id="ag" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5Z" fill="#6a8ab0"/></marker>
+</defs>
+
+<!-- ═══ BACKGROUND ═══ -->
+<rect width="1760" height="1080" fill="url(#bg)"/>
+
+<!-- Dot grid -->
+<pattern id="dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+  <circle cx="14" cy="14" r="1" fill="#141c28" opacity=".8"/>
+</pattern>
+<rect width="1760" height="1080" fill="url(#dots)"/>
+
+<!-- ═══ SWIMLANE STRIP ═══ -->
+<rect x="0" y="0" width="108" height="1080" fill="#050709"/>
+<line x1="108" y1="0" x2="108" y2="1080" stroke="#14202e" stroke-width="1.5"/>
+
+<!-- Lane band fills -->
+<rect x="109" y="58"  width="1651" height="95"  fill="#090c14" opacity=".6"/>
+<rect x="109" y="185" width="1651" height="85"  fill="#090d12" opacity=".6"/>
+<rect x="109" y="302" width="1651" height="135" fill="#0a0d18" opacity=".5"/>
+<rect x="109" y="469" width="1651" height="100" fill="#0d0b1c" opacity=".5"/>
+<rect x="109" y="601" width="1651" height="85"  fill="#090d14" opacity=".5"/>
+<rect x="109" y="718" width="1651" height="90"  fill="#0a0c17" opacity=".5"/>
+<rect x="109" y="840" width="1651" height="82"  fill="#090d12" opacity=".5"/>
+<rect x="109" y="954" width="1651" height="90"  fill="#080d10" opacity=".5"/>
+
+<!-- Lane separators -->
+<g stroke="#14202e" stroke-width="1">
+  <line x1="109" y1="58"  x2="1760" y2="58"/>
+  <line x1="109" y1="153" x2="1760" y2="153"/>
+  <line x1="109" y1="270" x2="1760" y2="270"/>
+  <line x1="109" y1="437" x2="1760" y2="437"/>
+  <line x1="109" y1="569" x2="1760" y2="569"/>
+  <line x1="109" y1="686" x2="1760" y2="686"/>
+  <line x1="109" y1="808" x2="1760" y2="808"/>
+  <line x1="109" y1="922" x2="1760" y2="922"/>
+  <line x1="109" y1="1044" x2="1760" y2="1044"/>
+</g>
+
+<!-- Lane labels -->
+<g font-family="'JetBrains Mono',monospace" font-size="8.5" font-weight="700" letter-spacing=".14em" fill="#2a3a50" text-anchor="middle">
+  <text transform="translate(54,108) rotate(-90)">INPUT</text>
+  <text transform="translate(54,228) rotate(-90)">CALIBRATION</text>
+  <text transform="translate(54,374) rotate(-90)">PERCEPTION</text>
+  <text transform="translate(54,523) rotate(-90)">FUSION</text>
+  <text transform="translate(54,647) rotate(-90)">FEATURES</text>
+  <text transform="translate(54,765) rotate(-90)">TEMPORAL AI</text>
+  <text transform="translate(54,882) rotate(-90)">DECISION</text>
+  <text transform="translate(54,997) rotate(-90)">OUTPUT</text>
+</g>
+
+<!-- ═══ HEADER ═══ -->
+<rect x="0" y="0" width="1760" height="57" fill="#050709"/>
+<line x1="0" y1="57" x2="1760" y2="57" stroke="#14202e" stroke-width="1.5"/>
+
+<!-- Title -->
+<text x="120" y="22" font-size="18" font-weight="800" fill="#e2e8f0" letter-spacing=".01em">BHARATIYA ANTARIKSH STATION · HUMAN ACTIVITY RECOGNITION</text>
+<text x="120" y="41" font-size="11" fill="#3d4e6a" font-family="'JetBrains Mono',monospace">PS 26174 · SIH 2026 · Offline · GPU-accelerated · &lt;60ms runtime · 0 network calls</text>
+
+<!-- Key metrics row -->
+<g font-family="'JetBrains Mono',monospace" font-size="10" fill="#5c7090">
+  <text x="900" y="22">33 Blender takes</text>
+  <text x="1040" y="22">·</text>
+  <text x="1055" y="22">31,891 frames</text>
+  <text x="1170" y="22">·</text>
+  <text x="1185" y="22">mAP@50=0.934</text>
+  <text x="1320" y="22">·</text>
+  <text x="1335" y="22">73% held-out step acc</text>
+  <text x="900" y="40">YOLOv8n</text>
+  <text x="970" y="40">·</text>
+  <text x="985" y="40">MobileNetV3-Small+head</text>
+  <text x="1200" y="40">·</text>
+  <text x="1215" y="40">3-layer LSTM 256h</text>
+  <text x="1400" y="40">·</text>
+  <text x="1415" y="40">143-dim features</text>
+</g>
+
+<!-- Legend -->
+<g font-size="10" font-weight="600">
+  <rect x="1520" y="8" width="10" height="10" rx="2" fill="#1e1508" stroke="#ff8a3d" stroke-width="1.5"/>
+  <text x="1535" y="18" fill="#ff8a3d">AI / Trained</text>
+  <rect x="1620" y="8" width="10" height="10" rx="2" fill="#071812" stroke="#35d0a0" stroke-width="1.5"/>
+  <text x="1635" y="18" fill="#35d0a0">Rule-based</text>
+  <rect x="1520" y="32" width="10" height="10" rx="2" fill="#16122e" stroke="#9d8cf5" stroke-width="1.5"/>
+  <text x="1535" y="42" fill="#9d8cf5">3D / HMR</text>
+  <rect x="1620" y="32" width="10" height="10" rx="2" fill="#0d1118" stroke="#3d5070" stroke-width="1.5" stroke-dasharray="3 2"/>
+  <text x="1635" y="42" fill="#5c7090">Optional</text>
+</g>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 1 — INPUT (y 58–153) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Block: Fixed Payload Camera -->
+<g filter="url(#ds)">
+  <rect x="130" y="70" width="240" height="72" rx="9" fill="#0d1118" stroke="#3d5070" stroke-width="1.5"/>
+</g>
+<!-- Camera SVG icon -->
+<g transform="translate(148,82)" stroke="#7a9abf" stroke-width="1.5" fill="none">
+  <rect x="0" y="5" width="26" height="18" rx="3"/>
+  <circle cx="13" cy="14" r="6"/><circle cx="13" cy="14" r="3" fill="#4a7aaa" stroke="none"/>
+  <rect x="8" y="0" width="10" height="6" rx="1.5"/>
+  <circle cx="23" cy="8" r="2" fill="#7a9abf" stroke="none"/>
+</g>
+<text x="185" y="92" font-size="13" font-weight="700" fill="#c8d8ee">Fixed Payload Camera</text>
+<text x="185" y="108" font-size="10" fill="#4a6080">USB · clamped to rack · 1080p 30fps</text>
+<text x="185" y="122" font-size="10" fill="#4a6080">Video never leaves the machine</text>
+<text x="185" y="136" font-size="9" fill="#2e4060" font-family="'JetBrains Mono',monospace">INPUT_DEVICE · OFFLINE</text>
+
+<!-- Block: ArUco Marker (dashed) -->
+<g filter="url(#ds)">
+  <rect x="420" y="70" width="220" height="72" rx="9" fill="#0a0f14" stroke="#2e3e52" stroke-width="1.5" stroke-dasharray="6 4"/>
+</g>
+<!-- ArUco QR icon -->
+<g transform="translate(437,82)" fill="#4a6080" stroke="none">
+  <rect x="0" y="0" width="8" height="8" rx="1"/><rect x="10" y="0" width="5" height="5"/>
+  <rect x="0" y="10" width="5" height="5"/><rect x="10" y="10" width="8" height="8" rx="1"/>
+  <rect x="17" y="6" width="3" height="3"/><rect x="6" y="17" width="3" height="3"/>
+  <text x="0" y="30" font-size="7" fill="#3a5070">ArUco</text>
+</g>
+<text x="468" y="92" font-size="13" font-weight="700" fill="#8899bb">ArUco Marker</text>
+<text x="468" y="108" font-size="10" fill="#3a5068">Printed on rack face</text>
+<text x="468" y="122" font-size="10" fill="#3a5068">Gives camera↔rack 6-DOF transform T</text>
+<text x="468" y="136" font-size="9" fill="#2a3a50" font-family="'JetBrains Mono',monospace">OPTIONAL · CALIBRATION AID</text>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 2 — CALIBRATION (y 153–270) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Arrows from input → calibration -->
+<line x1="250" y1="142" x2="250" y2="178" stroke="#3a4e65" stroke-width="1.5" marker-end="url(#a0)"/>
+<line x1="530" y1="142" x2="530" y2="178" stroke="#3a4e65" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#a0)"/>
+
+<!-- Block: Frame Sampler -->
+<g filter="url(#ds)">
+  <rect x="130" y="179" width="240" height="80" rx="9" fill="#0d1118" stroke="#3d5070" stroke-width="1.5"/>
+</g>
+<!-- Clock icon -->
+<g transform="translate(148,192)" stroke="#7a9abf" stroke-width="1.5" fill="none">
+  <circle cx="13" cy="13" r="12"/><line x1="13" y1="5" x2="13" y2="13"/>
+  <line x1="13" y1="13" x2="19" y2="17"/><circle cx="13" cy="13" r="2" fill="#7a9abf" stroke="none"/>
+</g>
+<text x="185" y="200" font-size="13" font-weight="700" fill="#c8d8ee">Frame Sampler</text>
+<text x="185" y="217" font-size="10" fill="#4a6080">Fixed 100ms clock — decoupled from camera FPS</text>
+<text x="185" y="232" font-size="10" fill="#4a6080">Deterministic 10Hz pipeline tick</text>
+<text x="185" y="248" font-size="9" fill="#2e4060" font-family="'JetBrains Mono',monospace">PERIOD = 100ms · GPU-synced</text>
+
+<!-- Block: Rack Pose (solvePnP) -->
+<g filter="url(#ds)">
+  <rect x="420" y="179" width="260" height="80" rx="9" fill="#0d1118" stroke="#3d5070" stroke-width="1.5"/>
+</g>
+<!-- Axis icon -->
+<g transform="translate(437,192)" stroke="#7a9abf" stroke-width="1.5" fill="none">
+  <line x1="14" y1="26" x2="14" y2="4" marker-end="url(#a0)"/>
+  <line x1="4" y1="26" x2="26" y2="26" marker-end="url(#a0)"/>
+  <line x1="14" y1="26" x2="4" y2="18"/>
+  <circle cx="14" cy="26" r="2.5" fill="#7a9abf" stroke="none"/>
+</g>
+<text x="475" y="200" font-size="13" font-weight="700" fill="#c8d8ee">Rack Pose (solvePnP)</text>
+<text x="475" y="217" font-size="10" fill="#4a6080">Camera → rack coordinate transform T</text>
+<text x="475" y="232" font-size="10" fill="#4a6080">Every position expressed in rack frame, not camera</text>
+<text x="475" y="248" font-size="9" fill="#2e4060" font-family="'JetBrains Mono',monospace">OpenCV · ArUco · 6-DOF · T∈SE(3)</text>
+
+<!-- Arrow: Frame Sampler → outputs (split to 3 perception branches) -->
+<line x1="250" y1="259" x2="250" y2="270" stroke="#3a4e65" stroke-width="1.5"/>
+<line x1="250" y1="270" x2="880" y2="270" stroke="#3a4e65" stroke-width="1"/>
+<line x1="250" y1="270" x2="250" y2="290" stroke="#3a4e65" stroke-width="1.5" marker-end="url(#a0)"/>
+<line x1="550" y1="270" x2="550" y2="290" stroke="#3a4e65" stroke-width="1.5" marker-end="url(#a0)"/>
+<line x1="880" y1="270" x2="880" y2="290" stroke="#3a4e65" stroke-width="1.5" marker-end="url(#a0)"/>
+
+<!-- Rack pose → features (side arrow later) -->
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 3 — PERCEPTION (y 270–437) three parallel branches -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- ─── BLOCK A: YOLOv8n (AMBER) ─── -->
+<g filter="url(#ga)">
+  <rect x="130" y="291" width="280" height="136" rx="10" fill="#150f04" stroke="#ff8a3d" stroke-width="2"/>
+</g>
+<!-- AI badge -->
+<rect x="370" y="295" width="32" height="18" rx="5" fill="#ff8a3d"/>
+<text x="386" y="308" text-anchor="middle" font-size="9" font-weight="800" fill="#1a0800">AI</text>
+<!-- YOLOv8 logo-style icon: shield with eye -->
+<g transform="translate(147,306)" stroke="#ff8a3d" stroke-width="2" fill="none">
+  <path d="M14,0 L28,6 L28,18 Q28,28 14,34 Q0,28 0,18 L0,6 Z"/>
+  <ellipse cx="14" cy="18" rx="7" ry="5"/>
+  <circle cx="14" cy="18" r="3" fill="#ff8a3d" stroke="none"/>
+</g>
+<text x="190" y="314" font-size="14" font-weight="700" fill="#ff8a3d">YOLOv8n · Box Detector</text>
+<text x="190" y="332" font-size="10" fill="#c07030">Fine-tuned on 33 Blender takes · 3 classes</text>
+<text x="190" y="349" font-size="10" fill="#c07030">red_box · yellow_box · main_box</text>
+<text x="190" y="366" font-size="10" fill="#c07030">Zero manual annotation — Blender GT exports labels</text>
+<text x="190" y="383" font-size="10" fill="#c07030">Object tracker: ByteTrack IDs + velocity</text>
+<!-- metrics row -->
+<rect x="130" y="395" width="280" height="32" rx="0 0 8 8" fill="#1f1206" opacity=".8"/>
+<g font-family="'JetBrains Mono',monospace" font-size="10" font-weight="600" text-anchor="middle">
+  <text x="200" y="413" fill="#ff8a3d">mAP@50</text>
+  <text x="200" y="424" fill="#c07030">0.934</text>
+  <text x="280" y="413" fill="#ff8a3d">latency</text>
+  <text x="280" y="424" fill="#c07030">~6ms</text>
+  <text x="360" y="413" fill="#ff8a3d">classes</text>
+  <text x="360" y="424" fill="#c07030">3</text>
+</g>
+
+<!-- ─── BLOCK B: MediaPipe (AMBER) ─── -->
+<g filter="url(#ga)">
+  <rect x="440" y="291" width="280" height="136" rx="10" fill="#150f04" stroke="#ff8a3d" stroke-width="2"/>
+</g>
+<rect x="680" y="295" width="32" height="18" rx="5" fill="#ff8a3d"/>
+<text x="696" y="308" text-anchor="middle" font-size="9" font-weight="800" fill="#1a0800">OFF</text>
+<!-- Skeleton body icon -->
+<g transform="translate(457,305)" stroke="#ff8a3d" stroke-width="1.8" fill="none">
+  <circle cx="13" cy="4" r="4"/>
+  <line x1="13" y1="8" x2="13" y2="22"/>
+  <line x1="13" y1="12" x2="5" y2="18"/><line x1="13" y1="12" x2="21" y2="18"/>
+  <line x1="13" y1="22" x2="7" y2="32"/><line x1="13" y1="22" x2="19" y2="32"/>
+  <circle cx="5" cy="18" r="2.5" fill="#ff8a3d" stroke="none"/>
+  <circle cx="21" cy="18" r="2.5" fill="#ff8a3d" stroke="none"/>
+</g>
+<text x="498" y="314" font-size="14" font-weight="700" fill="#ff8a3d">MediaPipe Pose + Hands</text>
+<text x="498" y="332" font-size="10" fill="#c07030">Pretrained · off-the-shelf · runs every frame</text>
+<text x="498" y="349" font-size="10" fill="#c07030">33 body + 21×2 hand landmarks (2D)</text>
+<text x="498" y="366" font-size="10" fill="#c07030">Roll-corrected BEFORE inference — not confused</text>
+<text x="498" y="383" font-size="10" fill="#c07030">by inverted astronaut · also drives HMR crop</text>
+<rect x="440" y="395" width="280" height="32" rx="0 0 8 8" fill="#1f1206" opacity=".8"/>
+<g font-family="'JetBrains Mono',monospace" font-size="10" font-weight="600" text-anchor="middle">
+  <text x="510" y="413" fill="#ff8a3d">landmarks</text>
+  <text x="510" y="424" fill="#c07030">33+42</text>
+  <text x="590" y="413" fill="#ff8a3d">hit-rate</text>
+  <text x="590" y="424" fill="#c07030">~1.00</text>
+  <text x="670" y="413" fill="#ff8a3d">frame</text>
+  <text x="670" y="424" fill="#c07030">every</text>
+</g>
+
+<!-- ─── BLOCK C: Custom HMR3DNet (VIOLET — INNOVATION) ─── -->
+<g filter="url(#gv)">
+  <rect x="750" y="282" width="320" height="150" rx="10" fill="#100d24" stroke="#9d8cf5" stroke-width="2.5"/>
+</g>
+<!-- NEW gold badge -->
+<rect x="1030" y="285" width="34" height="19" rx="5" fill="#d4a017"/>
+<text x="1047" y="299" text-anchor="middle" font-size="9" font-weight="900" fill="#0a0800">NEW</text>
+<!-- AI badge -->
+<rect x="1030" y="308" width="34" height="18" rx="5" fill="#6b50d0"/>
+<text x="1047" y="321" text-anchor="middle" font-size="8.5" font-weight="700" fill="#e0d8ff">AI</text>
+<!-- 3D body mesh icon -->
+<g transform="translate(768,295)" stroke="#9d8cf5" stroke-width="1.8" fill="none">
+  <ellipse cx="14" cy="8" rx="8" ry="8"/>
+  <line x1="14" y1="16" x2="14" y2="30"/>
+  <line x1="14" y1="20" x2="6" y2="28"/><line x1="14" y1="20" x2="22" y2="28"/>
+  <line x1="14" y1="30" x2="8" y2="40"/><line x1="14" y1="30" x2="20" y2="40"/>
+  <!-- 3D mesh lines -->
+  <line x1="6" y1="4" x2="22" y2="4" stroke="#6040b0" stroke-width=".8"/>
+  <line x1="6" y1="8" x2="22" y2="8" stroke="#6040b0" stroke-width=".8"/>
+  <line x1="6" y1="12" x2="22" y2="12" stroke="#6040b0" stroke-width=".8"/>
+  <line x1="8" y1="2" x2="8" y2="14" stroke="#6040b0" stroke-width=".8"/>
+  <line x1="14" y1="0" x2="14" y2="16" stroke="#6040b0" stroke-width=".8"/>
+  <line x1="20" y1="2" x2="20" y2="14" stroke="#6040b0" stroke-width=".8"/>
+</g>
+<text x="816" y="307" font-size="14" font-weight="700" fill="#c0b0ff">Custom HMR3DNet</text>
+<text x="816" y="325" font-size="10" fill="#8070cc">MobileNetV3-Small + regression head</text>
+<text x="816" y="342" font-size="10" fill="#8070cc">Outputs 33 joints × (x, y, z, visibility)</text>
+<text x="816" y="359" font-size="10" fill="#8070cc">Trained on rack-relative synthetic 3D GT</text>
+<text x="816" y="376" font-size="10" fill="#8070cc">Adaptive scheduler: skip if torso &lt;15° drift</text>
+<text x="816" y="393" font-size="10" fill="#8070cc">Crop + rotate upright before inference</text>
+<!-- metrics row -->
+<rect x="750" y="402" width="320" height="30" rx="0 0 8 8" fill="#1a1535" opacity=".9"/>
+<g font-family="'JetBrains Mono',monospace" font-size="10" font-weight="600" text-anchor="middle">
+  <text x="820" y="418" fill="#9d8cf5">params</text>
+  <text x="820" y="429" fill="#c0b0ff">~2.5M</text>
+  <text x="910" y="418" fill="#9d8cf5">latency</text>
+  <text x="910" y="429" fill="#c0b0ff">29–92ms</text>
+  <text x="1010" y="418" fill="#9d8cf5">joints</text>
+  <text x="1010" y="429" fill="#c0b0ff">33×4</text>
+</g>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- HMR PIPELINE (sub-diagram within perception) -->
+<!-- ═══════════════════════════════════════════════ -->
+<!-- Adaptive scheduler mini-block -->
+<g filter="url(#ds)">
+  <rect x="1100" y="291" width="240" height="141" rx="9" fill="#071812" stroke="#35d0a0" stroke-width="1.5"/>
+</g>
+<!-- Clock/scheduler icon -->
+<g transform="translate(1115,302)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <circle cx="12" cy="12" r="10"/>
+  <line x1="12" y1="5" x2="12" y2="12" stroke="#35d0a0" stroke-width="2"/>
+  <line x1="12" y1="12" x2="18" y2="15"/>
+  <circle cx="12" cy="12" r="2" fill="#35d0a0" stroke="none"/>
+</g>
+<text x="1140" y="313" font-size="12" font-weight="700" fill="#35d0a0">Adaptive HMR Scheduler</text>
+<text x="1115" y="331" font-size="9.5" fill="#1f8060">torso angle stable, &lt;15° drift:</text>
+<text x="1115" y="347" font-size="9.5" fill="#1f8060">→ reuse last pose · skip inference</text>
+<text x="1115" y="363" font-size="9.5" fill="#1f8060">15°+ drift OR 1s since last run:</text>
+<text x="1115" y="379" font-size="9.5" fill="#1f8060">→ re-run HMR3DNet on fresh crop</text>
+<text x="1115" y="395" font-size="9.5" fill="#1f8060">Result: still holds costs nothing</text>
+<rect x="1100" y="402" width="240" height="30" rx="0 0 7 7" fill="#0a1f16" opacity=".8"/>
+<text x="1220" y="418" text-anchor="middle" font-size="9" fill="#35d0a0" font-family="'JetBrains Mono',monospace">EMA smooth · weight=0.5</text>
+<text x="1220" y="429" text-anchor="middle" font-size="9" fill="#1f6050" font-family="'JetBrains Mono',monospace">30fps input → adaptive Hz output</text>
+
+<!-- Arrow: HMR3DNet → Adaptive Scheduler -->
+<line x1="1070" y1="357" x2="1098" y2="357" stroke="#9d8cf5" stroke-width="1.5" marker-end="url(#av)"/>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 4 — FUSION (y 437–569) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Arrows MediaPipe → Fusion Gate -->
+<line x1="580" y1="427" x2="580" y2="453" stroke="#ff8a3d" stroke-width="1.5" marker-end="url(#aa)"/>
+<!-- Arrow HMR3DNet → 3D joints → rack frame → Fusion Gate -->
+<line x1="910" y1="432" x2="910" y2="444" stroke="#9d8cf5" stroke-width="1.5"/>
+<line x1="910" y1="444" x2="700" y2="444" stroke="#9d8cf5" stroke-width="1.5"/>
+<line x1="700" y1="444" x2="700" y2="453" stroke="#9d8cf5" stroke-width="1.5" marker-end="url(#av)"/>
+
+<!-- "3D joints → rack frame" transform mini block -->
+<g filter="url(#ds)">
+  <rect x="1100" y="445" width="240" height="60" rx="8" fill="#100d24" stroke="#9d8cf5" stroke-width="1.2"/>
+</g>
+<text x="1220" y="465" text-anchor="middle" font-size="11" font-weight="700" fill="#b0a0ee">3D joints → rack frame</text>
+<text x="1220" y="481" text-anchor="middle" font-size="9.5" fill="#7060c0">Apply T · crew attitude vs rack</text>
+<text x="1220" y="496" text-anchor="middle" font-size="9" fill="#5040a0" font-family="'JetBrains Mono',monospace">rack_joints = T @ cam_joints</text>
+<line x1="1100" y1="475" x2="870" y2="475" stroke="#9d8cf5" stroke-width="1.2" stroke-dasharray="4 3"/>
+
+<!-- FUSION GATE (Violet dashed) -->
+<g filter="url(#gv)">
+  <rect x="440" y="454" width="440" height="100" rx="10" fill="#0e0c22" stroke="#9d8cf5" stroke-width="2" stroke-dasharray="8 4"/>
+</g>
+<!-- Diamond merge icon -->
+<g transform="translate(457,475)" stroke="#9d8cf5" stroke-width="2" fill="none">
+  <polygon points="14,0 28,14 14,28 0,14"/>
+  <line x1="14" y1="28" x2="14" y2="38"/>
+</g>
+<text x="497" y="475" font-size="13" font-weight="700" fill="#c0b0ff">Pose Fusion Gate</text>
+<text x="497" y="493" font-size="10.5" fill="#8070cc">HMR3D confident (joint visibility ≥ threshold):</text>
+<text x="497" y="510" font-size="10.5" fill="#8070cc">→ use 3D wrist positions + crew attitude from HMR</text>
+<text x="497" y="527" font-size="10.5" fill="#8070cc">HMR unsure / failed → fall back to MediaPipe 2D</text>
+<text x="497" y="544" font-size="9" fill="#5040a0" font-family="'JetBrains Mono',monospace">Never blocks · same output shape either path · always continues</text>
+
+<!-- Object tracker → features (separate path) -->
+<line x1="270" y1="427" x2="270" y2="575" stroke="#ff8a3d" stroke-width="1.2" stroke-dasharray="4 3"/>
+<line x1="270" y1="575" x2="440" y2="575" stroke="#ff8a3d" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#aa)"/>
+
+<!-- Fusion Gate → Features -->
+<line x1="660" y1="554" x2="660" y2="585" stroke="#9d8cf5" stroke-width="1.5" marker-end="url(#av)"/>
+
+<!-- Rack Pose → Features (T context) -->
+<line x1="550" y1="259" x2="550" y2="575" stroke="#4a607a" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="550" y1="575" x2="640" y2="575" stroke="#4a607a" stroke-width="1" stroke-dasharray="4 3"/>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 5 — RACK-RELATIVE FEATURES (y 569–686) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Wide features block (teal) -->
+<g filter="url(#gt)">
+  <rect x="130" y="586" width="1010" height="90" rx="10" fill="#060f0c" stroke="#35d0a0" stroke-width="2"/>
+</g>
+<!-- Table/grid icon -->
+<g transform="translate(147,598)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <rect x="0" y="0" width="24" height="20" rx="2"/>
+  <line x1="0" y1="7" x2="24" y2="7"/><line x1="0" y1="14" x2="24" y2="14"/>
+  <line x1="8" y1="0" x2="8" y2="20"/><line x1="16" y1="0" x2="16" y2="20"/>
+</g>
+<text x="183" y="608" font-size="14" font-weight="700" fill="#35d0a0">Rack-Relative Interaction Features  —  143-dimensional feature vector</text>
+<text x="183" y="627" font-size="10.5" fill="#1f8060">hand↔box distance (rack frame, not camera) · box-held flag · lid-open state · target-zone occupancy · box velocity</text>
+<text x="183" y="644" font-size="10.5" fill="#1f8060">crew attitude relative to rack (from HMR) · MediaPipe wrist positions (roll-corrected, rack-normalised)</text>
+<text x="183" y="661" font-size="10" fill="#1f6050">⚠ Identical feature code runs at training time AND live runtime — no silent train/serve mismatch possible</text>
+<!-- Protocol JSON input -->
+<rect x="1160" y="598" width="200" height="52" rx="8" fill="#0d1118" stroke="#2e3e52" stroke-width="1.2"/>
+<text x="1260" y="617" text-anchor="middle" font-size="11" font-weight="700" fill="#8899bb">Protocol JSON</text>
+<text x="1260" y="633" text-anchor="middle" font-size="9.5" fill="#4a6080">8 steps · one file per experiment</text>
+<text x="1260" y="648" text-anchor="middle" font-size="9" fill="#2e4060" font-family="'JetBrains Mono',monospace">step_defs.json</text>
+<line x1="1160" y1="624" x2="1142" y2="624" stroke="#4a607a" stroke-width="1.2" marker-end="url(#ag)"/>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 6 — TEMPORAL AI / LSTM (y 686–808) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Arrow: Features → LSTM -->
+<line x1="635" y1="676" x2="635" y2="704" stroke="#35d0a0" stroke-width="1.5" marker-end="url(#at)"/>
+
+<!-- LSTM wide block (Amber) -->
+<g filter="url(#ga)">
+  <rect x="130" y="705" width="1010" height="93" rx="10" fill="#140e04" stroke="#ff8a3d" stroke-width="2"/>
+</g>
+<!-- LSTM waveform icon -->
+<g transform="translate(148,720)" stroke="#ff8a3d" stroke-width="2" fill="none">
+  <path d="M0,15 C4,2 8,28 12,15 C16,2 20,28 24,15 C28,2 32,28 36,15"/>
+  <rect x="0" y="7" width="6" height="16" rx="1" fill="#ff8a3d" opacity=".15"/>
+  <rect x="6" y="4" width="6" height="22" rx="1" fill="#ff8a3d" opacity=".15"/>
+</g>
+<!-- PyTorch flame icon (symbolic) -->
+<g transform="translate(190,715)" fill="#ff8a3d" opacity=".8">
+  <path d="M10,0 Q16,8 12,14 Q10,10 8,14 Q4,8 10,0Z"/>
+  <path d="M10,14 Q14,18 10,24 Q6,18 10,14Z" fill="#cc6020"/>
+</g>
+<!-- AI badge -->
+<rect x="1108" y="709" width="26" height="17" rx="4" fill="#ff8a3d"/>
+<text x="1121" y="721" text-anchor="middle" font-size="9" font-weight="800" fill="#1a0800">AI</text>
+<text x="225" y="726" font-size="14" font-weight="700" fill="#ff8a3d">LSTM Step Classifier  —  3-layer · 256 hidden units</text>
+<text x="225" y="745" font-size="10.5" fill="#c07030">3-second sliding window of 143-dim rack-relative features · 30 frames at 100ms = one window</text>
+<text x="225" y="762" font-size="10.5" fill="#c07030">Outputs softmax probability over 9 classes (8 steps + idle) · updated every 100ms</text>
+<text x="225" y="779" font-size="10.5" fill="#c07030">Entropy gate: Shannon entropy H(p) must be low AND max confidence ≥ threshold before confirming step</text>
+<!-- Metrics row -->
+<rect x="130" y="770" width="1010" height="28" rx="0 0 8 8" fill="#1e1204" opacity=".9"/>
+<g font-family="'JetBrains Mono',monospace" font-size="10" font-weight="600" text-anchor="middle">
+  <text x="220" y="787" fill="#ff8a3d">architecture</text><text x="220" y="798" fill="#c07030">LSTM 3L·256h</text>
+  <text x="360" y="787" fill="#ff8a3d">held-out acc</text><text x="360" y="798" fill="#c07030">73% by-take</text>
+  <text x="500" y="787" fill="#ff8a3d">window</text><text x="500" y="798" fill="#c07030">3sec·30frames</text>
+  <text x="640" y="787" fill="#ff8a3d">update rate</text><text x="640" y="798" fill="#c07030">every 100ms</text>
+  <text x="780" y="787" fill="#ff8a3d">gate</text><text x="780" y="798" fill="#c07030">entropy+conf</text>
+  <text x="920" y="787" fill="#ff8a3d">classes</text><text x="920" y="798" fill="#c07030">9 (8+idle)</text>
+  <text x="1060" y="787" fill="#ff8a3d">input dim</text><text x="1060" y="798" fill="#c07030">143</text>
+</g>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 7 — DECISION (y 808–922) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Arrow LSTM → Decision -->
+<line x1="635" y1="798" x2="635" y2="828" stroke="#ff8a3d" stroke-width="1.5" marker-end="url(#at)"/>
+
+<!-- Block: Protocol State Machine (Teal) -->
+<g filter="url(#gt)">
+  <rect x="130" y="829" width="490" height="83" rx="10" fill="#050f0c" stroke="#35d0a0" stroke-width="2"/>
+</g>
+<!-- Flowchart icon -->
+<g transform="translate(147,843)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <rect x="2" y="0" width="20" height="12" rx="2"/>
+  <line x1="12" y1="12" x2="12" y2="20"/>
+  <line x1="12" y1="20" x2="4" y2="20"/><line x1="12" y1="20" x2="20" y2="20"/>
+  <rect x="0" y="20" width="8" height="10" rx="2" fill="#35d0a0" opacity=".2"/>
+  <rect x="16" y="20" width="8" height="10" rx="2" fill="#35d0a0" opacity=".2"/>
+</g>
+<text x="183" y="853" font-size="13" font-weight="700" fill="#35d0a0">Protocol State Machine</text>
+<text x="183" y="871" font-size="10.5" fill="#1f8060">Confirms step on N consecutive frames above threshold (hysteresis)</text>
+<text x="183" y="888" font-size="10.5" fill="#1f8060">Flags: skipped step · out-of-order · repeated step · unexpected idle</text>
+<text x="183" y="905" font-size="9" fill="#1f6050" font-family="'JetBrains Mono',monospace">state ∈ {IDLE, STEP_1..8, ERROR} · transitions driven by LSTM output</text>
+
+<!-- Block: Model Contract Guard (Teal) -->
+<g filter="url(#gt)">
+  <rect x="640" y="829" width="310" height="83" rx="10" fill="#050f0c" stroke="#35d0a0" stroke-width="1.5"/>
+</g>
+<!-- Shield checkmark icon -->
+<g transform="translate(657,843)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <path d="M12,0 L24,5 L24,16 Q24,24 12,28 Q0,24 0,16 L0,5 Z"/>
+  <polyline points="6,14 10,18 18,10"/>
+</g>
+<text x="692" y="853" font-size="12" font-weight="700" fill="#35d0a0">Model Contract Guard</text>
+<text x="692" y="870" font-size="9.5" fill="#1f8060">promote_model.py refuses to serve checkpoint +</text>
+<text x="692" y="886" font-size="9.5" fill="#1f8060">ONNX pair if feature shapes disagree</text>
+<text x="692" y="903" font-size="9" fill="#1f6050" font-family="'JetBrains Mono',monospace">50-test pytest suite · train/serve contract</text>
+
+<!-- Block: Microgravity Rules (Teal) -->
+<g filter="url(#gt)">
+  <rect x="970" y="829" width="310" height="83" rx="10" fill="#050f0c" stroke="#35d0a0" stroke-width="1.5"/>
+</g>
+<!-- Orbit/gravity icon -->
+<g transform="translate(987,843)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <circle cx="12" cy="14" r="10"/>
+  <ellipse cx="12" cy="14" rx="10" ry="5"/>
+  <circle cx="12" cy="14" r="3" fill="#35d0a0" stroke="none" opacity=".5"/>
+</g>
+<text x="1022" y="853" font-size="12" font-weight="700" fill="#35d0a0">Microgravity Rules</text>
+<text x="1022" y="870" font-size="9.5" fill="#1f8060">Drift: box moving · no hand detected nearby</text>
+<text x="1022" y="886" font-size="9.5" fill="#1f8060">Placed: box in target zone AND released</text>
+<text x="1022" y="903" font-size="9" fill="#1f6050" font-family="'JetBrains Mono',monospace">G-level: µg ≈ 0.001g · no settling time</text>
+
+<!-- Arrows → outputs -->
+<line x1="375" y1="912" x2="375" y2="940" stroke="#35d0a0" stroke-width="1.2" marker-end="url(#at)"/>
+<line x1="795" y1="912" x2="795" y2="940" stroke="#35d0a0" stroke-width="1.2" marker-end="url(#at)"/>
+<line x1="1125" y1="912" x2="1125" y2="940" stroke="#35d0a0" stroke-width="1.2" marker-end="url(#at)"/>
+<line x1="375" y1="940" x2="1360" y2="940" stroke="#35d0a0" stroke-width="1" stroke-dasharray="3 2"/>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- LANE 8 — OUTPUT (y 922–1044) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- 5 output blocks -->
+<!-- Voice Alert -->
+<rect x="130" y="954" width="200" height="76" rx="9" fill="#061410" stroke="#35d0a0" stroke-width="1.5"/>
+<g transform="translate(145,966)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <path d="M6,5 L10,5 L15,1 L15,19 L10,15 L6,15 Z"/>
+  <path d="M17,7 Q21,10 17,13"/><path d="M19,4 Q26,10 19,16"/>
+</g>
+<text x="175" y="980" font-size="12" font-weight="700" fill="#35d0a0">Voice Alert</text>
+<text x="175" y="997" font-size="9.5" fill="#1f8060">pyttsx3 offline TTS</text>
+<text x="175" y="1012" font-size="9.5" fill="#1f8060">Step cues · skip warnings</text>
+<text x="175" y="1027" font-size="8.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">0ms network call</text>
+
+<!-- Live Dashboard -->
+<rect x="348" y="954" width="220" height="76" rx="9" fill="#061410" stroke="#35d0a0" stroke-width="1.5"/>
+<g transform="translate(363,966)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <rect x="0" y="0" width="24" height="16" rx="2"/>
+  <line x1="8" y1="16" x2="8" y2="22"/><line x1="16" y1="16" x2="16" y2="22"/>
+  <line x1="4" y1="22" x2="20" y2="22"/>
+  <line x1="3" y1="6" x2="21" y2="6" stroke-dasharray="2 1"/><line x1="3" y1="11" x2="14" y2="11" stroke-dasharray="2 1"/>
+</g>
+<text x="397" y="980" font-size="12" font-weight="700" fill="#35d0a0">Live Dashboard</text>
+<text x="397" y="997" font-size="9.5" fill="#1f8060">PyQt6 GUI · step + confidence</text>
+<text x="397" y="1012" font-size="9.5" fill="#1f8060">3D body overlay panel</text>
+<text x="397" y="1027" font-size="8.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">real-time · 30fps render</text>
+
+<!-- Structured Log -->
+<rect x="586" y="954" width="220" height="76" rx="9" fill="#061410" stroke="#35d0a0" stroke-width="1.5"/>
+<g transform="translate(601,965)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <rect x="0" y="0" width="20" height="26" rx="2"/>
+  <line x1="3" y1="7" x2="17" y2="7"/><line x1="3" y1="12" x2="17" y2="12"/>
+  <line x1="3" y1="17" x2="12" y2="17"/>
+</g>
+<text x="632" y="980" font-size="12" font-weight="700" fill="#35d0a0">Step Log</text>
+<text x="632" y="997" font-size="9.5" fill="#1f8060">JSONL + text timestamped</text>
+<text x="632" y="1012" font-size="9.5" fill="#1f8060">Step outcomes · errors · skips</text>
+<text x="632" y="1027" font-size="8.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">reproducible from disk</text>
+
+<!-- UDP Stream -->
+<rect x="824" y="954" width="220" height="76" rx="9" fill="#061410" stroke="#35d0a0" stroke-width="1.5"/>
+<g transform="translate(839,968)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <path d="M6,14 Q12,5 18,14"/><path d="M3,18 Q12,2 21,18"/>
+  <circle cx="12" cy="14" r="2.5" fill="#35d0a0" stroke="none"/>
+</g>
+<text x="870" y="980" font-size="12" font-weight="700" fill="#35d0a0">UDP Stream</text>
+<text x="870" y="997" font-size="9.5" fill="#1f8060">ffmpeg → specific ground IP</text>
+<text x="870" y="1012" font-size="9.5" fill="#1f8060">Local-network only · no internet</text>
+<text x="870" y="1027" font-size="8.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">configurable target IP:port</text>
+
+<!-- Recording -->
+<rect x="1062" y="954" width="220" height="76" rx="9" fill="#061410" stroke="#35d0a0" stroke-width="1.5"/>
+<g transform="translate(1077,966)" stroke="#35d0a0" stroke-width="1.5" fill="none">
+  <path d="M0,4 L14,4 L14,20 L0,20 Z"/>
+  <path d="M14,8 L22,4 L22,20 L14,16 Z"/>
+  <circle cx="7" cy="12" r="4"/>
+</g>
+<text x="1108" y="980" font-size="12" font-weight="700" fill="#35d0a0">Recording</text>
+<text x="1108" y="997" font-size="9.5" fill="#1f8060">ffmpeg annotated MP4</text>
+<text x="1108" y="1012" font-size="9.5" fill="#1f8060">Skeleton overlay baked in</text>
+<text x="1108" y="1027" font-size="8.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">local storage · offline</text>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- RIGHT PANEL — INNOVATION CALLOUTS (x 1360+) -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<line x1="1358" y1="58" x2="1358" y2="1044" stroke="#14202e" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="1370" y="75" font-size="9" fill="#2a3a50" font-family="'JetBrains Mono',monospace" font-weight="700">INNOVATIONS vs 22 COMPETITOR REPOS ANALYZED</text>
+
+<!-- Callout 1: Digital twin training data -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="83" width="375" height="110" rx="11" fill="#0e0c22" stroke="#9d8cf5" stroke-width="2"/>
+</g>
+<g transform="translate(1374,92)" fill="#9d8cf5">
+  <polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/>
+</g>
+<text x="1396" y="103" font-size="11" font-weight="800" fill="#c0b0ff" letter-spacing=".03em">✦ INNOVATION 1 — DIGITAL TWIN DATA</text>
+<text x="1373" y="123" font-size="10.5" fill="#9080e0">Blender ISS module renders every orientation: 0°→360° roll,</text>
+<text x="1373" y="140" font-size="10.5" fill="#9080e0">pitch, yaw, every lighting condition. 33 takes, 31,891 frames.</text>
+<text x="1373" y="157" font-size="10.5" fill="#9080e0">Exact 3D ground truth for free — zero manual annotation.</text>
+<text x="1373" y="175" font-size="9.5" fill="#6050c0" font-family="'JetBrains Mono',monospace">vs competitors: upright webcam · 1 angle · 1 lighting</text>
+
+<!-- Callout 2: Custom HMR3D model -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="204" width="375" height="120" rx="11" fill="#0e0c22" stroke="#9d8cf5" stroke-width="2"/>
+</g>
+<g transform="translate(1374,213)" fill="#9d8cf5"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="224" font-size="11" font-weight="800" fill="#c0b0ff" letter-spacing=".03em">✦ INNOVATION 2 — HMR3D SHIPPED, NOT SLIDE-WARE</text>
+<text x="1373" y="244" font-size="10.5" fill="#9080e0">MobileNetV3-Small + regression head · 2.5M params · TRAINED</text>
+<text x="1373" y="261" font-size="10.5" fill="#9080e0">by us on synthetic 3D GT. 33 joints × (x,y,z,vis). Runs live.</text>
+<text x="1373" y="278" font-size="10.5" fill="#9080e0">Beats pretrained ROMP on ALL 8 measured orientations.</text>
+<text x="1373" y="295" font-size="10.5" fill="#9080e0">30° roll: 0.00→0.80 · 180° inverted: 0.60→0.91 ✓</text>
+<text x="1373" y="312" font-size="9.5" fill="#6050c0" font-family="'JetBrains Mono',monospace">vs competitors: "future work" in slides · 0 shipped</text>
+
+<!-- Callout 3: Rack-relative features -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="335" width="375" height="100" rx="11" fill="#060f0c" stroke="#35d0a0" stroke-width="2"/>
+</g>
+<g transform="translate(1374,344)" fill="#35d0a0"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="355" font-size="11" font-weight="800" fill="#35d0a0" letter-spacing=".03em">✦ INNOVATION 3 — RACK-ANCHORED REFERENCE FRAME</text>
+<text x="1373" y="375" font-size="10.5" fill="#20c090">"Box in target zone" requires rack-frame coords to be</text>
+<text x="1373" y="392" font-size="10.5" fill="#20c090">meaningful. Camera-frame OR body-centred frame cannot</text>
+<text x="1373" y="409" font-size="10.5" fill="#20c090">express this when astronaut is inverted. Ours can, always.</text>
+<text x="1373" y="425" font-size="9.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">vs competitors: camera-centred only · fails at any roll</text>
+
+<!-- Callout 4: Entropy gate -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="446" width="375" height="95" rx="11" fill="#120d04" stroke="#ff8a3d" stroke-width="1.8"/>
+</g>
+<g transform="translate(1374,456)" fill="#ff8a3d"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="467" font-size="11" font-weight="800" fill="#ff8a3d" letter-spacing=".03em">✦ INNOVATION 4 — ENTROPY-GATED CONFIRMATION</text>
+<text x="1373" y="487" font-size="10.5" fill="#d08030">Confidence threshold alone can't distinguish a decisive</text>
+<text x="1373" y="504" font-size="10.5" fill="#d08030">call from a coin flip. We gate on Shannon entropy H(p)</text>
+<text x="1373" y="521" font-size="10.5" fill="#d08030">alongside confidence — re-derived for our 9-class problem.</text>
+<text x="1373" y="537" font-size="9.5" fill="#7a5020" font-family="'JetBrains Mono',monospace">vs competitors: simple argmax · no uncertainty aware</text>
+
+<!-- Callout 5: Held-out-by-take evaluation -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="552" width="375" height="95" rx="11" fill="#060f0c" stroke="#35d0a0" stroke-width="1.8"/>
+</g>
+<g transform="translate(1374,562)" fill="#35d0a0"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="573" font-size="11" font-weight="800" fill="#35d0a0" letter-spacing=".03em">✦ INNOVATION 5 — HONEST EVALUATION DISCIPLINE</text>
+<text x="1373" y="593" font-size="10.5" fill="#20c090">Held out by WHOLE TAKE, never by frame. Model can't</text>
+<text x="1373" y="610" font-size="10.5" fill="#20c090">memorise background pixels from same clip. Enforced by</text>
+<text x="1373" y="627" font-size="10.5" fill="#20c090">pytest suite: asserts no take ID in both train + val sets.</text>
+<text x="1373" y="643" font-size="9.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">vs competitors: frame-level split = data leakage = fake acc</text>
+
+<!-- Callout 6: Adaptive HMR scheduler -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="658" width="375" height="95" rx="11" fill="#060f0c" stroke="#35d0a0" stroke-width="1.8"/>
+</g>
+<g transform="translate(1374,668)" fill="#35d0a0"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="679" font-size="11" font-weight="800" fill="#35d0a0" letter-spacing=".03em">✦ INNOVATION 6 — ADAPTIVE HMR SCHEDULING</text>
+<text x="1373" y="699" font-size="10.5" fill="#20c090">HMR3DNet only re-runs when torso angle drifts &gt;15° OR</text>
+<text x="1373" y="716" font-size="10.5" fill="#20c090">1 second since last call. Holding still examining box = 0 cost.</text>
+<text x="1373" y="733" font-size="10.5" fill="#20c090">Crop+rotate upright before inference: right body size for net.</text>
+<text x="1373" y="749" font-size="9.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">EMA smoothed: weight=0.5 · prevents jitter flicker</text>
+
+<!-- Callout 7: Model contract guard -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="763" width="375" height="90" rx="11" fill="#060f0c" stroke="#35d0a0" stroke-width="1.8"/>
+</g>
+<g transform="translate(1374,773)" fill="#35d0a0"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="784" font-size="11" font-weight="800" fill="#35d0a0" letter-spacing=".03em">✦ INNOVATION 7 — MODEL CONTRACT GUARD</text>
+<text x="1373" y="804" font-size="10.5" fill="#20c090">promote_model.py reads feature layout, sample rate, and</text>
+<text x="1373" y="821" font-size="10.5" fill="#20c090">rack-normalisation flag from checkpoint. Refuses to deploy</text>
+<text x="1373" y="838" font-size="10.5" fill="#20c090">if they disagree with the live feature builder. 50-test suite.</text>
+<text x="1373" y="851" font-size="9.5" fill="#1f6050" font-family="'JetBrains Mono',monospace">vs competitors: no deployment gate · silent accuracy death</text>
+
+<!-- Callout 8: Latency / GPU -->
+<g filter="url(#dsbig)">
+  <rect x="1365" y="863" width="375" height="90" rx="11" fill="#120d04" stroke="#ff8a3d" stroke-width="1.8"/>
+</g>
+<g transform="translate(1374,873)" fill="#ff8a3d"><polygon points="8,0 10,6 16,8 10,10 8,16 6,10 0,8 6,6"/></g>
+<text x="1396" y="884" font-size="11" font-weight="800" fill="#ff8a3d" letter-spacing=".03em">✦ GPU LATENCY · COMPETITOR COMPARISON</text>
+<text x="1373" y="904" font-size="10.5" fill="#d08030">Our pipeline: &lt;60ms/frame on RTX3050 · LSTM 2ms · YOLO 6ms</text>
+<text x="1373" y="921" font-size="10.5" fill="#d08030">Competitors (CPU YOLO+XGBoost): ~200–300ms/frame</text>
+<text x="1373" y="938" font-size="10.5" fill="#d08030">XGBoost is stateless — can't detect step skip/wrong order.</text>
+<text x="1373" y="951" font-size="9.5" fill="#7a5020" font-family="'JetBrains Mono',monospace">LSTM has 3-sec memory · stateless = fundamental failure</text>
+
+<!-- ═══ FOOTER ═══ -->
+<rect x="0" y="1044" width="1760" height="36" fill="#050709"/>
+<text x="120" y="1067" font-size="10" fill="#2a3a50" font-family="'JetBrains Mono',monospace">SIH 2026 · PS 26174 · Bharatiya Antariksh Station HAR · Team BAS-HAR</text>
+<text x="1640" y="1067" text-anchor="end" font-size="10" fill="#2a3a50" font-family="'JetBrains Mono',monospace">Fully offline · GPU-accelerated · &lt;60ms · 0 network calls at runtime</text>
+
+</svg>
+</div>
+
+<script>
+// Click to fullscreen
+document.querySelector('svg').addEventListener('dblclick', () => {
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.querySelector('.wrap').requestFullscreen?.();
+});
+</script>
+</body>
+</html>

@@ -41,7 +41,7 @@ from config.experiment_config import (
     STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES,
     MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
     POSE_INPUT_WIDTH, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
-    RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND,
+    RACK_FRAME_NORMALIZE, RACK_ANGLE_EMA, RACK_SCALE_EMA, HMR_BACKEND, DETECTOR_BACKEND,
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
     UPRIGHT_POSE, UPRIGHT_POSE_MIN_SCORE, SAMPLE_EVERY, FEATURE_LAYOUT,
 )
@@ -53,6 +53,20 @@ from pipeline.state_machine import ExperimentStateMachine, StepRecord
 from pipeline.voice_alert import VoiceAlertSystem
 from pipeline.logger import ExperimentLogger
 from pipeline.hsv_detector import HSVBoxDetector, Detection
+
+
+def _make_box_detector(frame_width: int, frame_height: int):
+    """DETECTOR_BACKEND switch - same Detection interface either way (see
+    pipeline/yolo_detector.py's module docstring). Missing YOLO weights fall
+    back to HSV rather than crash the whole pipeline: a working, low-recall
+    detector beats no detector while a model is mid-training."""
+    if DETECTOR_BACKEND == "yolo":
+        try:
+            from pipeline.yolo_detector import YOLOBoxDetector
+            return YOLOBoxDetector(frame_width=frame_width, frame_height=frame_height)
+        except Exception as e:
+            logger.warning("DETECTOR_BACKEND='yolo' unavailable (%s); falling back to HSV.", e)
+    return HSVBoxDetector(frame_width=frame_width, frame_height=frame_height)
 from pipeline.stream_sender import NetworkStreamer
 
 logger = logging.getLogger(__name__)
@@ -337,10 +351,7 @@ class HARPipeline:
         self.state_machine  = ExperimentStateMachine()
         self.voice          = VoiceAlertSystem(enabled=voice_on)
         self.exp_logger     = ExperimentLogger()
-        self.hsv_detector   = HSVBoxDetector(
-            frame_width=FRAME_WIDTH,
-            frame_height=FRAME_HEIGHT,
-        )
+        self.hsv_detector   = _make_box_detector(FRAME_WIDTH, FRAME_HEIGHT)
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
@@ -628,14 +639,16 @@ class HARPipeline:
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
-    def _run_lstm_inference(self) -> tuple[int, float]:
+    def _run_lstm_inference(self) -> tuple[int, float, float]:
         """
         Run LSTM on current skeleton buffer.
-        Returns (predicted_step_id, confidence).
-        Prefers ONNX Runtime for speed.
+        Returns (predicted_step_id, confidence, entropy). entropy is the
+        Shannon entropy (nats) of the full softmax - see config.STEP_ENTROPY_MAX
+        for why this rides alongside the scalar confidence rather than
+        replacing it. Prefers ONNX Runtime for speed.
         """
         if not self.skeleton_buffer.full:
-            return 0, 0.0
+            return 0, 0.0, 0.0
 
         seq = self.skeleton_buffer.array()                   # (T, features)
         x = seq[np.newaxis, ...].astype(np.float32)          # (1, T, features)
@@ -650,11 +663,11 @@ class HARPipeline:
             step_id = self._lstm_label_map.get(cls_idx, cls_idx + 1)
             if isinstance(step_id, str):
                 step_id = int(step_id)
-            return int(step_id), conf
+            return int(step_id), conf, self._entropy(probs)
 
         # ── PyTorch fallback ─────────────────────────────────
         if self.lstm_model is None:
-            return 0, 0.0
+            return 0, 0.0, 0.0
 
         x_t = torch.from_numpy(x)
         with torch.no_grad():
@@ -663,17 +676,27 @@ class HARPipeline:
             conf, cls_idx = probs.max(0)
             conf = conf.item()
             cls_idx = cls_idx.item()
+            entropy = self._entropy(probs.cpu().numpy())
 
         step_id = self._lstm_label_map.get(cls_idx, cls_idx + 1)
         if isinstance(step_id, str):
             step_id = int(step_id)
-        return int(step_id), conf
+        return int(step_id), conf, entropy
 
     @staticmethod
     def _softmax(x):
         """NumPy softmax for ONNX path."""
         e = np.exp(x - np.max(x))
         return e / e.sum()
+
+    @staticmethod
+    def _entropy(probs) -> float:
+        """Shannon entropy in nats. 0.0 for a one-hot distribution, ln(N) for
+        uniform over N classes. eps guards log(0) on a hard 0/1 probability
+        (float softmax output can round exactly to 0.0)."""
+        p = np.asarray(probs, dtype=np.float64)
+        eps = 1e-12
+        return float(-np.sum(p * np.log(p + eps)))
 
     # ── Optional CNN ensemble signal (off by default, see config) ───────────
 
@@ -765,10 +788,10 @@ class HARPipeline:
         HUD/GUI display — when uncertain, this is the LSTM's own raw result
         (for display continuity only; the state machine was not fed).
         """
-        lstm_step, lstm_conf = self._run_lstm_inference()
+        lstm_step, lstm_conf, lstm_entropy = self._run_lstm_inference()
 
         if not self.enable_cnn_ensemble or len(self.frame_stack_buffer) < CNN_NUM_FRAMES_IN:
-            self.state_machine.feed_prediction(lstm_step, lstm_conf)
+            self.state_machine.feed_prediction(lstm_step, lstm_conf, entropy=lstm_entropy)
             return lstm_step, lstm_conf
 
         cnn_step, cnn_conf = self._run_cnn_inference()
@@ -975,6 +998,8 @@ class HARPipeline:
         self._times.clear()
         if self.mp_wrapper is not None:
             self.mp_wrapper.reset()       # re-latch the upright working angle
+        if self.hmr is not None:
+            self.hmr.reset()              # drop the tracked body and the reused ROMP result
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
