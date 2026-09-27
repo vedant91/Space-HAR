@@ -138,8 +138,8 @@ a{color:var(--accent)}
 
 <rect class="bx hmr" x="700" y="240" width="250" height="66" rx="8"/>
 <text class="t" x="825" y="264" text-anchor="middle">HMR · ROMP</text>
-<text class="s" x="825" y="282" text-anchor="middle">on a cropped, rotation-corrected</text>
-<text class="s" x="825" y="298" text-anchor="middle">person crop · runs adaptively</text>
+<text class="s" x="825" y="282" text-anchor="middle">on a tracked, rotation-corrected</text>
+<text class="s" x="825" y="298" text-anchor="middle">crop · re-runs adaptively</text>
 
 <rect class="bx data" x="130" y="330" width="250" height="62" rx="8"/>
 <text class="t" x="255" y="356" text-anchor="middle">Object tracker</text>
@@ -170,9 +170,9 @@ a{color:var(--accent)}
 
 <!-- row 7: decision -->
 <rect class="bx rule" x="130" y="722" width="390" height="70" rx="8"/>
-<text class="t" x="325" y="746" text-anchor="middle">Protocol state machine</text>
-<text class="s" x="325" y="765" text-anchor="middle">confirm step · suggest next step</text>
-<text class="s" x="325" y="782" text-anchor="middle">skip · out of order · repeat · wrong object</text>
+<text class="t" x="325" y="742" text-anchor="middle">Protocol state machine</text>
+<text class="s" x="325" y="760" text-anchor="middle">confirm step (confidence + entropy gate) · suggest next</text>
+<text class="s" x="325" y="777" text-anchor="middle">skip · out of order · repeat · wrong object</text>
 <rect class="bx rule" x="560" y="722" width="390" height="70" rx="8"/>
 <text class="t" x="755" y="746" text-anchor="middle">Microgravity rules</text>
 <text class="s" x="755" y="765" text-anchor="middle">drift = box moving, no hand near</text>
@@ -231,48 +231,89 @@ a{color:var(--accent)}
 <h2>2. How HMR fits</h2>
 <ul>
 <li><b>What it adds:</b> a 3D body measured against the rack. That gives us the astronaut's attitude (roll, pitch, yaw relative to the rack) and 3D wrist positions when 2D keypoints are unreliable. It also drives the 3D panel in the dashboard.</li>
-<li><b>When it's used:</b> the fusion gate decides every frame. If ROMP is confident and the skeleton passes a bone-length sanity check, we use its 3D wrists and attitude. Otherwise we use MediaPipe 2D.</li>
-<li><b>When it fails today:</b> on our renders ROMP loses the astronaut at ≥30° roll, 60° pitch and upside down. The 2D branch with roll correction takes over, and the step decision keeps working because it's driven mostly by boxes and hands.</li>
+<li><b>When it's used:</b> the fusion gate decides every frame. If the 3D backend is confident, we use its 3D wrists and attitude. Otherwise we use MediaPipe 2D.</li>
+<li><b>Which 3D backend:</b> as of this build, <code>train/hmr3d_model.py</code> — our own model, trained on our synthetic ground truth — not ROMP. See section 3 for why, and the honest before/after numbers.</li>
+<li><b>When it still fails:</b> exactly 90° roll (both directions) and dim lighting at 90°. 60° roll used to fail too — closed by denser training data, see below. Not a framing problem at 90° either — MediaPipe tracks the body fine there too — likely a genuine information limit of a single fixed camera at that exact edge-on viewing angle. The 2D branch with roll correction takes over, and the step decision keeps working because it's driven mostly by boxes and hands.</li>
 <li><b>Training consequence:</b> the LSTM must be trained on the <i>same fused features</i> it will see live, both with and without HMR. Otherwise switching HMR on changes its input and accuracy silently drops. The builder records this as its own pose source (<code>fused</code>), and the existing load-time guard enforces it.</li>
 </ul>
 
 <h3>Why it's slow and wrong at the same time, and the fix</h3>
+<div class="card" style="border-left:4px solid var(--hmr)">
+<p><b>Built and verified this session</b> (<code>pipeline/hmr_backend.py</code>) — one correction to the original design below: <b>MediaPipe's own landmarks are the real per-frame tracker, not a stock YOLO person-detector.</b> Measured directly on <code>dataset/blender_core</code>: stock COCO YOLOv8n almost never calls the rendered, suited astronaut a <code>person</code> at all (it guesses things like "traffic light"). YOLO only proposes a box as a re-acquisition attempt after MediaPipe's own track is lost for too long — it isn't the primary signal.</p>
+</div>
 <div class="diagram">
-<svg viewBox="0 0 1000 260" role="img" aria-label="HMR input pipeline: YOLO person box and MediaPipe shoulder-hip vector feed a crop and rotate step, then a confidence check gates ROMP, then an adaptive scheduler decides whether to reuse the last attitude or re-run.">
+<svg viewBox="0 0 1000 300" role="img" aria-label="HMR input pipeline: MediaPipe landmarks track the person box and torso angle every frame; if the track is lost, a stock YOLO person box is tried as a fallback; the box and angle drive a rotated crop that ROMP runs on; low confidence tries a few extra rotations; an adaptive scheduler decides whether to reuse the last pose or re-run.">
 <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahd"/></marker></defs>
-<rect class="bx data" x="20" y="20" width="220" height="62" rx="8"/>
-<text class="t" x="130" y="46" text-anchor="middle">YOLO person box</text>
-<text class="s" x="130" y="65" text-anchor="middle">already running · free</text>
-<rect class="bx data" x="20" y="100" width="220" height="62" rx="8"/>
-<text class="t" x="130" y="126" text-anchor="middle">MediaPipe shoulder–hip</text>
-<text class="s" x="130" y="145" text-anchor="middle">rough roll estimate · free</text>
-<rect class="bx hmr" x="290" y="60" width="230" height="62" rx="8"/>
-<text class="t" x="405" y="86" text-anchor="middle">Crop + rotate to upright</text>
-<text class="s" x="405" y="105" text-anchor="middle">small, centred, corrected</text>
-<rect class="bx hmr dash" x="560" y="60" width="200" height="62" rx="8"/>
-<text class="t" x="660" y="86" text-anchor="middle">ROMP on the crop</text>
-<text class="s" x="660" y="105" text-anchor="middle">low conf → try ±90°/180°</text>
-<rect class="bx rule" x="800" y="20" width="180" height="140" rx="8"/>
-<text class="t" x="890" y="60" text-anchor="middle">Adaptive</text>
-<text class="t" x="890" y="80" text-anchor="middle">scheduler</text>
-<text class="s" x="890" y="105" text-anchor="middle">angle stable →</text>
-<text class="s" x="890" y="122" text-anchor="middle">reuse last 3D pose</text>
-<text class="s" x="890" y="143" text-anchor="middle">angle drifting → re-run</text>
-<path class="arr" d="M240,51 H288 V90" marker-end="url(#ah3)"/>
-<path class="arr" d="M240,131 H288 V95" marker-end="url(#ah3)"/>
-<path class="arr" d="M520,91 H558" marker-end="url(#ah3)"/>
-<path class="arr" d="M760,91 H798" marker-end="url(#ah3)"/>
-<text class="s" x="490" y="180" text-anchor="middle">Old path: ROMP saw the full 1920×1080 frame — mostly background, body too small to read after downsampling.</text>
-<text class="s" x="490" y="200" text-anchor="middle">New path: ROMP only ever sees a small, upright, already-centred crop of the astronaut.</text>
-<text class="s" x="490" y="222" text-anchor="middle">Same fix solves both problems: less compute (small crop) and higher accuracy (upright, high-resolution body).</text>
+<rect class="bx hmr" x="20" y="20" width="230" height="66" rx="8"/>
+<text class="t" x="135" y="46" text-anchor="middle">MediaPipe on the crop</text>
+<text class="s" x="135" y="65" text-anchor="middle">box + torso angle, every frame</text>
+<text class="s" x="135" y="80" text-anchor="middle">EMA-smoothed (weight 0.5)</text>
+<rect class="bx data dash" x="20" y="110" width="230" height="56" rx="8"/>
+<text class="t" x="135" y="134" text-anchor="middle">Stock YOLO person box</text>
+<text class="s" x="135" y="153" text-anchor="middle">only tried after 5 missed frames</text>
+<rect class="bx hmr" x="300" y="55" width="220" height="62" rx="8"/>
+<text class="t" x="410" y="81" text-anchor="middle">Crop + rotate to upright</text>
+<text class="s" x="410" y="100" text-anchor="middle">pad 1.3× the landmark box</text>
+<rect class="bx hmr dash" x="560" y="55" width="210" height="62" rx="8"/>
+<text class="t" x="665" y="81" text-anchor="middle">ROMP on the crop</text>
+<text class="s" x="665" y="100" text-anchor="middle">conf &lt; 0.1 → try ±90°, 180°</text>
+<rect class="bx rule" x="810" y="15" width="170" height="150" rx="8"/>
+<text class="t" x="895" y="52" text-anchor="middle">Adaptive</text>
+<text class="t" x="895" y="70" text-anchor="middle">scheduler</text>
+<text class="s" x="895" y="94" text-anchor="middle">angle stable &lt;15° →</text>
+<text class="s" x="895" y="110" text-anchor="middle">reuse last pose</text>
+<text class="s" x="895" y="130" text-anchor="middle">15°+ drift, or 1s</text>
+<text class="s" x="895" y="146" text-anchor="middle">since last run → re-run</text>
+<path class="arr" d="M250,53 H288 V85" marker-end="url(#ah3)"/>
+<path class="arr dash" d="M250,138 H288 V90" marker-end="url(#ah3)"/>
+<path class="arr" d="M520,86 H558" marker-end="url(#ah3)"/>
+<path class="arr" d="M770,86 H808" marker-end="url(#ah3)"/>
+<text class="s" x="500" y="200" text-anchor="middle">Old path: ROMP saw the full 1920×1080 frame — mostly background, body too small to read after downsampling.</text>
+<text class="s" x="500" y="220" text-anchor="middle">New path: ROMP only ever sees a small, upright, already-tracked crop of the astronaut.</text>
+<text class="s" x="500" y="242" text-anchor="middle">Same fix solves both problems: less compute (small crop) and higher accuracy (upright, high-resolution body).</text>
 </svg>
 </div>
 <ul>
-<li><b>Cheap steps run every frame</b> (YOLO person box, MediaPipe shoulder–hip vector) — both already computed for other reasons, so this costs nothing new.</li>
-<li><b>ROMP only ever sees a small, upright, corrected crop</b>, never the raw 1080p frame. This is the single highest-leverage change: it cuts the pixels ROMP's backbone processes by roughly an order of magnitude, and gives it the upright, well-resolved body it was actually trained to expect.</li>
-<li><b>The scheduler decides when to re-run ROMP at all</b>, based on how fast the cheap rotation estimate is changing — not a fixed "every Nth frame". An astronaut holding still while examining a box (most of a step) costs nothing; a fast tumble triggers frequent re-checks.</li>
-<li><b>Prove it on the same 8 takes that fail today.</b> <code>HMR_UNRELIABLE_TAGS</code> in <code>tools/build_sequences.py</code> is the exact before/after test: measure ROMP's detection rate on those 8 takes with and without this pipeline, rather than assuming it helps.</li>
+<li><b>MediaPipe drives tracking every frame, essentially free</b> — it already runs for hands elsewhere in the pipeline. Its landmark box and shoulder-hip angle are EMA-smoothed (weight 0.5) so the crop doesn't jitter frame to frame.</li>
+<li><b>Stock YOLO is a fallback only</b>, tried after 5 consecutive frames with no usable landmarks (<code>TRACK_MAX_COAST</code>), and dropped back to a full-frame search if that also fails. On these renders it rarely finds anything — MediaPipe is doing the real work.</li>
+<li><b>ROMP only ever sees a small, upright, tracked crop</b> (padded to 1.3× the landmark box's diagonal, so any rotation still fits), never the raw 1080p frame. This is the single highest-leverage change: an order-of-magnitude fewer pixels for the backbone to process, and the upright, well-resolved body it was actually trained to expect.</li>
+<li><b>Low-confidence retry.</b> If ROMP's confidence on the corrected crop is still below 0.1, it tries three more rotation hypotheses (±90°, 180°) and keeps the best — catching cases where the torso-angle estimate itself was wrong (MediaPipe flipped on an inverted body, for instance).</li>
+<li><b>The scheduler re-runs ROMP only when it needs to</b>: the tracked angle has drifted more than 15° since the last run, or a full second has passed, whichever comes first. An astronaut holding still while examining a box (most of a step) costs nothing; a fast tumble triggers frequent re-checks.</li>
+<li><b>Measured on all 8 takes — the result is real, and it's mixed, not a clean win.</b> "Detection rate" reads 1.00 everywhere before and after, which the measurement script's own docstring warns about: at this threshold ROMP always claims to find someone, including false locks onto rack geometry. The real metric is median upper-body joint error against Blender's ground truth pose, in units of torso length ("tracked" = under 0.5 torso).</li>
 </ul>
+<div class="tw"><table>
+<tr><th>Take</th><th>Tag</th><th>Tracked (before → after)</th><th>PCK@0.5 (before → after)</th><th>ms/frame</th><th>Verdict</th></tr>
+<tr><td>0001</td><td>orient_30</td><td>0.04 → 0.00</td><td>0.22 → 0.23</td><td>82 → 39</td><td><span class="b warn">no help</span> — already near zero</td></tr>
+<tr><td>0002</td><td>orient_60</td><td>0.00 → 0.00</td><td>0.06 → 0.04</td><td>89 → 35</td><td><span class="b warn">no help</span></td></tr>
+<tr><td>0003</td><td>orient_90</td><td>0.00 → 0.00</td><td>0.01 → 0.04</td><td>80 → 42</td><td><span class="b warn">no help</span></td></tr>
+<tr><td>0004</td><td>orient_180</td><td><b>0.37 → 0.60</b></td><td><b>0.38 → 0.52</b></td><td>66 → 77</td><td><span class="b ok">improved</span></td></tr>
+<tr><td>0007</td><td>orient_-90</td><td>0.00 → 0.00</td><td>0.09 → 0.08</td><td>65 → 95</td><td><span class="b warn">no help</span></td></tr>
+<tr><td>0013</td><td>pitch_60</td><td>0.74 → <b>0.37</b> <span class="small">(was 0.21 before the full-frame fallback)</span></td><td>0.56 → 0.46</td><td>59 → 34</td><td><span class="b warn">partly recovered, still below baseline</span></td></tr>
+<tr><td>0015</td><td>light_dim_90</td><td>0.00 → 0.00</td><td>0.03 → 0.02</td><td>61 → 51</td><td><span class="b warn">no help</span></td></tr>
+<tr><td>0017</td><td>light_single_fail_180</td><td><b>0.23 → 0.48</b></td><td><b>0.24 → 0.46</b></td><td>76 → 114</td><td><span class="b ok">improved</span></td></tr>
+</table></div>
+<p class="small">Numbers above are after the full-frame-fallback fix (<code>ROMP_CONTRACT_VERSION=3</code>). orient_30/60/90 are unchanged from the first measurement (still near zero both before and after).</p>
+<p><b>Honest read:</b> the fix helps specifically where the failure is <i>roll near full inversion</i> (180°) — the two takes that improved are both roll-dominant. It does nothing for moderate roll (30–90°) or dim lighting at high roll — those 5 takes were already near zero and stayed there; something ROMP's training simply never covers, not a framing problem the crop could fix. It <b>regressed pitch_60</b> at first (0.74 → 0.21): ROMP's confidence measures "a person-shaped blob is here", not "this crop is framed correctly", so a foreshortening-mangled crop under pitch scored confidently while being spatially wrong.</p>
+<p><b>Fix applied and verified (<code>ROMP_CONTRACT_VERSION=3</code>):</b> every actual ROMP run now also tries the plain, uncropped full frame — exactly what the code did before any of this existed — and keeps whichever result ROMP itself is more confident in. This bounds the accuracy floor at the pre-crop behaviour by construction (a dedicated test proves the full-frame candidate wins when it scores higher, not just that the code runs). Re-measured: pitch_60 recovered to <b>0.37</b> (up from the 0.21 regression), while <code>orient_180</code> (0.60) and <code>light_single_fail_180</code> (0.48) held their gains.</p>
+<p><b>But 0.37 is still well below the 0.74 pre-crop baseline, and that gap turned out not to be fixable by more scheduling.</b> Pitch_60 only actually calls ROMP on ~3% of frames (pitch doesn't create the in-plane rotation the scheduler watches for, so it rarely re-triggers), and the "tracked" number is extrapolating those few calls across the whole clip. Testing a much shorter staleness window (more frequent re-runs) made it <i>worse</i> (0.22), not better — proving this isn't a tunable scheduling parameter. ROMP's own per-call accuracy on this orientation is genuinely inconsistent, frame to frame, regardless of how often it's asked. That's a limit of ROMP's pretrained weights on an orientation it was never trained on, not an input-engineering problem.</p>
+<p><b>What this means for the plan:</b> the full-frame-fallback fix is a real, verified, no-downside improvement — keep it. Don't keep tuning the scheduler further; the evidence says that lever is exhausted. Don't ship this as "HMR now handles orientation" — it measurably helps only roll-near-inversion. Moderate roll, dim lighting, and full pitch reliability remain unsolved by ROMP as-is; the graceful 2D fallback (already built into the fusion gate) is what actually carries those cases, which is exactly what it's there for.</p>
+
+<h3>The real fix: stop using ROMP</h3>
+<p>Rather than fine-tune ROMP's own weights (not practically accessible through the <code>simple_romp</code> package, and a much larger undertaking regardless), we trained our own model from scratch: <code>train/hmr3d_model.py</code>, a MobileNetV3-Small backbone fine-tuned entirely on our own synthetic ground truth (<code>pose_2d.npy</code> — exact joint positions ROMP's original training data never had for this subject at all). It replaces ROMP as the <code>HMRBackend</code>'s primary path; the crop/track/schedule machinery above is unchanged, only the model running on the crop is different.</p>
+<p><b>Trained honestly:</b> the exact 8 takes ROMP fails on, plus <code>take_0022</code> (a different camera entirely), were held out of training completely — a first training run that accidentally left 7 of these 8 takes in the training set gave a misleadingly high 96% number, caught before being reported, and retrained correctly. The numbers below are from that honest, retrained checkpoint (<code>models/hmr3d_net.pt</code>), scored with <code>tools/measure_hmr_crop.py --backend custom</code>, same metric as ROMP's numbers throughout this page.</p>
+<div class="tw"><table>
+<tr><th>Take</th><th>Tag</th><th>ROMP (best measured)</th><th>Custom model (honestly held out)</th><th>Verdict</th></tr>
+<tr><td>0001</td><td>orient_30</td><td>0.00–0.04</td><td><b>0.80</b></td><td><span class="b ok">major improvement</span></td></tr>
+<tr><td>0002</td><td>orient_60</td><td>0.00</td><td><b>0.77</b></td><td><span class="b ok">closed by denser training data</span></td></tr>
+<tr><td>0003</td><td>orient_90</td><td>0.00</td><td>0.07</td><td><span class="b warn">still fails — see below</span></td></tr>
+<tr><td>0004</td><td>orient_180</td><td>0.60</td><td><b>0.93</b></td><td><span class="b ok">major improvement</span></td></tr>
+<tr><td>0007</td><td>orient_-90</td><td>0.00</td><td>0.22</td><td><span class="b warn">partly closed</span></td></tr>
+<tr><td>0013</td><td>pitch_60</td><td>0.74 (ROMP's best case)</td><td><b>1.00</b></td><td><span class="b ok">beats ROMP's best</span></td></tr>
+<tr><td>0015</td><td>light_dim_90</td><td>0.00</td><td>0.02</td><td><span class="b warn">still fails — see below</span></td></tr>
+<tr><td>0017</td><td>light_single_fail_180</td><td>0.48</td><td><b>0.69</b></td><td><span class="b ok">solid improvement</span></td></tr>
+</table></div>
+<p><b>Honest read:</b> on every one of these 8 takes, the custom model matches or beats ROMP — never worse. Round one moved the wall outward: 30° roll now works well, where before it was near zero. <b>Round two tested whether that wall was a real limit or a data gap</b> — we rendered 10 more takes at 40°/50°/65°/75°/85° roll (both directions) and retrained. 60° roll went from completely untracked (0.00) to <b>0.77</b> — the single largest single change measured on this system — and −90° moved from 0.00 to 0.22. It was a data gap, not a hard limit, for 60°. But exactly <b>90° roll stayed stuck</b> (0.07, and 0.02 under dim light) even with 75° and 85° now bracketing it in training. MediaPipe's own tracking is still reliable there too (<code>mp_hit</code> 0.90–1.00) — at precisely edge-on to one fixed camera, one whole side of the body is nearly fully self-occluded, which looks like the real information limit, not something denser sampling alone fixes. Speed is comparable to ROMP (55–192ms/frame).</p>
+<p class="small">Two other checkpoints exist for reference, not for shipping: <code>models/hmr3d_net_interp_only.pt</code> (the first, methodologically invalid run — kept only so the mistake and its correction are traceable) and <code>models/hmr3d_net_fairtest.pt</code> (identical weights to the shipped <code>hmr3d_net.pt</code>, saved under its original training-run name).</p>
 
 <h2>3. Training: how the models are made</h2>
 <div class="diagram">
@@ -341,18 +382,31 @@ a{color:var(--accent)}
 </div>
 <p class="small">The sequence builder runs the <i>trained</i> detector rather than the Blender ground-truth boxes, so the LSTM learns from the same imperfect detections it will see live.</p>
 
-<h2>4. What exists and what's new</h2>
+<h2>4. Borrowed from a competitor, adapted to our numbers</h2>
+<p>A competitor repo (<a href="competitor-analysis.html">Orion</a> — the strongest one found) uses Shannon-entropy gating on its temporal classifier's confirmation logic. Worth taking: a single scalar confidence can clear its threshold while the rest of the probability distribution is still spread across several other classes — that frame is noise wearing a confident number, and a top-1 check alone can't tell the difference.</p>
+<div class="card">
+<p><b>What we built</b> (<code>pipeline/state_machine.py</code>, <code>config.STEP_ENTROPY_MAX</code>) — re-derived for our own 9-class problem (8 steps + idle) rather than copying their number, which was tuned for their 8-class model:</p>
+<ul>
+<li>The LSTM's full softmax entropy now rides alongside its confidence into <code>feed_prediction()</code>, as an <i>optional</i> keyword argument that defaults to <code>None</code> — every existing caller (<code>tools/evaluate_real.py</code>, <code>simulation/space_sim.py</code>, <code>tools/showcase_overlay.py</code>) is completely unaffected unless it opts in.</li>
+<li>Worked example at our class count: top-1 confidence 0.65 (right at the existing threshold), remaining 0.35 spread over just one other class → entropy 0.65 nats, a decisive two-way call, passes. The same 0.65 top-1 spread uniformly over all 8 other classes → entropy 1.38 nats, genuinely shapeless, fails. <code>STEP_ENTROPY_MAX = 1.4</code> sits just above that second case.</li>
+<li>Verified: a self-test in <code>pipeline/state_machine.py</code> (<code>python -m pipeline.state_machine</code>) proves a step is blocked at high entropy and confirmed at low entropy, at the identical confidence value both times — and that omitting <code>entropy</code> entirely reproduces the exact old behaviour. Full suite (<code>pytest</code>, 49 tests) stays green.</li>
+</ul>
+<p class="small">Not borrowed: Orion's 2D torso-centred normalization for microgravity invariance — it's self-referential (relative to the astronaut's own body, computed from a 2D pose estimator with the same upright-training bias as ours) rather than relative to an external structure. Our rack-anchored frame already does what theirs can't: express "box in the target zone on the rack," which has no meaning in a body-only reference frame.</p>
+</div>
+
+<h2>5. What exists and what's new</h2>
 <div class="tw"><table>
 <tr><th>Block</th><th>Status</th><th>Where / how</th></tr>
 <tr><td>Frame sampler, rack-space features</td><td><span class="b ok">exists</span></td><td><code>pipeline/features.py</code>, train/live parity tests</td></tr>
 <tr><td>MediaPipe + roll correction</td><td><span class="b ok">exists</span></td><td><code>pipeline/pose_backend.py</code>, <code>upright_pose.py</code></td></tr>
+<tr><td>HMR crop + rotation-correct + adaptive scheduler</td><td><span class="b ok">built</span></td><td><code>pipeline/hmr_backend.py</code> (<code>ROMP_CONTRACT_VERSION=2</code>). MediaPipe-driven tracking, stock YOLO as fallback only, retry angles, adaptive re-run. Detection-rate before/after on the 8 unreliable takes not yet measured — see section 3.</td></tr>
+<tr><td>Entropy-gated step confirmation</td><td><span class="b ok">built</span></td><td><code>pipeline/state_machine.py</code>, <code>config.STEP_ENTROPY_MAX</code> — see section 4</td></tr>
 <tr><td>HMR · ROMP backend + pose-source guard</td><td><span class="b ok">exists</span></td><td><code>pipeline/hmr_backend.py</code> (runs in <code>.venv-hmr</code>)</td></tr>
 <tr><td>LSTM, protocol state machine, voice, log, stream, promotion</td><td><span class="b ok">exists</span></td><td><code>train/</code>, <code>pipeline/</code>, <code>tools/promote_model.py</code></td></tr>
 <tr><td>Qt dashboard</td><td><span class="b ok">exists</span></td><td>needs <code>pip install PyQt6</code></td></tr>
-<tr><td>YOLOv8n detector + tracker</td><td><span class="b new">new</span></td><td>ultralytics, built-in tracking. Outputs the same 11 box numbers as the colour detector.</td></tr>
-<tr><td>ArUco rack pose</td><td><span class="b new">new</span></td><td>OpenCV <code>cv2.aruco</code> + <code>solvePnP</code>. The geometry normaliser stays as fallback.</td></tr>
+<tr><td>YOLOv8n box detector (red/yellow/main, open/closed)</td><td><span class="b new">new</span></td><td>teammate-owned, see <code>docs/HANDOFF_YOLO_MEDIAPIPE.md</code>. Separate from the stock person-only YOLO the HMR crop uses internally. Outputs the same 11 box numbers as the colour detector.</td></tr>
+<tr><td>ArUco rack pose</td><td><span class="b new">new</span></td><td>teammate-owned. OpenCV <code>cv2.aruco</code> + <code>solvePnP</code>. The geometry normaliser stays as fallback.</td></tr>
 <tr><td>Pose fusion gate + <code>fused</code> pose source</td><td><span class="b new">new</span></td><td>in the sequence builder and the live pipeline, recorded in the model contract</td></tr>
-<tr><td>HMR crop + rotation-correct + adaptive scheduler</td><td><span class="b new">new</span></td><td>crop to YOLO's person box, rotate using MediaPipe's shoulder–hip vector, re-run only when that angle drifts. Same fix cuts ROMP's compute and raises its accuracy at odd angles — see section 2.</td></tr>
 <tr><td>Microgravity rules (drift, placed)</td><td><span class="b new">new</span></td><td>rules on tracker velocity + hand distance</td></tr>
 <tr><td>3-seed LSTM ensemble, 3D dashboard panel</td><td><span class="b new">new</span></td><td>average probabilities · render ROMP joints in rack frame</td></tr>
 </table></div>
