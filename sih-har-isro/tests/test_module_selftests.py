@@ -17,6 +17,13 @@ def test_rack_frame_selftest():
     rack_frame_selftest()
 
 
+def test_hmr_backend_selftest():
+    # ROMP contract, pose-source guard, crop geometry, tracker + scheduler
+    # (MediaPipe / ROMP / YOLO faked: runs without .venv-hmr).
+    from pipeline.hmr_backend import _selftest
+    _selftest()
+
+
 def test_upright_pose_smoke():
     import numpy as np
     from pipeline.upright_pose import UprightPoseEstimator, FEATURE_DIM

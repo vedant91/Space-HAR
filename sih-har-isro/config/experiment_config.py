@@ -152,6 +152,13 @@ UPRIGHT_POSE_MIN_SCORE = 0.55   # mean visibility over torso+arms to accept an a
 # package (pip install hmr2 / wham) and fall back to MediaPipe if unavailable.
 HMR_BACKEND = "none"
 
+# Box detector: "hsv" = colour-threshold (pipeline/hsv_detector.py, zero
+# training, ~0.12-0.15 recall on yellow); "yolo" = trained detector
+# (pipeline/yolo_detector.py, models/yolo_boxes.pt from
+# train/train_yolo_boxes.py). Same Detection interface either way - every
+# caller constructs whichever this says and nothing else changes.
+DETECTOR_BACKEND = "yolo"
+
 
 # ── Streaming Settings ────────────────────────────────────────
 STREAM_HOST = "0.0.0.0"
@@ -165,9 +172,13 @@ MODEL_DIR = "models"
 CNN_MODEL_PATH = os.path.join(MODEL_DIR, "activity_cnn.pt")
 CNN_ONNX_PATH  = os.path.join(MODEL_DIR, "activity_cnn.onnx")
 # LSTM over MediaPipe skeletons (trained from scratch)
-LSTM_PATH = os.path.join(MODEL_DIR, "lstm_classifier.pt")
+# lstm_classifier.pt is the stale pre-object-features checkpoint (132-dim,
+# val_acc=1.0 from a leaky split - this is the "shipped model is at chance"
+# one). lstm_blender_core.pt is the honest by-take-split retrain on the
+# current 143-dim pose+object contract (val_acc=0.73).
+LSTM_PATH = os.path.join(MODEL_DIR, "lstm_blender_core.pt")
 LSTM_ONNX_PATH = os.path.join(MODEL_DIR, "lstm_classifier.onnx")  # ONNX for CPU inference
-# No YOLOv8 — object detection uses HSV color segmentation (no training needed)
+# DETECTOR_BACKEND below picks HSV vs the trained YOLOv8 box detector.
 
 # ── LSTM / Sequence Settings ──────────────────────────────────
 SEQUENCE_WINDOW = 30        # Samples per LSTM input window
@@ -207,6 +218,24 @@ NUM_STEPS = len(EXPERIMENT_STEPS) + 1  # +1 for "idle/unknown"
 # processing (~66 ms) = ~3.6 s (was ~1.5 s with a 1 s window).
 STEP_CONFIRM_FRAMES = 5     # Consecutive samples needed to confirm a step
 STEP_CONFIDENCE_THRESHOLD = 0.65
+
+# Shannon entropy (nats) of the LSTM's full softmax, gating feed_prediction()
+# alongside the scalar confidence above. A top-1 confidence can clear 0.65
+# while the REST of the distribution is still spread across several other
+# classes (e.g. 0.65 on the true step, remaining 0.35 spread over the other
+# 8 classes) rather than concentrated on one clear runner-up - that frame is
+# noise wearing a confident number, not a real signal, and the confidence
+# check alone cannot tell the two apart. Entropy can: worked example at
+# NUM_STEPS=9, top1=0.65 -> spread over 1 other class: H=0.65 nats (a
+# decisive two-way call, should pass); spread uniformly over the other 8:
+# H=1.38 nats (should not). Max possible is ln(9)=2.197. 1.4 sits just above
+# that second case, so it rejects "confident but shapeless" without also
+# rejecting ordinary two-way confusion. Optional at the call site
+# (pipeline/state_machine.py feed_prediction's `entropy` kwarg defaults to
+# None, which skips this gate) so callers that only have a scalar confidence
+# - tools/evaluate_real.py, simulation/space_sim.py, tools/showcase_overlay.py
+# - are unaffected.
+STEP_ENTROPY_MAX = 1.4
 
 # ── CNN Ensemble (optional, off by default) ────────────────────
 # The CNN (frame-level classifier) is trained but was previously never used
