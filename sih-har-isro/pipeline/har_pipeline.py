@@ -27,6 +27,7 @@ Usage:
 
 import sys
 import cv2
+import math
 import time
 import queue
 import threading
@@ -904,6 +905,22 @@ class HARPipeline:
         (23, 25), (25, 27),  # left leg: hip-knee-ankle
         (24, 26), (26, 28),  # right leg
     )
+    # Parent-ordered chains for the plausibility filter below (root first).
+    _LIMB_CHAINS = (
+        (11, 13, 15),  # left arm
+        (12, 14, 16),  # right arm
+        (23, 25, 27),  # left leg
+        (24, 26, 28),  # right leg
+    )
+    # A real limb segment doesn't stretch past this multiple of the shoulder-
+    # hip torso reference. Measured on real footage: the custom HMR net (no
+    # visible-leg signal when legs are off-frame/behind the equipment rack)
+    # regresses a confident-but-sideways hip->knee->ankle chain instead of
+    # refusing to answer — e.g. R_knee at vis=0.99 landing level with the hip
+    # instead of below it, 1.75x torso-length "shin". Real limbs don't do
+    # that regardless of camera framing, so it's filtered as noise, not
+    # drawn as if it were a real detection.
+    _MAX_LIMB_RATIO = 1.4
 
     def _draw_skeleton(self, vis: np.ndarray, skel_pose: Optional[np.ndarray],
                        vis_threshold: float = 0.3) -> np.ndarray:
@@ -925,12 +942,40 @@ class HARPipeline:
         for idx in range(p.shape[0]):
             if p[idx, 3] > vis_threshold:
                 pts[idx] = (int(p[idx, 0] * w), int(p[idx, 1] * h))
+        self._drop_implausible_limbs(pts)
         for a, b in self._SKELETON_EDGES:
             if a in pts and b in pts:
                 cv2.line(vis, pts[a], pts[b], (0, 220, 255), 2)
         for xy in pts.values():
             cv2.circle(vis, xy, 4, (0, 255, 150), -1)
         return vis
+
+    def _drop_implausible_limbs(self, pts: dict) -> None:
+        """Mutates pts in place: drops limb joints the model placed farther
+        from their parent than a real segment reaches, cascading down the
+        chain (an elbow this bad taints its wrist too)."""
+        torso_refs = [
+            math.hypot(pts[s][0] - pts[hp][0], pts[s][1] - pts[hp][1])
+            for s, hp in ((11, 23), (12, 24)) if s in pts and hp in pts
+        ]
+        if not torso_refs:
+            return  # no torso scale to judge against — leave pts as detected
+        max_seg = self._MAX_LIMB_RATIO * (sum(torso_refs) / len(torso_refs))
+        for chain in self._LIMB_CHAINS:
+            parent = chain[0]
+            parent_ok = parent in pts
+            for child in chain[1:]:
+                if child not in pts:
+                    parent_ok = False
+                elif not parent_ok:
+                    del pts[child]
+                else:
+                    dist = math.hypot(pts[child][0] - pts[parent][0],
+                                      pts[child][1] - pts[parent][1])
+                    if dist > max_seg:
+                        del pts[child]
+                        parent_ok = False
+                parent = child
 
     def _annotate_frame(self, frame: np.ndarray,
                         detections: list,
