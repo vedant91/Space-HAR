@@ -1,5 +1,5 @@
 # ISRO SIH 2026 — HAR Pipeline
-# RTX 3050 6GB | Offline | No YOLO | Custom CNN + LSTM from scratch
+# RTX 3050 6GB | Offline | YOLOv8n for box detection (pipeline/yolo_detector.py) | Custom CNN + LSTM
 
 # ── Core computer vision ──────────────────────────────────────
 opencv-python>=4.8.0
@@ -9,6 +9,9 @@ numpy>=1.24.0
 # ── Deep learning (custom CNN + LSTM, trained from scratch) ───
 torch>=2.1.0
 torchvision>=0.16.0
+
+# ── Object detection (box detector, pipeline/yolo_detector.py) ─
+ultralytics>=8.0.0
 
 # ── ONNX for CPU-optimized inference ─────────────────────────
 onnx>=1.14.0
