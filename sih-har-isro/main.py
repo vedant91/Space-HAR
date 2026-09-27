@@ -30,7 +30,8 @@ def run_pipeline(source, headless: bool = False,
                  enable_streaming: bool | None = None,
                  stream_host: str | None = None, stream_port: int | None = None,
                  enable_cnn_ensemble: bool | None = None,
-                 uplink_mode: str | None = None):
+                 uplink_mode: str | None = None,
+                 detector_backend: str | None = None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -53,7 +54,8 @@ def run_pipeline(source, headless: bool = False,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
                            enable_cnn_ensemble=enable_cnn_ensemble,
-                           uplink_mode=uplink_mode)
+                           uplink_mode=uplink_mode,
+                           detector_backend=detector_backend)
 
     if not use_qt:
         pipeline.run()
@@ -334,6 +336,11 @@ Modes:
                             "(overrides config.CNN_ENSEMBLE_ENABLED=True). Off by "
                             "default — retrain the CNN with the current (leakage-fixed) "
                             "train/train_cnn.py before relying on this in production.")
+    parser.add_argument("--detector-backend", type=str, default=None,
+                        choices=["hsv", "yolo"],
+                        help="--mode pipeline: overrides config.DETECTOR_BACKEND. "
+                            "'yolo' uses the 6-class trained detector (hand/red_box/"
+                            "yellow_box/main_box_open/main_box_closed/person, mAP50=0.980).")
     parser.add_argument("--mock",     action="store_true",
                         help="Use mock data (no Gemini API needed)")
     parser.add_argument("--no-real-data", action="store_true",
@@ -364,7 +371,8 @@ Modes:
                     enable_streaming=True if args.stream else None,
                     stream_host=args.stream_host, stream_port=args.stream_port,
                     enable_cnn_ensemble=True if args.cnn_ensemble else None,
-                    uplink_mode=args.uplink_mode)
+                    uplink_mode=args.uplink_mode,
+                    detector_backend=args.detector_backend)
 
     elif args.mode == "train":
         run_training(use_real_data=not args.no_real_data, finetune_real=args.finetune_real)
