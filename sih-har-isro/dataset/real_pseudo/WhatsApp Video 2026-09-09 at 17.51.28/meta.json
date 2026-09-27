@@ -5,13 +5,11 @@
   "n_frames_saved": 151,
   "stride": 1,
   "step_label_histogram": {
-    "Examine Red Box": 51,
-    "Place Red Box": 18,
-    "Pick Yellow Box": 5,
-    "Examine Yellow Box": 14,
-    "Place Yellow Box": 63
+    "Unknown/idle": 95,
+    "Examine Yellow Box": 51,
+    "Place Yellow Box": 5
   },
-  "frac_unknown": 0.0,
-  "wrist_detections_total": 261,
-  "wrist_detection_rate": 0.8642384105960265
+  "frac_unknown": 0.6291390728476821,
+  "wrist_detections_total": 65,
+  "wrist_detection_rate": 0.2152317880794702
 }
