@@ -36,9 +36,10 @@ could not:
     held-out splitting will reveal. (`groundtruth` exists for the oracle
     experiment; it still takes its boxes from HSV, like evaluate_real's
     oracle path.)
-    `--pose-source hmr` runs the ROMP backend (pipeline/hmr_backend.py) the
-    way the live loop's HMR branch does, over every take except the tags in
-    HMR_UNRELIABLE_TAGS, and records pose_source/hmr_backend in metadata.json;
+    `--pose-source hmr` runs the trained HMR backend (HMR_TRAIN_BACKEND, in
+    pipeline/hmr_backend.py) the way the live loop's HMR branch does, over
+    every take except the tags in HMR_UNRELIABLE_TAGS, and records
+    pose_source/hmr_backend in metadata.json;
     train_lstm.py copies them into the checkpoint and the pipeline refuses to
     serve it under any other HMR_BACKEND. Needs D:/SIH-2026/.venv-hmr.
 
@@ -82,9 +83,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.experiment_config import (  # noqa: E402
-    FEATURE_LAYOUT, FPS, FRAME_HEIGHT, FRAME_WIDTH, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
-    MEDIAPIPE_MODEL_COMPLEXITY, POSE_INPUT_WIDTH, SAMPLE_EVERY, SEQUENCE_WINDOW,
-    SKELETON_FEATURES, WINDOW_PURITY,
+    DETECTOR_BACKEND, FEATURE_LAYOUT, FPS, FRAME_HEIGHT, FRAME_WIDTH, MEDIAPIPE_MIN_DET_CONF,
+    MEDIAPIPE_MIN_TRK_CONF, MEDIAPIPE_MODEL_COMPLEXITY, POSE_INPUT_WIDTH, SAMPLE_EVERY,
+    SEQUENCE_WINDOW, SKELETON_FEATURES, WINDOW_PURITY,
 )
 from pipeline.features import LAYOUT_DIMS, build_frame_features, stack_windows  # noqa: E402
 from pipeline.hmr_backend import ROMP_CENTER_THRESH, ROMP_CONTRACT_VERSION  # noqa: E402
@@ -96,26 +97,33 @@ CACHE_VERSION = 2   # 2: shared perceive() (previous-frame pose hint), POSE_INPU
 
 # --pose-source hmr: the HMR backend training runs, i.e. the HMR_BACKEND a
 # model built from it must be served under (the pipeline refuses otherwise).
-HMR_TRAIN_BACKEND = "romp"
+# Was "romp" (the pretrained baseline); switched to "custom" once our own
+# HMR3DNet (train/hmr3d_model.py) was trained and measured to match-or-beat
+# ROMP on every one of ROMP's problem takes (docs/architecture.html section 3).
+HMR_TRAIN_BACKEND = "custom"
 HMR_VISIBILITY = ("hmr_only_binary: vis=1.0 on the 27 slots with a ROMP joint, 0.0 on the 6 "
                   "without one (eye inner/outer, mouth corners; their x/y/z copy the nearest "
                   "measured point). A model must be trained on HMR data from scratch; serving "
                   "it under MediaPipe (or a MediaPipe model under HMR) is refused at load. "
                   "UNVALIDATED until a model trained on it is scored.")
-# Takes on which ROMP misses the astronaut or locks onto rack geometry
-# (hmr-env, blender_core, confirmed by visual overlay, not confidence). Keyed
-# by tag, not take index: the failure is the body orientation / lighting, and
-# tags are what carry that across datasets. Neither per-frame confidence
-# (AUC 0.64) nor rotating the frame upright rescues them, so they are left out
-# of HMR training rather than fed in as mislabelled skeletons. The live HMR
-# path will still meet these conditions: a model trained without them has
-# never seen them, which is a coverage gap, not a solved problem.
+# Takes on which the trained HMR backend (see HMR_TRAIN_BACKEND) is still
+# unreliable (hmr-env, blender_core, confirmed by visual overlay and by
+# tools/measure_hmr_crop.py, not confidence). Keyed by tag, not take index:
+# the failure is the body orientation / lighting, and tags are what carry
+# that across datasets. These are left out of HMR training rather than fed
+# in as mislabelled skeletons. The live HMR path will still meet these
+# conditions: a model trained without them has never seen them, which is a
+# coverage gap, not a solved problem.
+# Updated after the denser-angle retrain (10 more takes at 40/50/65/75/85 deg
+# roll): orient_30/60/180, pitch_60 and light_single_fail_180 are no longer
+# unreliable for the custom model (0.77-1.00 tracked) - only exactly 90 deg
+# roll and dim light at 90 deg remain a real, unclosed gap (see
+# docs/architecture.html section 3). orient_-90 stayed on this list despite
+# partially improving (0.00 -> 0.22): still too unreliable to train on.
 HMR_UNRELIABLE_TAGS = {
-    **{t: "ROMP misses the body or locks onto rack geometry at this crew roll"
-       for t in ("orient_30", "orient_60", "orient_90", "orient_180", "orient_-90")},
-    "pitch_60": "ROMP misses the body or locks onto rack geometry at this pitch",
-    "light_dim_90": "ROMP misses the body under dim light at 90 deg roll",
-    "light_single_fail_180": "ROMP misses the body with one light failed at 180 deg roll",
+    **{t: "custom HMR3DNet is still at or near 0.00 tracked at this exact crew roll"
+       for t in ("orient_90", "orient_-90")},
+    "light_dim_90": "custom HMR3DNet is still at or near 0.00 tracked under dim light at 90 deg roll",
 }
 
 
@@ -144,24 +152,6 @@ def _frame_inputs(dataset_dir: str, take_dir: Path, cam_dir: Path, pose_source: 
     frames = sorted((cam_dir / "frames").glob("*.png"))
     if not frames:
         raise FileNotFoundError(f"no rendered frames under {cam_dir / 'frames'}")
-    key = {"v": CACHE_VERSION, "dataset": str(Path(dataset_dir).resolve()),
-           "take": take_dir.name, "camera": cam_dir.name, "pose_source": pose_source,
-           "complexity": int(MEDIAPIPE_MODEL_COMPLEXITY),
-           "pose_input_width": int(POSE_INPUT_WIDTH),
-           "det_conf": MEDIAPIPE_MIN_DET_CONF, "trk_conf": MEDIAPIPE_MIN_TRK_CONF,
-           "upright": bool(upright), "frame_wh": [FRAME_WIDTH, FRAME_HEIGHT],
-           "n_frames": len(frames), "last_mtime": frames[-1].stat().st_mtime}
-    if pose_source == "hmr":   # only for hmr: existing MediaPipe caches keep their digests
-        key.update(hmr_backend=HMR_TRAIN_BACKEND, hmr_contract=ROMP_CONTRACT_VERSION,
-                   center_thresh=ROMP_CENTER_THRESH)
-    digest = hashlib.sha1(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
-    cache_path = cam_dir / "pose_cache" / f"{digest}.pkl"
-    if use_cache and cache_path.exists():
-        with open(cache_path, "rb") as fh:
-            cached = pickle.load(fh)
-        if cached.get("key") == key:
-            cached["stats"]["cache"] = "hit"
-            return cached["poses"], cached["dets"], tuple(cached["wh"]), cached["stats"]
 
     from pipeline.har_pipeline import OptimizedMPWrapper, perceive, to_frame_size, _make_box_detector
 
@@ -173,6 +163,92 @@ def _frame_inputs(dataset_dir: str, take_dir: Path, cam_dir: Path, pose_source: 
     # already been burned by once.
     w, h = FRAME_WIDTH, FRAME_HEIGHT
     detector = _make_box_detector(w, h)
+
+    # _make_box_detector silently falls back HSV<-YOLO on any load error (a
+    # reasonable default for the LIVE pipeline, where uptime beats a hard
+    # crash) - but an offline BUILDER doing that silently is exactly the
+    # train/serve skew above: a rebuild would write HSV-derived training data
+    # while DETECTOR_BACKEND says "yolo" and the checkpoint contract would
+    # never know. Confirmed cause of a real mismatch found in this codebase
+    # (2026-09-27 pipeline-engineer audit): the deployed LSTM was trained on
+    # HSV boxes and is now served on YOLO. Refuse to build silently-wrong data.
+    detector_backend = type(detector).__name__  # "YOLOBoxDetector" or "HSVBoxDetector"
+    expected = {"yolo": "YOLOBoxDetector", "hsv": "HSVBoxDetector"}.get(DETECTOR_BACKEND)
+    if expected is not None and detector_backend != expected:
+        raise SystemExit(
+            f"DETECTOR_BACKEND={DETECTOR_BACKEND!r} but _make_box_detector() silently "
+            f"fell back to {detector_backend} (missing weights or import error - see the "
+            f"warning above). Building training sequences on the wrong detector reproduces "
+            f"the exact train/serve mismatch this project has already shipped once. Fix the "
+            f"detector, don't build data on the fallback.")
+
+    # Weights identity: mtime+size (cheap, no need to hash 18 MB) so a
+    # re-fine-tuned YOLO checkpoint invalidates every cache that used the old
+    # weights, rather than silently scoring/training on stale detections.
+    detector_weights_id = None
+    if detector_backend == "YOLOBoxDetector":
+        # _make_box_detector() never overrides weights, so this is always the
+        # file actually loaded above.
+        from pipeline.yolo_detector import DEFAULT_WEIGHTS
+        wp = Path(DEFAULT_WEIGHTS)
+        if wp.exists():
+            st = wp.stat()
+            detector_weights_id = f"{wp.name}:{st.st_size}:{int(st.st_mtime)}"
+
+    key = {"v": CACHE_VERSION, "dataset": str(Path(dataset_dir).resolve()),
+           "take": take_dir.name, "camera": cam_dir.name, "pose_source": pose_source,
+           "complexity": int(MEDIAPIPE_MODEL_COMPLEXITY),
+           "pose_input_width": int(POSE_INPUT_WIDTH),
+           "det_conf": MEDIAPIPE_MIN_DET_CONF, "trk_conf": MEDIAPIPE_MIN_TRK_CONF,
+           "upright": bool(upright), "frame_wh": [FRAME_WIDTH, FRAME_HEIGHT],
+           "n_frames": len(frames), "last_mtime": frames[-1].stat().st_mtime,
+           "detector_backend": detector_backend, "detector_weights_id": detector_weights_id}
+    if pose_source == "hmr":   # only for hmr: existing MediaPipe caches keep their digests
+        key.update(hmr_backend=HMR_TRAIN_BACKEND, hmr_contract=ROMP_CONTRACT_VERSION,
+                   center_thresh=ROMP_CENTER_THRESH)
+    digest = hashlib.sha1(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
+    cache_path = cam_dir / "pose_cache" / f"{digest}.pkl"
+    if use_cache and cache_path.exists():
+        with open(cache_path, "rb") as fh:
+            cached = pickle.load(fh)
+        if cached.get("key") == key:
+            cached["stats"]["cache"] = "hit"
+            return cached["poses"], cached["dets"], tuple(cached["wh"]), cached["stats"]
+    # New YOLO weights change only the detections: with YOLO the pose never
+    # depends on them (the upright estimator's hint reads Detection.rect,
+    # which YOLO never sets), so a cache that differs ONLY in
+    # detector_weights_id already holds the exact poses. Reuse them and
+    # re-run just the detector - minutes instead of a full MediaPipe pass.
+    reuse_poses = None
+    if use_cache and pose_source == "mediapipe" and detector_backend == "YOLOBoxDetector":
+        want = {k: v for k, v in key.items() if k != "detector_weights_id"}
+        for old in sorted((cam_dir / "pose_cache").glob("*.pkl")):
+            try:
+                with open(old, "rb") as fh:
+                    cand = pickle.load(fh)
+            except Exception:
+                continue
+            ck = cand.get("key", {})
+            if ck.get("detector_backend") == "YOLOBoxDetector" and                     {k: v for k, v in ck.items() if k != "detector_weights_id"} == want:
+                reuse_poses = cand["poses"]
+                break
+    if reuse_poses is not None:
+        t0 = time.time()
+        dets_all = [detector.detect(to_frame_size(cv2.imread(str(f)))) for f in frames[:len(reuse_poses)]]
+        stats = {"frames": len(reuse_poses), "pose_detected": int(np.any(reuse_poses, axis=1).sum()),
+                 "detect_rate": round(float(np.any(reuse_poses, axis=1).mean()), 4),
+                 "seconds": round(time.time() - t0, 1), "backend": "tasks (poses reused)",
+                 "upright": bool(upright), "detector_backend": detector_backend,
+                 "detector_weights_id": detector_weights_id}
+        cache_path.parent.mkdir(exist_ok=True)
+        tmp = cache_path.with_suffix(".tmp")
+        with open(tmp, "wb") as fh:
+            pickle.dump({"key": key, "poses": reuse_poses, "dets": dets_all, "wh": (w, h),
+                         "stats": dict(stats)}, fh)
+        tmp.replace(cache_path)
+        stats["cache"] = "poses-reused"
+        return reuse_poses, dets_all, (w, h), stats
+
     gt = None
     backend = None
     hmr = None
@@ -220,6 +296,8 @@ def _frame_inputs(dataset_dir: str, take_dir: Path, cam_dir: Path, pose_source: 
         "backend": ("blender_groundtruth" if gt is not None
                     else hmr.backend_name if hmr is not None else backend.backend_name),
         "upright": bool(upright),
+        "detector_backend": detector_backend,
+        "detector_weights_id": detector_weights_id,
     }
     if use_cache:
         cache_path.parent.mkdir(exist_ok=True)
@@ -273,6 +351,8 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
     bucket = {"train": {"x": [], "y": [], "g": []},
               "holdout": {"x": [], "y": [], "g": []}}
     report: List[dict] = []
+    run_detector_backend = None
+    run_detector_weights_id = None
 
     for take_dir in takes:
         loaded = _load_take(take_dir, camera)
@@ -318,12 +398,26 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
                "distractors": meta.get("distractors"), "camera": loaded["camera"],
                "windows": int(len(xs)), "split": split, **stats}
         report.append(row)
+        if run_detector_backend is None:
+            run_detector_backend = stats.get("detector_backend")
+            run_detector_weights_id = stats.get("detector_weights_id")
+        elif stats.get("detector_backend") != run_detector_backend:
+            # Every take in one build() call shares the same live _make_box_detector
+            # instance/config, so this can only happen if the underlying weights
+            # file changed mid-run - a build that started under one detector must
+            # not silently finish under another.
+            raise SystemExit(
+                f"{take_dir.name}: detector_backend changed mid-build "
+                f"({run_detector_backend!r} -> {stats.get('detector_backend')!r}). "
+                f"Something replaced the weights file while this build was running.")
         print(f"  {take_dir.name} tag={tag:16s} -> {len(xs):4d} windows "
               f"[{split}] detect={stats.get('detect_rate')} cache={stats['cache']}",
               flush=True)
 
     contract = {"feature_layout": layout, "sample_every": int(sample_every),
-                "rack_normalized": bool(rack_normalize)}
+                "rack_normalized": bool(rack_normalize),
+                "detector_backend": run_detector_backend,
+                "detector_weights_id": run_detector_weights_id}
     # pose_source (+ hmr_backend) is what train_lstm copies into the checkpoint
     # and the pipeline checks against the runtime HMR_BACKEND at load.
     if pose_source == "hmr":

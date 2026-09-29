@@ -117,8 +117,9 @@ def main():
     ap.add_argument("--force-holdout", default=str(HELDOUT_VIEW_TAKE),
                     help="comma-separated take indices always held out of training, on top of the "
                          "random split. Default is just take_0022. For a fair comparison against "
-                         "ROMP's numbers, pass the 8 HMR_UNRELIABLE_TAGS takes: "
-                         "1,2,3,4,7,13,15,17")
+                         "ROMP's original numbers, pass the 8 takes ROMP failed on (the original, "
+                         "ROMP-era HMR_UNRELIABLE_TAGS, now narrowed for the custom model - see "
+                         "tools/build_sequences.py): 1,2,3,4,7,13,15,17")
     args = ap.parse_args()
 
     cache_dir = Path(args.cache)

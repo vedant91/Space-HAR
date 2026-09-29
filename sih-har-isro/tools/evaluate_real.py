@@ -78,7 +78,8 @@ class LSTMRunner:
         self.torch = torch
         ckpt = torch.load(model_path, map_location="cpu", weights_only=False)
         # runtime_backend is the pose stage this run scores through: "none"
-        # (MediaPipe, OptimizedMPWrapper) or "romp" (--pose-source hmr).
+        # (MediaPipe, OptimizedMPWrapper) or the trained HMR backend, see
+        # build_sequences.HMR_TRAIN_BACKEND (--pose-source hmr).
         from pipeline.hmr_backend import check_pose_source
         check_pose_source(model_path, ckpt, runtime_backend)
         self.model = HARLSTMClassifier(
@@ -160,11 +161,12 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
     hmr_poses = hmr_dets = hmr_stats = backend = detector = None
     if pose_source == "hmr":
         # The HMR route is tools/build_sequences._frame_inputs, the exact code
-        # that built the HMR training set: HSV + HMRBackend("romp") per frame,
-        # no upright (the live HMR branch never canonicalises the frame).
-        # Cached per take, so a scoring run under the system Python reuses a
-        # ROMP pass made under .venv-hmr; on a miss it runs ROMP (and refuses
-        # if ROMP does not load, never falling back to MediaPipe).
+        # that built the HMR training set: the configured detector backend +
+        # HMRBackend(HMR_TRAIN_BACKEND) per frame, no upright (the live HMR
+        # branch never canonicalises the frame). Cached per take, so a scoring
+        # run under the system Python reuses an HMR pass made under
+        # .venv-hmr; on a miss it runs that backend (and refuses if it does
+        # not load, never falling back to MediaPipe).
         from build_sequences import _frame_inputs
         upright = False
         hmr_poses, hmr_dets, _, hmr_stats = _frame_inputs(
@@ -173,6 +175,18 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
     else:
         backend = OptimizedMPWrapper(frame_wh=(fw, fh), upright=upright)
         detector = _make_box_detector(fw, fh)
+        # Same fatal check as build_sequences._frame_inputs: a scoring run
+        # must not silently score through a detector fallback different from
+        # config.DETECTOR_BACKEND (confirmed real mismatch, 2026-09-27 audit).
+        from config.experiment_config import DETECTOR_BACKEND as _DB
+        _expected = {"yolo": "YOLOBoxDetector", "hsv": "HSVBoxDetector"}.get(_DB)
+        _actual = type(detector).__name__
+        if _expected is not None and _actual != _expected:
+            raise SystemExit(
+                f"DETECTOR_BACKEND={_DB!r} but _make_box_detector() silently fell back "
+                f"to {_actual} - scoring on the fallback would report a number that "
+                f"doesn't reflect the configured detector. Fix the detector, don't "
+                f"score on the fallback.")
     normalizer = RackFrameNormalizer() if rack_normalize else None
     layout = runner.contract["feature_layout"] if runner is not None else "pose132"
     dim = LAYOUT_DIMS[layout]
@@ -243,8 +257,8 @@ def evaluate_take(take_dir: Path, runner: Optional[LSTMRunner],
                    "p95": round(float(np.percentile(v, 95)), 2)}
                for k, v in timings.items()}
     if hmr_stats is not None:
-        # Whole-pass wall time of the ROMP run that filled the cache (imread +
-        # resize + HSV + ROMP per frame); not separable per stage.
+        # Whole-pass wall time of the HMR run that filled the cache (imread +
+        # resize + detector + HMR per frame); not separable per stage.
         latency["hmr_pass_incl_io_hsv"] = {
             "mean": round(1000.0 * hmr_stats["seconds"] / max(hmr_stats["frames"], 1), 2)}
 
@@ -434,9 +448,10 @@ def main():
     ap.add_argument("--tags", default="", help="Only evaluate takes with these tags")
     ap.add_argument("--label", default="", help="Free-text label for this run")
     ap.add_argument("--pose-source", default="mediapipe", choices=["mediapipe", "hmr"],
-                    help="hmr = ROMP via tools/build_sequences' HMR pass (the one HMR "
-                         "training used); needs .venv-hmr unless every take is cached. "
-                         "The checkpoint must have been trained on the same source.")
+                    help="hmr = the trained HMR backend (build_sequences.HMR_TRAIN_BACKEND) "
+                         "via tools/build_sequences' HMR pass (the one HMR training used); "
+                         "needs .venv-hmr unless every take is cached. The checkpoint must "
+                         "have been trained on the same source.")
     args = ap.parse_args()
     if args.pose_source == "hmr":
         args.no_upright = True   # the HMR branch never canonicalises the frame
