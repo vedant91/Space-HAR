@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>BAS-HAR Technical Approach</title>
+<style>
+/* draw.io-style palette: fill / stroke */
+:root{
+  --ink:#1F2328; --mute:#4B5563; --edge:#333;
+  --g:#D5E8D4; --g2:#82B366;  --y:#FFF2CC; --y2:#D6B656;  --p:#E1D5E7; --p2:#9673A6;
+  --b:#DAE8FC; --b2:#6C8EBF;  --r:#F8CECC; --r2:#B85450;  --o:#FFE6CC; --o2:#D79B00;
+  --mark:#F07A1A;
+  --f:Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#C9D2DF}
+body{font-family:var(--f);color:var(--ink)}
+body.only{background:#fff}
+.slide{width:1920px;height:1080px;position:relative;overflow:hidden;background:#fff;margin:0 auto}
+.ic{width:1em;height:1em;flex:0 0 auto;display:inline-block;vertical-align:-.15em}
+.bi{width:1em;height:1em;flex:0 0 auto;display:inline-block;vertical-align:-.15em}
+
+/* header */
+.hdr{position:absolute;left:40px;right:40px;top:22px;height:74px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--edge);padding-bottom:10px}
+.hdr h1{font-size:38px;font-weight:700;letter-spacing:-.01em}
+.hdr h1 span{color:var(--mark)}
+.hdr p{font-size:16px;color:var(--mute);margin-top:4px}
+.hdr .hr{text-align:right;font-size:15px;color:var(--mute);line-height:1.45}
+.hdr .hr b{color:var(--ink)}
+
+/* containers */
+.ct{position:absolute;border:1.5px solid var(--edge);border-radius:3px;background:#fff;display:flex;flex-direction:column}
+.ct>.th{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:15.5px;padding:7px 6px;border-bottom:1.5px solid var(--edge);white-space:nowrap}
+.ct>.th .bi,.ct>.th .ic{font-size:19px}
+.ct>.th.l{justify-content:flex-start;padding-left:12px}
+.ct>.bd{flex:1;display:flex;flex-direction:column;padding:12px 12px;gap:22px}
+
+/* components */
+.n{position:relative;border:1.3px solid var(--edge);border-radius:6px;padding:7px 8px;text-align:center;font-size:13.5px;font-weight:700;line-height:1.2;background:#fff}
+.n small{display:block;font-weight:400;font-size:11.6px;color:#3B4250;margin-top:2px;line-height:1.28}
+.n .ic,.n .bi{font-size:15px;margin-right:4px}
+.g{background:var(--g);border-color:var(--g2)} .y{background:var(--y);border-color:var(--y2)} .p{background:var(--p);border-color:var(--p2)}
+.b{background:var(--b);border-color:var(--b2)} .r{background:var(--r);border-color:var(--r2)} .o{background:var(--o);border-color:var(--o2)}
+.dsh{border-style:dashed}
+.doc{border-radius:0}
+.lane{border:1px solid #9CA3AF;border-radius:4px;padding:6px 8px 8px;position:relative}
+.lane>.lh{font-size:11.5px;font-weight:700;color:var(--mute);margin-bottom:6px;text-align:left}
+.row{display:flex;align-items:center;gap:18px}
+.row>.n{flex:1}
+.mk{position:absolute;top:-10px;right:-10px;width:22px;height:22px;border-radius:50%;background:var(--mark);color:#fff;font-size:12.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;outline:1.3px solid var(--mark);z-index:6}
+.fig{display:flex;gap:10px;align-items:center;font-size:11.5px;color:var(--mute);line-height:1.35;text-align:left}
+.fig img{border:1px solid #9CA3AF;display:block}
+.fbar{display:flex;height:13px;margin-top:5px;font-size:9.5px;font-weight:700;color:#fff;border:1px solid var(--o2)}
+.fbar div{display:flex;align-items:center;justify-content:center}
+
+/* tables in the sidebar */
+table{border-collapse:collapse;width:100%;font-size:12.3px}
+td{border-bottom:1px solid #D1D5DB;padding:5px 6px;vertical-align:top;line-height:1.3}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;width:128px}
+td.v{font-weight:700;white-space:nowrap;text-align:right}
+.key{display:flex;flex-direction:column;gap:7px;font-size:12.3px;line-height:1.32}
+.key>div{display:grid;grid-template-columns:24px 1fr;gap:6px;align-items:start}
+.key .mk{position:static;width:20px;height:20px;font-size:11.5px}
+.note{font-size:11px;color:var(--mute);padding:0 6px 6px}
+
+/* arrows + labels (drawn by the script below) */
+svg.wires{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:5;overflow:visible}
+.lbl{position:absolute;z-index:7;background:#fff;font-size:11px;color:#111;padding:0 3px;white-space:nowrap;transform:translate(-50%,-50%);line-height:1.25}
+
+/* footer */
+.foot{position:absolute;left:40px;right:40px;bottom:16px;height:40px;display:flex;align-items:center;justify-content:space-between;border-top:1.5px solid #9CA3AF;padding-top:8px}
+.stack{display:flex;align-items:center;gap:15px;font-size:12.5px;white-space:nowrap}
+.stack>b{font-size:12.5px;margin-right:2px}
+.stack>span{display:flex;align-items:center;gap:5px}
+.stack .bi{font-size:19px}
+.yl{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#042AFF;color:#fff;font-size:6.5px;font-weight:700;border-radius:3px}
+.legend{display:flex;gap:18px;font-size:12px;color:var(--mute);align-items:center;white-space:nowrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:26px;border-top:1.8px solid #222;position:relative}
+.legend i.d{border-top-style:dashed}
+.legend .mk{position:static;width:17px;height:17px;font-size:10px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-bell-ring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /> <path d="M4 2C2.8 3.7 2 5.7 2 8" /> <path d="M22 8c0-2.3-.8-4.3-2-6" /></symbol>
+<symbol id="i-brain-circuit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" /> <path d="M9 13a4.5 4.5 0 0 0 3-4" /> <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" /> <path d="M3.477 10.896a4 4 0 0 1 .585-.396" /> <path d="M6 18a4 4 0 0 1-1.967-.516" /> <path d="M12 13h4" /> <path d="M12 18h6a2 2 0 0 1 2 2v1" /> <path d="M12 8h8" /> <path d="M16 8V5a2 2 0 0 1 2-2" /> <circle cx="16" cy="13" r=".5" /> <circle cx="18" cy="3" r=".5" /> <circle cx="20" cy="21" r=".5" /> <circle cx="20" cy="8" r=".5" /></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /></symbol>
+<symbol id="i-chart-no-axes-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10" /> <line x1="12" x2="12" y1="20" y2="4" /> <line x1="6" x2="6" y1="20" y2="14" /></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /> <path d="M14 2v4a2 2 0 0 0 2 2h4" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></symbol>
+<symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M7 3v18" /> <path d="M3 7.5h4" /> <path d="M3 12h18" /> <path d="M3 16.5h4" /> <path d="M17 3v18" /> <path d="M17 7.5h4" /> <path d="M17 16.5h4" /></symbol>
+<symbol id="i-flask-conical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /> <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /> <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /> <path d="M20 3v4" /> <path d="M22 5h-4" /> <path d="M4 17v2" /> <path d="M5 18H3" /></symbol>
+<symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="6" /> <circle cx="12" cy="12" r="2" /></symbol>
+<symbol id="i-timer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2" /> <line x1="12" x2="15" y1="14" y2="11" /> <circle cx="12" cy="14" r="8" /></symbol>
+<symbol id="i-volume-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol>
+<symbol id="b-blender" viewBox="0 0 24 24"><path fill="currentColor" d="M12.51 13.214c.046-.8.438-1.506 1.03-2.006a3.424 3.424 0 0 1 2.212-.79c.85 0 1.631.3 2.211.79.592.5.983 1.206 1.028 2.005.045.823-.285 1.586-.865 2.153a3.389 3.389 0 0 1-2.374.938 3.393 3.393 0 0 1-2.376-.938c-.58-.567-.91-1.33-.865-2.152M7.35 14.831c.006.314.106.922.256 1.398a7.372 7.372 0 0 0 1.593 2.757 8.227 8.227 0 0 0 2.787 2.001 8.947 8.947 0 0 0 3.66.76 8.964 8.964 0 0 0 3.657-.772 8.285 8.285 0 0 0 2.785-2.01 7.428 7.428 0 0 0 1.592-2.762 6.964 6.964 0 0 0 .25-3.074 7.123 7.123 0 0 0-1.016-2.779 7.764 7.764 0 0 0-1.852-2.043h.002L13.566 2.55l-.02-.015c-.492-.378-1.319-.376-1.86.002-.547.382-.609 1.015-.123 1.415l-.001.001 3.126 2.543-9.53.01h-.013c-.788.001-1.545.518-1.695 1.172-.154.665.38 1.217 1.2 1.22V8.9l4.83-.01-8.62 6.617-.034.025c-.813.622-1.075 1.658-.563 2.313.52.667 1.625.668 2.447.004L7.414 14s-.069.52-.063.831zm12.09 1.741c-.97.988-2.326 1.548-3.795 1.55-1.47.004-2.827-.552-3.797-1.538a4.51 4.51 0 0 1-1.036-1.622 4.282 4.282 0 0 1 .282-3.519 4.702 4.702 0 0 1 1.153-1.371c.942-.768 2.141-1.183 3.396-1.185 1.256-.002 2.455.41 3.398 1.175.48.391.87.854 1.152 1.367a4.28 4.28 0 0 1 .522 1.706 4.236 4.236 0 0 1-.239 1.811 4.54 4.54 0 0 1-1.035 1.626"/></symbol>
+<symbol id="b-ffmpeg" viewBox="0 0 24 24"><path fill="currentColor" d="M21.72 17.91V6.5l-.53-.49L9.05 18.52l-1.29-.06L24 1.53l-.33-.95-11.93 1-5.75 6.6v-.23l4.7-5.39-1.38-.77-9.11.77v2.85l1.91.46v.01l.19-.01-.56.66v10.6c.609-.126 1.22-.241 1.83-.36L14.12 5.22l.83-.04L0 21.44l9.67.82 1.35-.77 6.82-6.74v2.15l-5.72 5.57 11.26.95.35-.94v-3.16l-3.29-.18c.434-.403.858-.816 1.28-1.23z"/></symbol>
+<symbol id="b-mediapipe" viewBox="0 0 24 24"><path fill="currentColor" d="M2.182 0C1 0 .037.94.002 2.114L0 2.182v6.545a2.182 2.182 0 0 0 4.364 0V2.182A2.182 2.182 0 0 0 2.182 0Zm6.545 0c-1.182 0-2.145.94-2.18 2.114l-.002.068v13.09a2.182 2.182 0 0 0 4.364 0V2.183A2.182 2.182 0 0 0 8.727 0Zm6.546 0a2.182 2.182 0 0 0-2.182 2.182 2.182 2.182 0 0 0 2.182 2.182 2.182 2.182 0 0 0 2.182-2.182A2.182 2.182 0 0 0 15.273 0Zm6.545 0c-1.182 0-2.145.94-2.18 2.114l-.002.068v19.636a2.182 2.182 0 0 0 4.364 0V2.182A2.182 2.182 0 0 0 21.818 0Zm-6.545 6.545c-1.183 0-2.145.94-2.181 2.114l-.001.068v13.091a2.182 2.182 0 0 0 4.364 0V8.728a2.182 2.182 0 0 0-2.182-2.183zM2.182 13.091c-1.182 0-2.145.94-2.18 2.114L0 15.273v6.545a2.182 2.182 0 0 0 4.364 0v-6.545a2.182 2.182 0 0 0-2.182-2.182zm6.545 6.545a2.182 2.182 0 0 0-2.182 2.182A2.182 2.182 0 0 0 8.727 24a2.182 2.182 0 0 0 2.182-2.182 2.182 2.182 0 0 0-2.182-2.182Z"/></symbol>
+<symbol id="b-numpy" viewBox="0 0 24 24"><path fill="currentColor" d="M10.315 4.876L6.3048 2.8517l-4.401 2.1965 4.1186 2.0683zm1.8381.9277l4.2045 2.1223-4.3622 2.1906-4.125-2.0718zm5.6153-2.9213l4.3193 2.1658-3.863 1.9402-4.2131-2.1252zm-1.859-.9329L12.021 0 8.1742 1.9193l4.0068 2.0208zm-3.0401 16.7443V24l4.7107-2.3507-.0053-5.3085zm4.7037-4.2057l-.0052-5.2528-4.6985 2.3356v5.2546zm5.6553-.9845v5.327l-4.0178 2.0052-.0029-5.3028zm0-1.8626V6.4214l-4.0253 2.001.0034 5.2633zM11.2062 11.571L8.0333 9.9756v6.895s-3.8804-8.2564-4.2399-8.998c-.0463-.0957-.2371-.2007-.2858-.2262C2.8118 7.2812.773 6.2485.773 6.2485V18.43l2.8204 1.5076v-6.3674s3.8392 7.3775 3.878 7.458c.0389.0807.4245.8582.8362 1.1314.5485.363 2.8992 1.7766 2.8992 1.7766z"/></symbol>
+<symbol id="b-nvidia" viewBox="0 0 24 24"><path fill="currentColor" d="M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z"/></symbol>
+<symbol id="b-onnx" viewBox="0 0 24 24"><path fill="currentColor" d="M23.0325 11.2963c-.0503 0-.1006 0-.1508.0126l-4.021-7.4387c.0754-.1383.1131-.289.1131-.4524 0-.5403-.4398-.9675-.9675-.9675-.2765 0-.5278.113-.7037.3015L9.286 1.156C9.2357.6785 8.821.3016 8.3184.3016c-.5277 0-.9675.4398-.9675.9675 0 .1634.0377.3141.113.4524l-6.245 8.9591c-.0753-.0251-.1633-.0377-.2513-.0377-.5403 0-.9675.4398-.9675.9676 0 .5403.4398.9675.9675.9675h.0377l3.3676 8.3309c-.0503.1257-.088.2639-.088.402 0 .5404.4398.9676.9676.9676.2764 0 .5277-.113.7036-.3015l10.1152.9926c.1005.4273.49.7288.9424.7288.5403 0 .9676-.4398.9676-.9675 0-.2388-.088-.465-.2262-.6283l5.1141-8.8712c.0503.0126.1005.0126.1634.0126.5403 0 .9675-.4398.9675-.9676 0-.5403-.4272-.98-.9675-.98zM17.2272 4.021c.1131.1508.2765.264.4524.3267l-1.533 11.5728c-.1005.0252-.1885.0503-.2764.1005L7.4513 8.708c.0251-.0754.0377-.1634.0377-.2514 0-.0628-.0126-.1256-.0126-.1884zm4.8754 8.5068l-5.177 3.556a1.105 1.105 0 0 0-.1256-.0753L18.3455 4.335h.0126l3.9456 7.288c-.1508.1759-.2388.3895-.2388.6408 0 .1005.0126.1885.0377.2638zM6.3832 7.5016c-.4649.0754-.8293.4775-.8293.955v.0628l-3.4555 2.0481 5.378-7.7026zm.3519 1.91c.1256-.0252.2513-.088.3518-.1634l8.356 7.2628c-.0377.113-.0628.2262-.0628.3518v.0503l-9.311 3.845c-.1382-.201-.3518-.3518-.6031-.402zm8.8963 8.1172c.1257.1382.3016.2513.5026.289l.465 4.046c-.201.1006-.3519.264-.4524.4524l-9.8136-.955zm1.1435.2136c.3267-.1633.5403-.49.5403-.867 0-.088-.0126-.1634-.0377-.2513l4.7372-3.2545-4.8 8.331zm.2513-14.3497l-9.889 4.31-.1131-.0755 1.2565-5.3906h.0377c.3393 0 .6409-.1759.8168-.4397l7.891 1.5706zM1.935 11.6105c0-.0629-.0126-.1257-.0126-.1885l3.9079-2.2995c.0754.0754.1633.1508.2638.201L4.8252 20.243l-3.2043-7.9036c.1885-.176.3142-.4398.3142-.7288Z"/></symbol>
+<symbol id="b-opencv" viewBox="0 0 24 24"><path fill="currentColor" d="M11.8992.8525C8.735.8525 6.17 3.4175 6.17 6.5817c0 2.102 1.1321 3.9398 2.8198 4.9366l1.6412-2.7849c.0411-.0699.0176-.1593-.0495-.2048-.6233-.4227-1.0328-1.137-1.0328-1.947 0-1.298 1.0524-2.3504 2.3505-2.3504 1.2981 0 2.3505 1.0524 2.3505 2.3505 0 .8098-.4095 1.5242-1.0328 1.947-.0671.0454-.0907.1348-.0495.2047l1.6414 2.785c1.6878-.9969 2.8199-2.8346 2.8199-4.9367 0-3.1642-2.5653-5.7292-5.7295-5.7292zm-6.17 10.8366C2.565 11.6891 0 14.2541 0 17.4183c0 3.1642 2.565 5.7292 5.7292 5.7292 3.1798 0 5.8074-2.6995 5.7275-5.8762H8.2313c-.0847 0-.1513.0717-.1519.1564-.0082 1.266-1.0644 2.3411-2.3502 2.3411-1.2981 0-2.3505-1.0524-2.3505-2.3505 0-1.2982 1.0524-2.3505 2.3505-2.3505.34 0 .663.0724.9547.2022.0713.0318.1566.0077.1962-.0595l1.6464-2.7935c-.8273-.4636-1.7815-.7279-2.7973-.7279zm15.4424.7614l-1.6366 2.7878c-.041.07-.0172.1594.05.2048.624.4217 1.0348 1.1354 1.0363 1.9452.0022 1.298-1.0483 2.352-2.3465 2.3542-1.298.0023-2.3523-1.0482-2.3545-2.3462-.0015-.8098.4068-1.5248 1.0294-1.9486.067-.0457.0905-.1353.0492-.2051l-1.6464-2.7818c-1.6859.9998-2.8146 2.8394-2.811 4.9415.0056 3.1641 2.575 5.7248 5.7393 5.7192 3.1641-.0054 5.7246-2.575 5.7192-5.7392-.0037-2.1022-1.139-3.938-2.8284-4.9318z"/></symbol>
+<symbol id="b-pytest" viewBox="0 0 24 24"><path fill="currentColor" d="M2.6152 0v.8867h3.8399V0zm5.0215 0v.8867h3.8418V0zm4.957 0v.8867h3.8418V0zm4.9356 0v.8867h3.8418V0zM2.4473 1.8945a.935.935 0 0 0-.9356.9356c0 .517.4185.9375.9356.9375h19.1054c.5171 0 .9356-.4204.9356-.9375a.935.935 0 0 0-.9356-.9356zm.168 2.8477V24H6.455V4.7422zm5.0214 0V20.543h3.8418V4.7422zm4.957 0V15.291h3.8497V4.7422zm4.9356 0v6.4941h3.8418V4.7422z"/></symbol>
+<symbol id="b-python" viewBox="0 0 24 24"><path fill="currentColor" d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></symbol>
+<symbol id="b-pytorch" viewBox="0 0 24 24"><path fill="currentColor" d="M12.005 0L4.952 7.053a9.865 9.865 0 000 14.022 9.866 9.866 0 0014.022 0c3.984-3.9 3.986-10.205.085-14.023l-1.744 1.743c2.904 2.905 2.904 7.634 0 10.538s-7.634 2.904-10.538 0-2.904-7.634 0-10.538l4.647-4.646.582-.665zm3.568 3.899a1.327 1.327 0 00-1.327 1.327 1.327 1.327 0 001.327 1.328A1.327 1.327 0 0016.9 5.226 1.327 1.327 0 0015.573 3.9z"/></symbol>
+<symbol id="b-qt" viewBox="0 0 24 24"><path fill="currentColor" d="M21.693 3.162H3.33L0 6.49v14.348h20.671L24 17.51V3.162zM12.785 18.4l-1.562.728-1.35-2.217c-.196.057-.499.09-.924.09-1.579 0-2.683-.425-3.305-1.276-.622-.85-.932-2.2-.932-4.033 0-1.84.319-3.206.949-4.098.63-.892 1.726-1.341 3.288-1.341 1.562 0 2.658.441 3.28 1.333.63.883.94 2.25.94 4.098 0 1.219-.13 2.2-.384 2.945-.261.752-.679 1.325-1.268 1.718zm4.736-1.587c-.858 0-1.447-.196-1.766-.59-.32-.392-.483-1.136-.483-2.232v-3.534H14.11V9.051h1.162V6.843h1.644V9.05h2.094v1.415h-2.094v3.346c0 .622.05 1.03.14 1.227.09.204.326.303.695.303l1.243-.05.073 1.326c-.67.13-1.186.196-1.546.196zm-8.58-9.08c-.95 0-1.604.311-1.963.94-.352.63-.532 1.629-.532 3.011 0 1.374.172 2.364.515 2.953.344.589 1.006.892 1.98.892.973 0 1.628-.295 1.971-.876.335-.58.507-1.57.507-2.953 0-1.39-.172-2.396-.523-3.026-.352-.63-1.006-.94-1.955-.94Z"/></symbol>
+</svg>
+<section class="slide" id="s1">
+
+  <div class="hdr">
+    <div>
+      <h1>Technical Approach <span>·</span> System Architecture</h1>
+      <p>Astronaut Activity Recognition (HAR) for the 8-step BAS protocol · SIH 2026 · PS 26174</p>
+    </div>
+    <div class="hr">Runs <b>fully offline on one laptop</b> (RTX 3050)<br><b>14–16 FPS</b> live, about 70 ms per frame</div>
+  </div>
+
+  <!-- ============ 1. CAPTURE ============ -->
+  <div class="ct" id="capC" style="left:40px;top:118px;width:190px;height:540px">
+    <div class="th"><svg class="ic"><use href="#i-camera"/></svg> Capture</div>
+    <div class="bd" style="gap:28px;padding-top:18px">
+      <div class="n b" id="cam"><svg class="ic"><use href="#i-camera"/></svg>Rack camera<small>USB webcam or phone, any fps</small></div>
+      <div class="n b" id="samp"><svg class="ic"><use href="#i-timer"/></svg>Frame sampler<small>fixed 100 ms tick, independent of camera fps</small></div>
+      <div class="n b" id="up"><span class="mk">2</span>Upright view + rack frame<small>body rotated upright before pose; joints measured from the rack, not the lens</small></div>
+      <div class="n dsh" id="aruco">ArUco markers<small>optional, fixes the rack pose</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 2. PERCEPTION ============ -->
+  <div class="ct" id="perC" style="left:270px;top:118px;width:410px;height:540px">
+    <div class="th"><svg class="ic"><use href="#i-eye"/></svg> Vision (3 models, run together)</div>
+    <div class="bd" style="gap:12px">
+      <div class="lane"><div class="lh">A · objects</div>
+        <div class="n y" id="yolo"><span class="yl" style="margin-right:5px">YOLO</span>YOLOv8n box detector<small>red box · yellow box · main box, with position and size</small></div></div>
+      <div class="lane"><div class="lh">B · 2D pose</div>
+        <div class="n g" id="mp"><svg class="bi" style="color:#0097A7"><use href="#b-mediapipe"/></svg>MediaPipe Pose<small>33 body landmarks (x, y, z, visibility)</small></div></div>
+      <div class="lane" style="flex:1"><div class="lh">C · 3D pose (HMR), our own model</div>
+        <div class="row">
+          <div class="n p" id="track">Track<small>body box</small></div>
+          <div class="n p" id="crop">Crop + rotate<small>224², upright</small></div>
+          <div class="n p" id="hmr" style="border-width:2px"><span class="mk">3</span>HMR3DNet<small>MobileNetV3-S</small></div>
+          <div class="n p" id="j3d">3D joints<small>33 × xyz</small></div>
+        </div>
+        <div class="fig" style="margin-top:14px">
+          <img src="assets/hmr_panel.png" alt="Live 3D skeleton with the red box linked to the hand" style="width:150px;height:150px">
+          <div>Live output of branch C.<br>3D skeleton at a fixed viewing angle; the box the task needs is drawn and linked to the nearest hand.<br><br>Trained on rendered <b>suited</b> astronauts, where pretrained HMR models fail.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. TEMPORAL MODEL ============ -->
+  <div class="ct" id="tmpC" style="left:720px;top:118px;width:260px;height:540px">
+    <div class="th"><svg class="bi" style="color:#EE4C2C"><use href="#b-pytorch"/></svg> Temporal model</div>
+    <div class="bd" style="gap:26px;padding-top:16px">
+      <div class="n o" id="fusion">Fusion gate<small>uses 3D joints when HMR is confident, 2D otherwise; adds the boxes</small></div>
+      <div class="n o" id="feat">143-d feature vector<small>one per 100 ms tick</small>
+        <div class="fbar"><div style="flex:132;background:#0D9488">pose 132</div><div style="flex:34;background:#7C3AED">obj 11</div></div></div>
+      <div class="n o" id="win">Sliding window<small>last 3 s = 30 ticks</small></div>
+      <div class="n o" id="lstm">BiLSTM, 3 layers × 256<small>+ attention, 8 step classes</small></div>
+      <div class="n o" id="gate"><span class="mk">5</span>Entropy gate<small>pass only if conf ≥ 0.65 and entropy ≤ 1.4 nats</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 4. PROTOCOL ENGINE ============ -->
+  <div class="ct" id="engC" style="left:1020px;top:118px;width:250px;height:540px">
+    <div class="th"><svg class="ic"><use href="#i-list-checks"/></svg> Protocol engine</div>
+    <div class="bd" style="gap:24px;padding-top:14px;padding-right:26px">
+      <div class="n doc" id="doc" style="font-weight:400;font-size:12px">protocol.json<small>8 steps, required objects</small></div>
+      <div class="n r" id="confirm">Confirm step<small>same step for 5 ticks in a row</small></div>
+      <div class="n g" id="adv">Advance + suggest next<small>“Step 3 complete. Step 4: examine red box.”</small></div>
+      <div class="n y" id="order">Order check<small>skipped, out of order, repeated</small></div>
+      <div class="n r" id="hold">HOLD + recover<small>warns, waits for the missed step, then loops back</small></div>
+      <div class="n dsh" id="guard"><span class="mk">4</span>Contract guard<small>refuses a model trained on other features</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 5. OUTPUTS ============ -->
+  <div class="ct" id="outC" style="left:1310px;top:118px;width:180px;height:540px">
+    <div class="th"><svg class="ic"><use href="#i-bell-ring"/></svg> Outputs</div>
+    <div class="bd" style="gap:14px">
+      <div class="n g" id="voice"><svg class="ic"><use href="#i-volume-2"/></svg>Voice alerts<small>offline text-to-speech</small></div>
+      <div class="n g" id="dash"><svg class="bi" style="color:#41CD52"><use href="#b-qt"/></svg>Dashboard<small>PyQt6 HUD + 3D panel</small>
+        <img src="assets/frame_26.jpg" alt="Live dashboard frame" style="width:100%;display:block;margin-top:6px;border:1px solid #9CA3AF"></div>
+      <div class="n g" id="log"><svg class="ic"><use href="#i-file-text"/></svg>Event log<small>JSONL + TXT</small></div>
+      <div class="n g" id="stream"><svg class="bi" style="color:#007808"><use href="#b-ffmpeg"/></svg>UDP stream<small>live feed to ground</small></div>
+      <div class="n g" id="mp4"><svg class="ic"><use href="#i-film"/></svg>MP4 recording<small>with overlay</small></div>
+    </div>
+  </div>
+
+  <!-- ============ TRAINING (offline) ============ -->
+  <div class="ct" id="trC" style="left:40px;top:704px;width:1450px;height:298px">
+    <div class="th l"><svg class="ic"><use href="#i-flask-conical"/></svg> Offline training · weights frozen for deployment</div>
+    <div class="bd" style="flex-direction:row;align-items:center;gap:0;padding:14px 22px">
+      <div style="display:flex;flex-direction:column;gap:16px;width:330px;flex:0 0 auto">
+        <div class="n b" id="blender" style="display:flex;gap:10px;align-items:center;text-align:left"><span class="mk">1</span>
+          <img src="assets/blender_frame.png" alt="Blender digital twin render" style="width:118px;height:78px;object-fit:cover;border:1px solid #9CA3AF;flex:0 0 auto">
+          <div><svg class="bi" style="color:#E87D0D"><use href="#b-blender"/></svg>Blender digital twin<small>rack, boxes and suited astronaut at 0–180° roll, pitch, failed lights. Joints and step labels come free from the render.<br><b>33 takes · 31,891 frames</b></small></div></div>
+        <div class="n b" id="real" style="text-align:left"><svg class="ic"><use href="#i-film"/></svg>Real / AI-generated clips<small>step spans labelled by hand; closes the synthetic-to-real gap</small></div>
+      </div>
+      <div class="n" id="seq" style="width:150px;flex:0 0 auto;margin-left:28px"><svg class="ic"><use href="#i-layers"/></svg>Sequence builder<small>runs the <b>same</b> feature code as the live loop, so training input = live input</small></div>
+      <div class="n" id="train" style="width:334px;flex:0 0 auto;margin-left:28px;text-align:left"><svg class="bi" style="color:#76B900"><use href="#b-nvidia"/></svg>Train, split by take (never by frame)
+        <small style="margin-top:6px"><span class="yl" style="margin-right:4px">YOLO</span>YOLOv8n boxes: mAP@50 <b>0.934</b></small>
+        <small style="margin-top:4px"><svg class="ic"><use href="#i-brain-circuit"/></svg> HMR3DNet: supervised by Blender 3D joints</small>
+        <small style="margin-top:4px"><svg class="bi" style="color:#EE4C2C"><use href="#b-pytorch"/></svg> BiLSTM: 30 × 143 windows, 8 classes</small></div>
+      <div class="n" id="promote" style="width:236px;flex:0 0 auto;margin-left:104px"><svg class="ic"><use href="#i-shield-check"/></svg>promote_model<small>checks feature layout, sample clock and detector match the runtime, then exports</small>
+        <small style="margin-top:4px"><svg class="bi" style="color:#005CED"><use href="#b-onnx"/></svg> .pt / .onnx</small></div>
+    </div>
+  </div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="ct" style="left:1530px;top:118px;width:350px;height:334px">
+    <div class="th l"><svg class="ic"><use href="#i-target"/></svg> Problem statement → our answer</div>
+    <table>
+      <tr><td>Recognise each step</td><td>BiLSTM over 3 s of pose and object features</td></tr>
+      <tr><td>Suggest the next step</td><td>protocol engine reads protocol.json and speaks step N+1</td></tr>
+      <tr><td>Catch skipped / out-of-order steps</td><td>order check, then HOLD until the missed step is done</td></tr>
+      <tr><td>Voice alerts</td><td>offline TTS, only after the entropy gate</td></tr>
+      <tr><td>Log and live stream</td><td>JSONL + TXT log, UDP stream, MP4</td></tr>
+      <tr><td>Microgravity, suited crew</td><td>upright view, rack frame and HMR3DNet handle any body roll</td></tr>
+      <tr><td>Offline, on board</td><td>one RTX 3050 laptop, no network calls</td></tr>
+    </table>
+  </div>
+
+  <div class="ct" style="left:1530px;top:468px;width:350px;height:246px">
+    <div class="th l"><svg class="ic"><use href="#i-chart-no-axes-column"/></svg> Measured on held-out takes</div>
+    <table>
+      <tr><td>Box detector</td><td>YOLOv8n, mAP@50</td><td class="v">0.934</td></tr>
+      <tr><td>3D pose, 60° roll</td><td>pretrained HMR → ours</td><td class="v">0.00 → 0.77</td></tr>
+      <tr><td>3D pose, inverted</td><td>pretrained HMR → ours</td><td class="v">0.60 → 0.91</td></tr>
+      <tr><td>Step classifier</td><td>unseen takes</td><td class="v">73%</td></tr>
+      <tr><td>Live speed</td><td>RTX 3050, end to end</td><td class="v">14–16 FPS</td></tr>
+    </table>
+    <div class="note">Exactly 90° edge-on is still weak (0.07); the fusion gate falls back to 2D there.</div>
+  </div>
+
+  <div class="ct" style="left:1530px;top:730px;width:350px;height:272px">
+    <div class="th l"><svg class="ic"><use href="#i-sparkles"/></svg> What is new in our approach</div>
+    <div class="key" style="padding:9px 10px">
+      <div><span class="mk">1</span><span><b>Digital-twin training data.</b> 31,891 labelled frames with no hand annotation.</span></div>
+      <div><span class="mk">2</span><span><b>Orientation-proof input.</b> Upright view + rack frame, so a floating crew looks the same.</span></div>
+      <div><span class="mk">3</span><span><b>Own 3D pose model</b> for spacesuits, trained on rendered ground truth.</span></div>
+      <div><span class="mk">4</span><span><b>Train = serve contract.</b> A mismatched model is refused at load time.</span></div>
+      <div><span class="mk">5</span><span><b>Confidence-gated alerts.</b> Speaks only when the model is sure.</span></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="stack"><b>Tech stack:</b>
+      <span><svg class="bi" style="color:#3776AB"><use href="#b-python"/></svg>Python</span><span><svg class="bi" style="color:#EE4C2C"><use href="#b-pytorch"/></svg>PyTorch</span><span><svg class="bi" style="color:#5C3EE8"><use href="#b-opencv"/></svg>OpenCV</span><span><svg class="bi" style="color:#0097A7"><use href="#b-mediapipe"/></svg>MediaPipe</span>
+      <span><span class="yl">YOLO</span>Ultralytics</span><span><svg class="bi" style="color:#E87D0D"><use href="#b-blender"/></svg>Blender</span><span><svg class="bi" style="color:#005CED"><use href="#b-onnx"/></svg>ONNX</span><span><svg class="bi" style="color:#41CD52"><use href="#b-qt"/></svg>PyQt6</span>
+      <span><svg class="bi" style="color:#007808"><use href="#b-ffmpeg"/></svg>FFmpeg</span><span><svg class="bi" style="color:#013243"><use href="#b-numpy"/></svg>NumPy</span><span><svg class="bi" style="color:#76B900"><use href="#b-nvidia"/></svg>CUDA</span><span><svg class="bi" style="color:#0A9EDC"><use href="#b-pytest"/></svg>pytest (56 tests)</span>
+    </div>
+    <div class="legend"><span><i></i>data flow</span><span><i class="d"></i>trained weights / contract</span><span><span class="mk">n</span>our innovation</span></div>
+  </div>
+
+  <svg class="wires" id="wires"><defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+  </defs></svg>
+</section>
+
+<script>
+if (new URLSearchParams(location.search).get('only')) document.body.classList.add('only');
+
+// connectors: [from, to, kind, opts]
+//   h    right side of A -> left side of B, one vertical jog (dx from A, or ex before B)
+//   v    bottom of A -> top of B
+//   up   top of A -> bottom of B (training -> runtime), ax/bx = fraction along the edge
+//   loop right of A -> right of B, around the outside
+const W = [
+  ['cam','samp','v'], ['samp','up','v'], ['aruco','up','v', {rev:1, dash:1}],
+  ['capC','yolo','h',{dx:20, lab:'frame'}], ['capC','mp','h',{dx:20}], ['capC','track','h',{dx:20}],
+  ['track','crop','h'], ['crop','hmr','h'], ['hmr','j3d','h'],
+  ['yolo','fusion','h',{ex:34, lab:'11-d', at:'first'}], ['mp','fusion','h',{ex:34, lab:'132-d', at:'first'}], ['j3d','fusion','h',{ex:34}],
+  ['fusion','feat','v'], ['feat','win','v'], ['win','lstm','v',{lab:'30 × 143'}], ['lstm','gate','v',{lab:'P(step)'}],
+  ['gate','confirm','h',{ex:34, lab:'P(step)', at:'mid'}],
+  ['doc','confirm','v',{lab:'expected step'}],
+  ['confirm','adv','v'], ['adv','order','v'], ['order','hold','v',{lab:'mismatch'}],
+  ['hold','confirm','loop'],
+  ['engC','voice','h',{dx:20, lab:'events'}], ['engC','dash','h',{dx:20}], ['engC','log','h',{dx:20}], ['engC','stream','h',{dx:20}], ['engC','mp4','h',{dx:20}],
+  ['blender','seq','h',{ex:26}], ['real','seq','h',{ex:26}], ['seq','train','h'], ['train','promote','h'],
+  ['train','perC','up',{ax:.06, dash:1, lab:'yolo_boxes.pt, hmr3d_net.pt'}],
+  ['train','tmpC','up',{ax:.93, dash:1, lab:'lstm.onnx'}],
+  ['promote','engC','up',{ax:.5, dash:1, lab:'model contract'}],
+];
+const slide = document.getElementById('s1'), svg = document.getElementById('wires');
+const R = id => { const r = document.getElementById(id).getBoundingClientRect(), s = slide.getBoundingClientRect();
+  return {l:r.left-s.left, t:r.top-s.top, r:r.right-s.left, b:r.bottom-s.top, cx:(r.left+r.right)/2-s.left, cy:(r.top+r.bottom)/2-s.top, w:r.width, h:r.height}; };
+function label(x, y, text){ const d = document.createElement('div'); d.className='lbl'; d.style.left=x+'px'; d.style.top=y+'px'; d.textContent=text; slide.appendChild(d); }
+for (const [a, b, k, o = {}] of W) {
+  const A = R(a), B = R(b); let d, lx, ly;
+  if (k === 'h') {
+    const x1 = A.r, y1 = A.cy, x2 = B.l, y2 = B.cy;
+    const mx = o.dx != null ? x1 + o.dx : o.ex != null ? x2 - o.ex : (x1 + x2) / 2;
+    d = `M${x1},${y1} H${mx} V${y2} H${x2}`;
+    [lx, ly] = o.at === 'first' ? [(x1 + mx) / 2, y1] : o.at === 'mid' ? [mx, (y1 + y2) / 2] : [(mx + x2) / 2, y2];
+  } else if (k === 'v') {
+    let x1 = A.cx, y1 = A.b, x2 = B.cx, y2 = B.t;
+    if (o.rev) { x1 = A.cx; y1 = A.t; x2 = B.cx; y2 = B.b; }
+    const my = (y1 + y2) / 2;
+    d = `M${x1},${y1} V${my} H${x2} V${y2}`; [lx, ly] = [x2 + 8, my];
+    if (o.lab) { label(x2 + 8 + o.lab.length * 3, my, o.lab); o.lab = null; }
+  } else if (k === 'up') {
+    // straight up unless bx is given; label sits beside the line in the gap between the rows
+    const x1 = A.l + A.w * o.ax, y1 = A.t, x2 = o.bx != null ? B.l + B.w * o.bx : x1, y2 = B.b, my = y2 + 24;
+    d = `M${x1},${y1} V${my} H${x2} V${y2}`;
+    if (o.lab) { label(x2 + 8 + o.lab.length * 3.1, y2 + 22, o.lab); o.lab = null; }
+  } else if (k === 'loop') {
+    const X = Math.max(A.r, B.r) + 14;
+    d = `M${A.r},${A.cy} H${X} V${B.cy} H${B.r}`; [lx, ly] = [X, (A.cy + B.cy) / 2];
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#222'); p.setAttribute('stroke-width', '1.6');
+  if (o.dash) p.setAttribute('stroke-dasharray', '6 4');
+  p.setAttribute('marker-end', 'url(#ah)'); svg.appendChild(p);
+  if (o.lab) label(lx, ly, o.lab);
+}
+</script>
+</body>
+</html>

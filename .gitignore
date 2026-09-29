@@ -92,3 +92,37 @@ sih-har-isro/logs/experiment_log_*.jsonl
 # separate Git LFS remote) rather than through a normal git push/pull —
 # see docs/HANDOFF_YOLO_MEDIAPIPE.md for how each teammate gets a copy.
 sih-har-isro/dataset/blender_core/
+# ── Sequence / feature-cache datasets ─────────────────────────────────────────
+sih-har-isro/dataset/seq_*/
+sih-har-isro/dataset/hmr3d_cache/
+sih-har-isro/dataset/real/
+sih-har-isro/dataset/real_astro_frames/
+sih-har-isro/dataset/yolo_boxes/
+sih-har-isro/dataset/yolo_boxes_finetune/
+sih-har-isro/dataset/yolo_boxes_real/
+
+# ── Extra experiment model checkpoints (not promoted) ─────────────────────────
+sih-har-isro/models/lstm_blender_core_yolo.onnx
+sih-har-isro/models/lstm_blender_core_yolo.pt
+sih-har-isro/models/lstm_merged_real3.onnx
+sih-har-isro/models/lstm_merged_real3.pt
+sih-har-isro/models/lstm_merged_v2.onnx
+sih-har-isro/models/lstm_merged_v2.pt
+sih-har-isro/models/yolo_boxes_heldout_har2.pt
+sih-har-isro/models/yolo_boxes_real_adapt.pt
+sih-har-isro/models/yolo_boxes_synth_only.pt
+sih-har-isro/models/yolo_boxes_teacher_real.pt
+sih-har-isro/models/yolov8n.pt
+sih-har-isro/yolov8n.pt
+
+# ── YOLO training run artefacts ───────────────────────────────────────────────
+runs/
+
+# ── Debug / scratch ───────────────────────────────────────────────────────────
+sih-har-isro/aruco_debug.png
+testing-videos/
+weights/
+
+# ── Python bytecode in tracked subdirs ────────────────────────────────────────
+sih-har-isro/gui/__pycache__/
+sih-har-isro/pipeline/__pycache__/

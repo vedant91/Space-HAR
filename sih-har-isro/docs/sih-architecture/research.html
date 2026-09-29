@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Research Foundation &amp; References</title>
+<style>
+:root{
+  --ink:#1F2328; --mute:#4B5563;
+  --per:#0D9488; --saf:#E4570A; --pre:#0284C7; --pur:#7C3AED; --dec:#DB2777; --out:#16A34A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1920px;height:1080px;background:#fff;font-family:Helvetica,Arial,sans-serif;color:var(--ink);padding:26px 40px 16px;position:relative}
+h1{font-size:34px;font-weight:700}
+h1 span{color:var(--saf)}
+.sub{font-size:15px;color:var(--mute);margin-top:3px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1F2328;padding-bottom:9px;margin-bottom:14px}
+.tag{font-size:13.5px;color:var(--mute);text-align:right;line-height:1.4}
+.tag b{color:var(--ink)}
+
+.wrap{display:grid;grid-template-columns:1160px 1fr;gap:18px;height:910px}
+
+/* ---- left: gap table ---- */
+.gap{display:flex;flex-direction:column;gap:9px;height:100%}
+.gaphd{font-size:16.5px;font-weight:700;margin-bottom:2px}
+.row{border:1.3px solid #1F2328;border-left-width:7px;border-radius:4px;flex:1;display:grid;grid-template-columns:172px 1fr 1fr 1fr;gap:0}
+.row .c{padding:8px 11px;font-size:12.3px;line-height:1.35;border-left:1px solid #D1D5DB}
+.row .c:first-child{border-left:0;display:flex;flex-direction:column;justify-content:center}
+.row .c b{display:block;font-size:13.3px;margin-bottom:2px}
+.row .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mute);text-transform:uppercase;margin-bottom:3px}
+.row .refs{font-family:Consolas,monospace;font-size:11px;color:var(--mute);margin-top:4px}
+.row .ours{font-weight:600}
+
+.related{border:1.3px dashed #9CA3AF;border-radius:5px;padding:9px 13px;font-size:12.3px;line-height:1.4;margin-top:2px}
+.related b{color:var(--saf)}
+
+/* ---- right: bibliography ---- */
+.bib{border:1.3px solid #1F2328;border-radius:5px;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.bib>.th{font-weight:700;font-size:16.5px;padding:9px 13px;border-bottom:1.3px solid #1F2328;background:#F3F4F6}
+.bib>.bd{flex:1;padding:9px 15px;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.grp b{font-size:12.6px;text-transform:uppercase;letter-spacing:.05em;display:block;padding:3px 7px;border-radius:3px;color:#fff;margin-bottom:4px}
+.grp .it{font-size:11.6px;line-height:1.32;padding:1.5px 0 1.5px 4px;border-left:2px solid #E5E7EB}
+.grp .it i{font-style:italic}
+.grp .it .u{color:#1D4ED8;font-family:Consolas,monospace;font-size:10.6px}
+.grp .it .yr{color:var(--mute)}
+
+.foot{position:absolute;left:40px;right:40px;bottom:14px;display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute);border-top:1px solid #D1D5DB;padding-top:7px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div><h1>Research Foundation <span>&amp;</span> References</h1>
+    <div class="sub">Where the published literature stands on each part of our pipeline, and what we had to build beyond it &middot; backup slide, SIH 2026 &middot; PS 26174</div></div>
+  <div class="tag">Appendix slide &mdash; show only if asked<br><b>20 sources</b> across 7 research areas, verified Sept 2026</div>
+</div>
+
+<div class="wrap">
+  <div class="gap">
+    <div class="gaphd">Literature vs. our system</div>
+
+    <div class="row" style="border-left-color:var(--per)">
+      <div class="c"><b>3D pose in microgravity</b><span style="font-size:11.5px;color:var(--mute)">HMR branch</span></div>
+      <div class="c"><div class="lbl">what research shows</div>Astronaut / microgravity pose estimation is an active, open research problem as recently as 2025&ndash;2026.<div class="refs">A1&ndash;A4</div></div>
+      <div class="c"><div class="lbl">where it stops</div>Every system found is a research-stage estimator on its own dataset &mdash; none is trained for a specific task rig, suit, or fixed rack camera.</div>
+      <div class="c ours"><div class="lbl">what we built</div>HMR3DNet, trained on our own Blender digital twin of the exact rack, boxes and suited astronaut. 60&deg; roll: 0.00 &rarr; 0.77 tracked joints vs. pretrained HMR.</div>
+    </div>
+
+    <div class="row" style="border-left-color:var(--saf)">
+      <div class="c"><b>Sim-to-real domain gap</b><span style="font-size:11.5px;color:var(--mute)">Training data</span></div>
+      <div class="c"><div class="lbl">what research shows</div>Synthetic-only training leaves a measurable, closable gap on human body/hand pose (CVPR 2025); Blender-based synthetic pipelines already improve detector accuracy.<div class="refs">B1&ndash;B2</div></div>
+      <div class="c"><div class="lbl">where it stops</div>Demonstrated on generic hands/objects, not on a suited, task-performing human body.</div>
+      <div class="c ours"><div class="lbl">what we built</div>Measured the same gap ourselves (pretrained HMR: 0.00 at 60&deg; roll) and closed it by rendering denser roll/pitch/lighting angles plus real clips.</div>
+    </div>
+
+    <div class="row" style="border-left-color:var(--pre)">
+      <div class="c"><b>Perception backbones</b><span style="font-size:11.5px;color:var(--mute)">YOLO · MediaPipe</span></div>
+      <div class="c"><div class="lbl">what research shows</div>YOLOv8 and BlazePose/MediaPipe are mature, general-purpose detectors we build directly on rather than reinvent.<div class="refs">C1&ndash;C4</div></div>
+      <div class="c"><div class="lbl">where it stops</div>Trained on general web/COCO-style data &mdash; not our rack, our 3 task boxes, or a pressurised suit.</div>
+      <div class="c ours"><div class="lbl">what we built</div>YOLOv8n fine-tuned on the task boxes (mAP@50 0.934); MediaPipe kept for the 2D branch; HMR3DNet added only where these networks fail.</div>
+    </div>
+
+    <div class="row" style="border-left-color:var(--pur)">
+      <div class="c"><b>Temporal step recognition</b><span style="font-size:11.5px;color:var(--mute)">BiLSTM + attention</span></div>
+      <div class="c"><div class="lbl">what research shows</div>Attention-augmented BiLSTM over skeleton sequences is a proven architecture for action recognition.<div class="refs">D1&ndash;D3</div></div>
+      <div class="c"><div class="lbl">where it stops</div>Benchmarked on ground-based, upright, unoccluded subjects &mdash; fitness, surveillance, gait.</div>
+      <div class="c ours"><div class="lbl">what we built</div>Same BiLSTM+attention idea, fed rack-relative, upright-canonicalised features so a floating, suited crew member reads the same at any roll.</div>
+    </div>
+
+    <div class="row" style="border-left-color:var(--dec)">
+      <div class="c"><b>Procedural correctness &amp; alerts</b><span style="font-size:11.5px;color:var(--mute)">Decision engine</span></div>
+      <div class="c"><div class="lbl">what research shows</div>Action segmentation, procedural error detection and entropy-based confidence gating are each studied, separately.<div class="refs">E1&ndash;E4</div></div>
+      <div class="c"><div class="lbl">where it stops</div>No work found combines them into one live system that decides when to actually speak an alert.</div>
+      <div class="c ours"><div class="lbl">what we built</div>One entropy + confidence gate feeding a deterministic 8-step state machine: confirm &rarr; suggest &rarr; HOLD &rarr; recover.</div>
+    </div>
+
+    <div class="row" style="border-left-color:var(--out)">
+      <div class="c"><b>Real-time, offline deployment</b><span style="font-size:11.5px;color:var(--mute)">Edge inference</span></div>
+      <div class="c"><div class="lbl">what research shows</div>Edge HAR is proven real-time on Jetson/Raspberry-Pi-class hardware for a single model.<div class="refs">F1&ndash;F2</div></div>
+      <div class="c"><div class="lbl">where it stops</div>Shown for one lightweight model on simple activities (walk/run) &mdash; not a 3-branch vision stack plus a temporal model together.</div>
+      <div class="c ours"><div class="lbl">what we built</div>Full YOLO + MediaPipe + HMR3DNet + BiLSTM stack running together at 14&ndash;16 FPS on one RTX 3050 laptop, zero cloud calls.</div>
+    </div>
+
+    <div class="related"><b>Prior art for this exact problem statement:</b> a public repository (<i>AI-Human-Activity-Recognition-for-On-board-BAS-Experiments</i>, GitHub) describes the same skip/out-of-order detection and voice-alert concept for PS 26174. It documents an inference-pipeline simulator with demo datasets; no trained model weights or measured accuracy are reported. <span class="refs">G1</span> &mdash; our system trains and measures three real models end to end.</div>
+  </div>
+
+  <div class="bib">
+    <div class="th">Bibliography</div>
+    <div class="bd">
+      <div class="grp"><b style="background:var(--per)">A &middot; 3D pose in microgravity</b>
+        <div class="it"><span class="u">A1</span> <i>PhysAstro-Pose: Physics-Inspired Semi-Supervised Human Pose Estimation in Microgravity Environments.</i> Sensors, <span class="yr">2026</span>. doi.org/10.3390/s26113406</div>
+        <div class="it"><span class="u">A2</span> <i>H3-Astronaut Pose Net: A Multiview 3D Astronaut Pose Estimation System for Spacecraft.</i> Neurocomputing, <span class="yr">2025</span>. sciencedirect.com/pii/S0925231225015498</div>
+        <div class="it"><span class="u">A3</span> <i>AstroPose: Astronaut Pose Estimation Using a Monocular Camera During EVA.</i> Sci. China Tech. Sci., <span class="yr">2023</span>. link.springer.com/10.1007/s11431-023-2599-8</div>
+        <div class="it"><span class="u">A4</span> <i>Visual Tracking of Materials and Astronaut Operation Action Recognition in Space Station Cargo Cabins.</i> Aerospace (MDPI), <span class="yr">2026</span>. mdpi.com/2226-4310/13/7/592</div>
+      </div>
+      <div class="grp"><b style="background:var(--saf)">B &middot; Synthetic data &amp; sim-to-real gap</b>
+        <div class="it"><span class="u">B1</span> Zhao, Yang, Sun, Hui, Yao. <i>Analyzing the Synthetic-to-Real Domain Gap in 3D Hand Pose Estimation.</i> CVPR, <span class="yr">2025</span>. arxiv.org/pdf/2503.19307</div>
+        <div class="it"><span class="u">B2</span> <i>Automated Synthetic Data for Computer Vision: Blender-COCO Pipeline Enhancing YOLOv8.</i> IEEE, <span class="yr">2026</span>. ieeexplore.ieee.org/document/11223399</div>
+      </div>
+      <div class="grp"><b style="background:var(--pre)">C &middot; Perception backbones</b>
+        <div class="it"><span class="u">C1</span> <i>YOLOv8: A Novel Object Detection Algorithm with Enhanced Performance and Robustness.</i> IEEE, <span class="yr">2024</span>. ieeexplore.ieee.org/document/10533619</div>
+        <div class="it"><span class="u">C2</span> Bazarevsky et al. (Google Research). <i>BlazePose GHUM Holistic: Real-Time 3D Human Landmarks and Pose Estimation.</i> arXiv, <span class="yr">2022</span>. arxiv.org/pdf/2206.11678</div>
+        <div class="it"><span class="u">C3</span> Zhang et al. <i>PyMAF: 3D Human Pose and Shape Regression with Pyramidal Mesh Alignment Feedback Loop.</i> ICCV, <span class="yr">2021</span>. arxiv.org/pdf/2103.16507</div>
+        <div class="it"><span class="u">C4</span> <i>Recovering 3D Human Mesh from Monocular Images: A Survey.</i> arXiv, <span class="yr">2022</span>. arxiv.org/pdf/2203.01923</div>
+      </div>
+      <div class="grp"><b style="background:var(--pur)">D &middot; Temporal, skeleton-based HAR</b>
+        <div class="it"><span class="u">D1</span> <i>Skeleton-Based Approaches Based on Machine Vision: A Survey.</i> arXiv, <span class="yr">2020</span>. arxiv.org/pdf/2012.12447</div>
+        <div class="it"><span class="u">D2</span> <i>Attention-Based Bidirectional-LSTM for Abnormal Human Activity Detection.</i> Scientific Reports, <span class="yr">2023</span>. nature.com/articles/s41598-023-41231-0</div>
+        <div class="it"><span class="u">D3</span> <i>Multi-Head Attention-Based Framework with Residual Network for Human Action Recognition.</i> PMC, <span class="yr">2025</span>. pmc.ncbi.nlm.nih.gov/articles/PMC12074257</div>
+      </div>
+      <div class="grp"><b style="background:var(--dec)">E &middot; Procedural correctness &amp; confidence</b>
+        <div class="it"><span class="u">E1</span> Lee et al. <i>Error Detection in Egocentric Procedural Task Videos.</i> CVPR, <span class="yr">2024</span>.</div>
+        <div class="it"><span class="u">E2</span> Lee et al. <i>Error Recognition in Procedural Videos Using Generalized Task Graph.</i> ICCV, <span class="yr">2025</span>.</div>
+        <div class="it"><span class="u">E3</span> <i>Weakly-Supervised Action Segmentation and Unseen Error Detection in Anomalous Instructional Videos.</i> <span class="yr">2024</span>.</div>
+        <div class="it"><span class="u">E4</span> <i>Entropy Methods for the Confidence Assessment of Probabilistic Classification Models.</i> arXiv, <span class="yr">2021</span>. arxiv.org/html/2103.15157</div>
+      </div>
+      <div class="grp"><b style="background:var(--out)">F &middot; Real-time edge deployment</b>
+        <div class="it"><span class="u">F1</span> <i>Efficient Human Activity Recognition on Edge Devices Using DeepConvLSTM Architectures.</i> Scientific Reports, <span class="yr">2025</span>. nature.com/articles/s41598-025-98571-2</div>
+        <div class="it"><span class="u">F2</span> <i>Real-Time Human Activity Recognition on Edge Devices Using Quantized Deep Neural Networks.</i> SPIE, <span class="yr">2026</span>.</div>
+      </div>
+      <div class="grp"><b style="background:#1F2328">G &middot; Related work, same problem statement</b>
+        <div class="it"><span class="u">G1</span> hamsadevang849-sys. <i>AI-Human-Activity-Recognition-for-On-board-BAS-Experiments.</i> GitHub, <span class="yr">2026</span>. github.com/hamsadevang849-sys/AI-Human-Activity-Recognition-for-On-board-BAS-Experiments</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <span>Every entry above was located by live web search and its link opened or search-confirmed on 27&ndash;28 Sep 2026 &mdash; none is fabricated.</span>
+  <span>SIH 2026 &middot; PS 26174 &middot; Appendix &mdash; Research &amp; References</span>
+</div>
+</body>
+</html>

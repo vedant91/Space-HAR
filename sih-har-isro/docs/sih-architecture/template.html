@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>BAS-HAR Technical Approach</title>
+<style>
+/* draw.io-style palette: fill / stroke */
+:root{
+  --ink:#1F2328; --mute:#4B5563; --edge:#333;
+  --g:#D5E8D4; --g2:#82B366;  --y:#FFF2CC; --y2:#D6B656;  --p:#E1D5E7; --p2:#9673A6;
+  --b:#DAE8FC; --b2:#6C8EBF;  --r:#F8CECC; --r2:#B85450;  --o:#FFE6CC; --o2:#D79B00;
+  --mark:#F07A1A;
+  --f:Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#C9D2DF}
+body{font-family:var(--f);color:var(--ink)}
+body.only{background:#fff}
+.slide{width:1920px;height:1080px;position:relative;overflow:hidden;background:#fff;margin:0 auto}
+.ic{width:1em;height:1em;flex:0 0 auto;display:inline-block;vertical-align:-.15em}
+.bi{width:1em;height:1em;flex:0 0 auto;display:inline-block;vertical-align:-.15em}
+
+/* header */
+.hdr{position:absolute;left:40px;right:40px;top:22px;height:74px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--edge);padding-bottom:10px}
+.hdr h1{font-size:38px;font-weight:700;letter-spacing:-.01em}
+.hdr h1 span{color:var(--mark)}
+.hdr p{font-size:16px;color:var(--mute);margin-top:4px}
+.hdr .hr{text-align:right;font-size:15px;color:var(--mute);line-height:1.45}
+.hdr .hr b{color:var(--ink)}
+
+/* containers */
+.ct{position:absolute;border:1.5px solid var(--edge);border-radius:3px;background:#fff;display:flex;flex-direction:column}
+.ct>.th{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:15.5px;padding:7px 6px;border-bottom:1.5px solid var(--edge);white-space:nowrap}
+.ct>.th .bi,.ct>.th .ic{font-size:19px}
+.ct>.th.l{justify-content:flex-start;padding-left:12px}
+.ct>.bd{flex:1;display:flex;flex-direction:column;padding:12px 12px;gap:22px}
+
+/* components */
+.n{position:relative;border:1.3px solid var(--edge);border-radius:6px;padding:7px 8px;text-align:center;font-size:13.5px;font-weight:700;line-height:1.2;background:#fff}
+.n small{display:block;font-weight:400;font-size:11.6px;color:#3B4250;margin-top:2px;line-height:1.28}
+.n .ic,.n .bi{font-size:15px;margin-right:4px}
+.g{background:var(--g);border-color:var(--g2)} .y{background:var(--y);border-color:var(--y2)} .p{background:var(--p);border-color:var(--p2)}
+.b{background:var(--b);border-color:var(--b2)} .r{background:var(--r);border-color:var(--r2)} .o{background:var(--o);border-color:var(--o2)}
+.dsh{border-style:dashed}
+.doc{border-radius:0}
+.lane{border:1px solid #9CA3AF;border-radius:4px;padding:6px 8px 8px;position:relative}
+.lane>.lh{font-size:11.5px;font-weight:700;color:var(--mute);margin-bottom:6px;text-align:left}
+.row{display:flex;align-items:center;gap:18px}
+.row>.n{flex:1}
+.mk{position:absolute;top:-10px;right:-10px;width:22px;height:22px;border-radius:50%;background:var(--mark);color:#fff;font-size:12.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;outline:1.3px solid var(--mark);z-index:6}
+.fig{display:flex;gap:10px;align-items:center;font-size:11.5px;color:var(--mute);line-height:1.35;text-align:left}
+.fig img{border:1px solid #9CA3AF;display:block}
+.fbar{display:flex;height:13px;margin-top:5px;font-size:9.5px;font-weight:700;color:#fff;border:1px solid var(--o2)}
+.fbar div{display:flex;align-items:center;justify-content:center}
+
+/* tables in the sidebar */
+table{border-collapse:collapse;width:100%;font-size:12.3px}
+td{border-bottom:1px solid #D1D5DB;padding:5px 6px;vertical-align:top;line-height:1.3}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;width:128px}
+td.v{font-weight:700;white-space:nowrap;text-align:right}
+.key{display:flex;flex-direction:column;gap:7px;font-size:12.3px;line-height:1.32}
+.key>div{display:grid;grid-template-columns:24px 1fr;gap:6px;align-items:start}
+.key .mk{position:static;width:20px;height:20px;font-size:11.5px}
+.note{font-size:11px;color:var(--mute);padding:0 6px 6px}
+
+/* arrows + labels (drawn by the script below) */
+svg.wires{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:5;overflow:visible}
+.lbl{position:absolute;z-index:7;background:#fff;font-size:11px;color:#111;padding:0 3px;white-space:nowrap;transform:translate(-50%,-50%);line-height:1.25}
+
+/* footer */
+.foot{position:absolute;left:40px;right:40px;bottom:16px;height:40px;display:flex;align-items:center;justify-content:space-between;border-top:1.5px solid #9CA3AF;padding-top:8px}
+.stack{display:flex;align-items:center;gap:15px;font-size:12.5px;white-space:nowrap}
+.stack>b{font-size:12.5px;margin-right:2px}
+.stack>span{display:flex;align-items:center;gap:5px}
+.stack .bi{font-size:19px}
+.yl{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#042AFF;color:#fff;font-size:6.5px;font-weight:700;border-radius:3px}
+.legend{display:flex;gap:18px;font-size:12px;color:var(--mute);align-items:center;white-space:nowrap}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:26px;border-top:1.8px solid #222;position:relative}
+.legend i.d{border-top-style:dashed}
+.legend .mk{position:static;width:17px;height:17px;font-size:10px}
+</style>
+</head>
+<body>
+<!--SPRITE-->
+<section class="slide" id="s1">
+
+  <div class="hdr">
+    <div>
+      <h1>Technical Approach <span>·</span> System Architecture</h1>
+      <p>Astronaut Activity Recognition (HAR) for the 8-step BAS protocol · SIH 2026 · PS 26174</p>
+    </div>
+    <div class="hr">Runs <b>fully offline on one laptop</b> (RTX 3050)<br><b>14–16 FPS</b> live, about 70 ms per frame</div>
+  </div>
+
+  <!-- ============ 1. CAPTURE ============ -->
+  <div class="ct" id="capC" style="left:40px;top:118px;width:190px;height:540px">
+    <div class="th">{{i:camera}} Capture</div>
+    <div class="bd" style="gap:28px;padding-top:18px">
+      <div class="n b" id="cam">{{i:camera}}Rack camera<small>USB webcam or phone, any fps</small></div>
+      <div class="n b" id="samp">{{i:timer}}Frame sampler<small>fixed 100 ms tick, independent of camera fps</small></div>
+      <div class="n b" id="up"><span class="mk">2</span>Upright view + rack frame<small>body rotated upright before pose; joints measured from the rack, not the lens</small></div>
+      <div class="n dsh" id="aruco">ArUco markers<small>optional, fixes the rack pose</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 2. PERCEPTION ============ -->
+  <div class="ct" id="perC" style="left:270px;top:118px;width:410px;height:540px">
+    <div class="th">{{i:eye}} Vision (3 models, run together)</div>
+    <div class="bd" style="gap:12px">
+      <div class="lane"><div class="lh">A · objects</div>
+        <div class="n y" id="yolo"><span class="yl" style="margin-right:5px">YOLO</span>YOLOv8n box detector<small>red box · yellow box · main box, with position and size</small></div></div>
+      <div class="lane"><div class="lh">B · 2D pose</div>
+        <div class="n g" id="mp">{{b:mediapipe}}MediaPipe Pose<small>33 body landmarks (x, y, z, visibility)</small></div></div>
+      <div class="lane" style="flex:1"><div class="lh">C · 3D pose (HMR), our own model</div>
+        <div class="row">
+          <div class="n p" id="track">Track<small>body box</small></div>
+          <div class="n p" id="crop">Crop + rotate<small>224², upright</small></div>
+          <div class="n p" id="hmr" style="border-width:2px"><span class="mk">3</span>HMR3DNet<small>MobileNetV3-S</small></div>
+          <div class="n p" id="j3d">3D joints<small>33 × xyz</small></div>
+        </div>
+        <div class="fig" style="margin-top:14px">
+          <img src="assets/hmr_panel.png" alt="Live 3D skeleton with the red box linked to the hand" style="width:150px;height:150px">
+          <div>Live output of branch C.<br>3D skeleton at a fixed viewing angle; the box the task needs is drawn and linked to the nearest hand.<br><br>Trained on rendered <b>suited</b> astronauts, where pretrained HMR models fail.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. TEMPORAL MODEL ============ -->
+  <div class="ct" id="tmpC" style="left:720px;top:118px;width:260px;height:540px">
+    <div class="th">{{b:pytorch}} Temporal model</div>
+    <div class="bd" style="gap:26px;padding-top:16px">
+      <div class="n o" id="fusion">Fusion gate<small>uses 3D joints when HMR is confident, 2D otherwise; adds the boxes</small></div>
+      <div class="n o" id="feat">143-d feature vector<small>one per 100 ms tick</small>
+        <div class="fbar"><div style="flex:132;background:#0D9488">pose 132</div><div style="flex:34;background:#7C3AED">obj 11</div></div></div>
+      <div class="n o" id="win">Sliding window<small>last 3 s = 30 ticks</small></div>
+      <div class="n o" id="lstm">BiLSTM, 3 layers × 256<small>+ attention, 8 step classes</small></div>
+      <div class="n o" id="gate"><span class="mk">5</span>Entropy gate<small>pass only if conf ≥ 0.65 and entropy ≤ 1.4 nats</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 4. PROTOCOL ENGINE ============ -->
+  <div class="ct" id="engC" style="left:1020px;top:118px;width:250px;height:540px">
+    <div class="th">{{i:list-checks}} Protocol engine</div>
+    <div class="bd" style="gap:24px;padding-top:14px;padding-right:26px">
+      <div class="n doc" id="doc" style="font-weight:400;font-size:12px">protocol.json<small>8 steps, required objects</small></div>
+      <div class="n r" id="confirm">Confirm step<small>same step for 5 ticks in a row</small></div>
+      <div class="n g" id="adv">Advance + suggest next<small>“Step 3 complete. Step 4: examine red box.”</small></div>
+      <div class="n y" id="order">Order check<small>skipped, out of order, repeated</small></div>
+      <div class="n r" id="hold">HOLD + recover<small>warns, waits for the missed step, then loops back</small></div>
+      <div class="n dsh" id="guard"><span class="mk">4</span>Contract guard<small>refuses a model trained on other features</small></div>
+    </div>
+  </div>
+
+  <!-- ============ 5. OUTPUTS ============ -->
+  <div class="ct" id="outC" style="left:1310px;top:118px;width:180px;height:540px">
+    <div class="th">{{i:bell-ring}} Outputs</div>
+    <div class="bd" style="gap:14px">
+      <div class="n g" id="voice">{{i:volume-2}}Voice alerts<small>offline text-to-speech</small></div>
+      <div class="n g" id="dash">{{b:qt}}Dashboard<small>PyQt6 HUD + 3D panel</small>
+        <img src="assets/frame_26.jpg" alt="Live dashboard frame" style="width:100%;display:block;margin-top:6px;border:1px solid #9CA3AF"></div>
+      <div class="n g" id="log">{{i:file-text}}Event log<small>JSONL + TXT</small></div>
+      <div class="n g" id="stream">{{b:ffmpeg}}UDP stream<small>live feed to ground</small></div>
+      <div class="n g" id="mp4">{{i:film}}MP4 recording<small>with overlay</small></div>
+    </div>
+  </div>
+
+  <!-- ============ TRAINING (offline) ============ -->
+  <div class="ct" id="trC" style="left:40px;top:704px;width:1450px;height:298px">
+    <div class="th l">{{i:flask-conical}} Offline training · weights frozen for deployment</div>
+    <div class="bd" style="flex-direction:row;align-items:center;gap:0;padding:14px 22px">
+      <div style="display:flex;flex-direction:column;gap:16px;width:330px;flex:0 0 auto">
+        <div class="n b" id="blender" style="display:flex;gap:10px;align-items:center;text-align:left"><span class="mk">1</span>
+          <img src="assets/blender_frame.png" alt="Blender digital twin render" style="width:118px;height:78px;object-fit:cover;border:1px solid #9CA3AF;flex:0 0 auto">
+          <div>{{b:blender}}Blender digital twin<small>rack, boxes and suited astronaut at 0–180° roll, pitch, failed lights. Joints and step labels come free from the render.<br><b>33 takes · 31,891 frames</b></small></div></div>
+        <div class="n b" id="real" style="text-align:left">{{i:film}}Real / AI-generated clips<small>step spans labelled by hand; closes the synthetic-to-real gap</small></div>
+      </div>
+      <div class="n" id="seq" style="width:150px;flex:0 0 auto;margin-left:28px">{{i:layers}}Sequence builder<small>runs the <b>same</b> feature code as the live loop, so training input = live input</small></div>
+      <div class="n" id="train" style="width:334px;flex:0 0 auto;margin-left:28px;text-align:left">{{b:nvidia}}Train, split by take (never by frame)
+        <small style="margin-top:6px"><span class="yl" style="margin-right:4px">YOLO</span>YOLOv8n boxes: mAP@50 <b>0.934</b></small>
+        <small style="margin-top:4px">{{i:brain-circuit}} HMR3DNet: supervised by Blender 3D joints</small>
+        <small style="margin-top:4px">{{b:pytorch}} BiLSTM: 30 × 143 windows, 8 classes</small></div>
+      <div class="n" id="promote" style="width:236px;flex:0 0 auto;margin-left:104px">{{i:shield-check}}promote_model<small>checks feature layout, sample clock and detector match the runtime, then exports</small>
+        <small style="margin-top:4px">{{b:onnx}} .pt / .onnx</small></div>
+    </div>
+  </div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="ct" style="left:1530px;top:118px;width:350px;height:334px">
+    <div class="th l">{{i:target}} Problem statement → our answer</div>
+    <table>
+      <tr><td>Recognise each step</td><td>BiLSTM over 3 s of pose and object features</td></tr>
+      <tr><td>Suggest the next step</td><td>protocol engine reads protocol.json and speaks step N+1</td></tr>
+      <tr><td>Catch skipped / out-of-order steps</td><td>order check, then HOLD until the missed step is done</td></tr>
+      <tr><td>Voice alerts</td><td>offline TTS, only after the entropy gate</td></tr>
+      <tr><td>Log and live stream</td><td>JSONL + TXT log, UDP stream, MP4</td></tr>
+      <tr><td>Microgravity, suited crew</td><td>upright view, rack frame and HMR3DNet handle any body roll</td></tr>
+      <tr><td>Offline, on board</td><td>one RTX 3050 laptop, no network calls</td></tr>
+    </table>
+  </div>
+
+  <div class="ct" style="left:1530px;top:468px;width:350px;height:246px">
+    <div class="th l">{{i:chart-no-axes-column}} Measured on held-out takes</div>
+    <table>
+      <tr><td>Box detector</td><td>YOLOv8n, mAP@50</td><td class="v">0.934</td></tr>
+      <tr><td>3D pose, 60° roll</td><td>pretrained HMR → ours</td><td class="v">0.00 → 0.77</td></tr>
+      <tr><td>3D pose, inverted</td><td>pretrained HMR → ours</td><td class="v">0.60 → 0.91</td></tr>
+      <tr><td>Step classifier</td><td>unseen takes</td><td class="v">73%</td></tr>
+      <tr><td>Live speed</td><td>RTX 3050, end to end</td><td class="v">14–16 FPS</td></tr>
+    </table>
+    <div class="note">Exactly 90° edge-on is still weak (0.07); the fusion gate falls back to 2D there.</div>
+  </div>
+
+  <div class="ct" style="left:1530px;top:730px;width:350px;height:272px">
+    <div class="th l">{{i:sparkles}} What is new in our approach</div>
+    <div class="key" style="padding:9px 10px">
+      <div><span class="mk">1</span><span><b>Digital-twin training data.</b> 31,891 labelled frames with no hand annotation.</span></div>
+      <div><span class="mk">2</span><span><b>Orientation-proof input.</b> Upright view + rack frame, so a floating crew looks the same.</span></div>
+      <div><span class="mk">3</span><span><b>Own 3D pose model</b> for spacesuits, trained on rendered ground truth.</span></div>
+      <div><span class="mk">4</span><span><b>Train = serve contract.</b> A mismatched model is refused at load time.</span></div>
+      <div><span class="mk">5</span><span><b>Confidence-gated alerts.</b> Speaks only when the model is sure.</span></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="stack"><b>Tech stack:</b>
+      <span>{{b:python}}Python</span><span>{{b:pytorch}}PyTorch</span><span>{{b:opencv}}OpenCV</span><span>{{b:mediapipe}}MediaPipe</span>
+      <span><span class="yl">YOLO</span>Ultralytics</span><span>{{b:blender}}Blender</span><span>{{b:onnx}}ONNX</span><span>{{b:qt}}PyQt6</span>
+      <span>{{b:ffmpeg}}FFmpeg</span><span>{{b:numpy}}NumPy</span><span>{{b:nvidia}}CUDA</span><span>{{b:pytest}}pytest (56 tests)</span>
+    </div>
+    <div class="legend"><span><i></i>data flow</span><span><i class="d"></i>trained weights / contract</span><span><span class="mk">n</span>our innovation</span></div>
+  </div>
+
+  <svg class="wires" id="wires"><defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+  </defs></svg>
+</section>
+
+<script>
+if (new URLSearchParams(location.search).get('only')) document.body.classList.add('only');
+
+// connectors: [from, to, kind, opts]
+//   h    right side of A -> left side of B, one vertical jog (dx from A, or ex before B)
+//   v    bottom of A -> top of B
+//   up   top of A -> bottom of B (training -> runtime), ax/bx = fraction along the edge
+//   loop right of A -> right of B, around the outside
+const W = [
+  ['cam','samp','v'], ['samp','up','v'], ['aruco','up','v', {rev:1, dash:1}],
+  ['capC','yolo','h',{dx:20, lab:'frame'}], ['capC','mp','h',{dx:20}], ['capC','track','h',{dx:20}],
+  ['track','crop','h'], ['crop','hmr','h'], ['hmr','j3d','h'],
+  ['yolo','fusion','h',{ex:34, lab:'11-d', at:'first'}], ['mp','fusion','h',{ex:34, lab:'132-d', at:'first'}], ['j3d','fusion','h',{ex:34}],
+  ['fusion','feat','v'], ['feat','win','v'], ['win','lstm','v',{lab:'30 × 143'}], ['lstm','gate','v',{lab:'P(step)'}],
+  ['gate','confirm','h',{ex:34, lab:'P(step)', at:'mid'}],
+  ['doc','confirm','v',{lab:'expected step'}],
+  ['confirm','adv','v'], ['adv','order','v'], ['order','hold','v',{lab:'mismatch'}],
+  ['hold','confirm','loop'],
+  ['engC','voice','h',{dx:20, lab:'events'}], ['engC','dash','h',{dx:20}], ['engC','log','h',{dx:20}], ['engC','stream','h',{dx:20}], ['engC','mp4','h',{dx:20}],
+  ['blender','seq','h',{ex:26}], ['real','seq','h',{ex:26}], ['seq','train','h'], ['train','promote','h'],
+  ['train','perC','up',{ax:.06, dash:1, lab:'yolo_boxes.pt, hmr3d_net.pt'}],
+  ['train','tmpC','up',{ax:.93, dash:1, lab:'lstm.onnx'}],
+  ['promote','engC','up',{ax:.5, dash:1, lab:'model contract'}],
+];
+const slide = document.getElementById('s1'), svg = document.getElementById('wires');
+const R = id => { const r = document.getElementById(id).getBoundingClientRect(), s = slide.getBoundingClientRect();
+  return {l:r.left-s.left, t:r.top-s.top, r:r.right-s.left, b:r.bottom-s.top, cx:(r.left+r.right)/2-s.left, cy:(r.top+r.bottom)/2-s.top, w:r.width, h:r.height}; };
+function label(x, y, text){ const d = document.createElement('div'); d.className='lbl'; d.style.left=x+'px'; d.style.top=y+'px'; d.textContent=text; slide.appendChild(d); }
+for (const [a, b, k, o = {}] of W) {
+  const A = R(a), B = R(b); let d, lx, ly;
+  if (k === 'h') {
+    const x1 = A.r, y1 = A.cy, x2 = B.l, y2 = B.cy;
+    const mx = o.dx != null ? x1 + o.dx : o.ex != null ? x2 - o.ex : (x1 + x2) / 2;
+    d = `M${x1},${y1} H${mx} V${y2} H${x2}`;
+    [lx, ly] = o.at === 'first' ? [(x1 + mx) / 2, y1] : o.at === 'mid' ? [mx, (y1 + y2) / 2] : [(mx + x2) / 2, y2];
+  } else if (k === 'v') {
+    let x1 = A.cx, y1 = A.b, x2 = B.cx, y2 = B.t;
+    if (o.rev) { x1 = A.cx; y1 = A.t; x2 = B.cx; y2 = B.b; }
+    const my = (y1 + y2) / 2;
+    d = `M${x1},${y1} V${my} H${x2} V${y2}`; [lx, ly] = [x2 + 8, my];
+    if (o.lab) { label(x2 + 8 + o.lab.length * 3, my, o.lab); o.lab = null; }
+  } else if (k === 'up') {
+    // straight up unless bx is given; label sits beside the line in the gap between the rows
+    const x1 = A.l + A.w * o.ax, y1 = A.t, x2 = o.bx != null ? B.l + B.w * o.bx : x1, y2 = B.b, my = y2 + 24;
+    d = `M${x1},${y1} V${my} H${x2} V${y2}`;
+    if (o.lab) { label(x2 + 8 + o.lab.length * 3.1, y2 + 22, o.lab); o.lab = null; }
+  } else if (k === 'loop') {
+    const X = Math.max(A.r, B.r) + 14;
+    d = `M${A.r},${A.cy} H${X} V${B.cy} H${B.r}`; [lx, ly] = [X, (A.cy + B.cy) / 2];
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#222'); p.setAttribute('stroke-width', '1.6');
+  if (o.dash) p.setAttribute('stroke-dasharray', '6 4');
+  p.setAttribute('marker-end', 'url(#ah)'); svg.appendChild(p);
+  if (o.lab) label(lx, ly, o.lab);
+}
+</script>
+</body>
+</html>

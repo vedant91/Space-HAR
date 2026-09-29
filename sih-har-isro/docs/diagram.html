@@ -681,8 +681,270 @@ svg{width:100%;height:auto;display:block;border-radius:14px;border:1px solid #14
 </svg>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- INNOVATION + TECHNICAL SUMMARY PANEL -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="summary-wrap">
+
+  <div class="summary-header">
+    <div class="summary-title">
+      <span class="summary-eyebrow">SIH 2026 · PS 26174 · Bharatiya Antariksh Station HAR</span>
+      <h2>What We Built &amp; Why It's Different</h2>
+      <p class="summary-sub">Everything below is measured, reproducible from disk, and runs fully offline on a single laptop GPU. None of these numbers came from a training-set evaluation.</p>
+    </div>
+    <div class="badge-row">
+      <span class="badge amber">73% held-out step accuracy</span>
+      <span class="badge teal">mAP@50 = 0.934</span>
+      <span class="badge violet">2.5M param HMR3D</span>
+      <span class="badge teal">&lt;60ms GPU latency</span>
+      <span class="badge grey">0 network calls at runtime</span>
+    </div>
+  </div>
+
+  <div class="grid-4">
+
+    <!-- Column 1: Perception Models -->
+    <div class="col-card amber-card">
+      <div class="col-label amber-label">🎯 PERCEPTION MODELS</div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>YOLOv8n — fine-tuned for space</strong>
+          <p>Trained from scratch on 33 Blender-rendered ISS takes · 3 classes (red_box, yellow_box, main_box) · Zero manual annotation — labels auto-exported from Blender ground truth · mAP@50 = <mark class="amber-mark">0.934</mark> · ~6ms inference · ByteTrack object IDs + velocity</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>MediaPipe Pose + Hands</strong>
+          <p>33 body + 21×2 hand landmarks · Roll-corrected BEFORE inference so upside-down astronaut doesn't confuse it · Hit-rate ≈ 1.00 on most takes · Also drives the HMR crop — free co-use with no extra cost</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot violet-dot"></span>
+        <div>
+          <strong>Custom HMR3DNet — our own trained model</strong>
+          <p>MobileNetV3-Small backbone + regression head · <mark class="violet-mark">2.5M parameters</mark> · Trained on rack-relative synthetic 3D ground truth from Blender · 33 joints × (x, y, z, visibility) · 29–92ms per call · Adaptive scheduler: skips inference if torso angle &lt;15° drift</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot violet-dot"></span>
+        <div>
+          <strong>HMR beats pretrained ROMP (measured honestly)</strong>
+          <p>Take 0001, 30° roll: ROMP 0.04 → Ours <mark class="violet-mark">0.80</mark> · Take 0004, 180° inverted: ROMP 0.60 → Ours <mark class="violet-mark">0.91</mark> · Take 0013, 60° pitch: ROMP 0.74 → Ours <mark class="violet-mark">1.00</mark> · Every competitor left HMR as "future work" in their slides — we shipped it</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Training + Data -->
+    <div class="col-card violet-card">
+      <div class="col-label violet-label">🔬 TRAINING PIPELINE</div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot violet-dot"></span>
+        <div>
+          <strong>Blender Digital Twin — not a webcam</strong>
+          <p><mark class="violet-mark">33 takes · 31,891 frames</mark> · Every roll/pitch/yaw from 0° to full inversion · Multiple lighting conditions + clutter · Exact 3D joint ground truth exported automatically — zero manual annotation at any step</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot violet-dot"></span>
+        <div>
+          <strong>Held-out-by-take evaluation (enforced by test)</strong>
+          <p>Split by <em>whole take</em>, never by frame · Model cannot memorise background pixels from the same clip · Enforced by pytest suite — asserts no take ID appears in both train and val · Every accuracy number on this page means what it says</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>Feature builder contract — same code train &amp; live</strong>
+          <p>143-dim rack-relative features built by identical code at training time and in the live pipeline · <code>promote_model.py</code> reads feature layout + sample rate from checkpoint and <strong>refuses to deploy</strong> if live builder disagrees · 50-test pytest contract suite</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>LSTM trained on real detector output — not GT boxes</strong>
+          <p>Feature sequences built from the YOLOv8n detector's real, imperfect boxes — not from ground truth · No silent train/serve distribution mismatch · Model learns to handle missed detections and tracker ID switches</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: Core Architecture Innovations -->
+    <div class="col-card teal-card">
+      <div class="col-label teal-label">⚙️ ARCHITECTURE INNOVATIONS</div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>Rack-anchored reference frame (not camera, not floor)</strong>
+          <p>"Box in target zone" and "crew attitude relative to rack" require rack-frame coordinates · Camera-centred frame fails at any roll · Body-centred frame can't express rack-relative position · Our solvePnP+ArUco gives <mark class="teal-mark">camera→rack transform T ∈ SE(3)</mark> · valid even when astronaut is fully inverted</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>143-dimensional feature vector</strong>
+          <p>hand↔box distance (rack frame) · box-held flag · lid-open state · target-zone occupancy · box velocity · crew attitude angle · MediaPipe wrist positions (roll-corrected, rack-normalised) · updated at 10Hz fixed clock, decoupled from camera FPS</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>Pose Fusion Gate — 3D with 2D fallback</strong>
+          <p>When HMR3D is confident (joint visibility ≥ threshold) → use 3D wrist positions + crew attitude · When HMR fails or is unsure → fall back to MediaPipe 2D · <strong>Same output shape either path</strong> · Never blocks · Lose HMR entirely and step recognition still runs at full speed</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>Adaptive HMR scheduling</strong>
+          <p>HMR3DNet re-runs ONLY when tracked torso angle drifts &gt;15° OR 1 second has passed · Holding still to examine a box costs zero GPU · Fast tumble = checked frequently · EMA-smoothed crop + angle, weight=0.5, prevents jitter</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 4: Classifier + Decision + Output -->
+    <div class="col-card mixed-card">
+      <div class="col-label teal-label">🧠 CLASSIFIER · DECISION · OUTPUT</div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>BiLSTM · 3 layers · 256 hidden units</strong>
+          <p>3-second sliding window = 30 frames at 100ms · Softmax over 9 classes (8 protocol steps + idle) · Updated every 100ms · <mark class="amber-mark">73% held-out step accuracy</mark> (by-take split, not by frame) · GPU inference: ~2ms · competitors' XGBoost is stateless per-frame</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot amber-dot"></span>
+        <div>
+          <strong>Entropy-gated step confirmation</strong>
+          <p>Confidence threshold alone can't distinguish a decisive prediction from a coin flip that cleared the bar · We additionally gate on <mark class="amber-mark">Shannon entropy H(p)</mark> of the full softmax · Only confirms a step when BOTH confidence ≥ threshold AND entropy is low · Re-derived for our 9-class problem</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>Protocol State Machine — deterministic ordering</strong>
+          <p>Confirms step on N consecutive frames above threshold (hysteresis, no single-frame flicker) · Flags: skipped step · out-of-order step · repeated step · unexpected idle · Microgravity rules: drift = box moving + no hand near it · placed = box in zone AND released</p>
+        </div>
+      </div>
+
+      <div class="bullet-item">
+        <span class="bullet-dot teal-dot"></span>
+        <div>
+          <strong>5 simultaneous outputs — fully offline</strong>
+          <p>🔊 <strong>Voice</strong> — pyttsx3 offline TTS, step cues + skip alerts · 🖥 <strong>Dashboard</strong> — PyQt6, live step + 3D overlay · 📄 <strong>JSONL log</strong> — timestamped, reproducible · 📡 <strong>UDP stream</strong> — ffmpeg to configurable ground IP · 🎬 <strong>Annotated MP4</strong> — skeleton baked in · <mark class="teal-mark">0 network calls at runtime</mark></p>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /grid-4 -->
+
+  <!-- Bottom comparison bar -->
+  <div class="vs-bar">
+    <div class="vs-them">
+      <div class="vs-label">❌ WHAT 22 COMPETITOR REPOS DO</div>
+      <div class="vs-points">
+        <span>Upright webcam, 1 angle, 1 lighting</span>
+        <span>Off-the-shelf YOLO not retrained on the actual props</span>
+        <span>HMR mentioned in slides — never shipped</span>
+        <span>Frame-level train/val split = data leakage = inflated accuracy</span>
+        <span>Camera-centred frame — fails at any roll</span>
+        <span>XGBoost per-frame = stateless, can't detect skipped steps</span>
+        <span>CPU-only: ~200–300ms latency, not real-time at 30fps</span>
+      </div>
+    </div>
+    <div class="vs-divider">VS</div>
+    <div class="vs-us">
+      <div class="vs-label">✅ WHAT WE SHIPPED</div>
+      <div class="vs-points">
+        <span>33 Blender takes, every orientation 0°→360°, multiple lighting</span>
+        <span>YOLOv8n fine-tuned on exact rack + boxes, mAP@50 = 0.934</span>
+        <span>HMR3DNet trained by us, running live, honestly scored</span>
+        <span>Held-out by whole take, enforced by pytest — 73% real accuracy</span>
+        <span>solvePnP rack frame — valid even fully inverted</span>
+        <span>BiLSTM with 3-sec memory — detects skip, order, repeat</span>
+        <span>GPU &lt;60ms · LSTM 2ms · YOLO 6ms · 5 outputs simultaneously</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /summary-wrap -->
+
+<style>
+.summary-wrap{width:100%;max-width:1560px;margin-top:28px;font-family:'Inter',sans-serif}
+.summary-header{background:#0b0f18;border:1px solid #1a2535;border-radius:14px;padding:24px 28px 20px;margin-bottom:16px}
+.summary-eyebrow{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#3d5070;display:block;margin-bottom:8px}
+.summary-header h2{font-size:1.5rem;font-weight:800;color:#e2e8f0;margin-bottom:8px}
+.summary-sub{color:#5c7090;font-size:.9rem;max-width:80ch;margin:0 0 18px}
+.badge-row{display:flex;flex-wrap:wrap;gap:8px}
+.badge{font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:99px;letter-spacing:.04em}
+.amber{background:#1e1508;color:#ff8a3d;border:1px solid #ff8a3d}
+.teal{background:#071812;color:#35d0a0;border:1px solid #35d0a0}
+.violet{background:#16122e;color:#9d8cf5;border:1px solid #9d8cf5}
+.grey{background:#0d1118;color:#6a8ab0;border:1px solid #2e4060}
+
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid-4{grid-template-columns:1fr}}
+
+.col-card{background:#0b0f18;border:1px solid #1a2535;border-radius:12px;padding:18px 16px;display:flex;flex-direction:column;gap:0}
+.amber-card{border-top:3px solid #ff8a3d}
+.violet-card{border-top:3px solid #9d8cf5}
+.teal-card{border-top:3px solid #35d0a0}
+.mixed-card{border-top:3px solid #35d0a0}
+
+.col-label{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #14202e}
+.amber-label{color:#ff8a3d}
+.violet-label{color:#9d8cf5}
+.teal-label{color:#35d0a0}
+
+.bullet-item{display:flex;gap:10px;margin-bottom:14px;padding-bottom:13px;border-bottom:1px solid #0e1620}
+.bullet-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.bullet-dot{flex:0 0 8px;height:8px;border-radius:50%;margin-top:6px}
+.amber-dot{background:#ff8a3d;box-shadow:0 0 6px #ff8a3d}
+.violet-dot{background:#9d8cf5;box-shadow:0 0 6px #9d8cf5}
+.teal-dot{background:#35d0a0;box-shadow:0 0 6px #35d0a0}
+
+.bullet-item strong{display:block;font-size:.88rem;font-weight:700;color:#ccd8ee;margin-bottom:4px}
+.bullet-item p{font-size:.82rem;color:#5c7090;line-height:1.55;margin:0}
+.bullet-item code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:#0d1420;padding:1px 5px;border-radius:3px;color:#8899bb}
+
+mark.amber-mark{background:transparent;color:#ff8a3d;font-weight:700}
+mark.violet-mark{background:transparent;color:#c0b0ff;font-weight:700}
+mark.teal-mark{background:transparent;color:#35d0a0;font-weight:700}
+
+/* VS comparison bar */
+.vs-bar{display:grid;grid-template-columns:1fr 60px 1fr;gap:0;background:#08090e;border:1px solid #1a2535;border-radius:12px;overflow:hidden}
+.vs-them{padding:20px 22px;background:#0f0a0a;border-right:1px solid #1a2535}
+.vs-us{padding:20px 22px;background:#080f0c}
+.vs-divider{display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#2a3a50;background:#080a0e;border-left:1px solid #1a2535}
+.vs-label{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vs-them .vs-label{color:#6a3030}
+.vs-us .vs-label{color:#35d0a0}
+.vs-points{display:flex;flex-direction:column;gap:6px}
+.vs-them .vs-points span{font-size:.84rem;color:#7a4040;padding-left:0}
+.vs-them .vs-points span::before{content:"✕  ";color:#7a3030}
+.vs-us .vs-points span{font-size:.84rem;color:#5a9080}
+.vs-us .vs-points span::before{content:"✓  ";color:#35d0a0;font-weight:700}
+</style>
+
 <script>
-// Click to fullscreen
+// Double-click to fullscreen
 document.querySelector('svg').addEventListener('dblclick', () => {
   if(document.fullscreenElement) document.exitFullscreen();
   else document.querySelector('.wrap').requestFullscreen?.();
