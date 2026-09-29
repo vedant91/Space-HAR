@@ -130,7 +130,8 @@ class UprightPoseEstimator:
                  downscale: int = 1,
                  search_angles: Sequence[float] = (0.0, 90.0, 180.0, 270.0,
                                                    45.0, 135.0, 225.0, 315.0),
-                 model_path: Optional[str] = None):
+                 model_path: Optional[str] = None,
+                 output_mask: bool = False):
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.search_angles = tuple(search_angles)
@@ -144,8 +145,12 @@ class UprightPoseEstimator:
             complexity=complexity, min_det_conf=min_det_conf,
             min_trk_conf=min_trk_conf, downscale=downscale,
             frame_width=frame_width, frame_height=frame_height,
-            model_path=model_path, static_image_mode=True,
+            model_path=model_path, static_image_mode=True, output_mask=output_mask,
         )
+        # The winning angle's side channels, mapped back to the ORIGINAL
+        # image like the landmarks are (see PoseBackend.last_world).
+        self.last_world: Optional[np.ndarray] = None
+        self.last_mask: Optional[np.ndarray] = None
         self._working_angle = 0.0
         self.stats = {"frames": 0, "hit_first_try": 0, "searched": 0,
                       "failed": 0, "angle_changes": 0}
@@ -161,7 +166,7 @@ class UprightPoseEstimator:
     # ── internals ────────────────────────────────────────────────────────
 
     def _try_angle(self, frame_rgb: np.ndarray, degrees: float
-                   ) -> Tuple[Optional[np.ndarray], float]:
+                   ) -> Tuple[Optional[np.ndarray], float, tuple]:
         """Run pose on the frame rotated by `degrees`; return (feats, score)
         with feats already mapped back to the ORIGINAL image's normalised
         coordinates."""
@@ -180,7 +185,8 @@ class UprightPoseEstimator:
 
         feats = self._backend.process(rotated)
         if not np.any(feats):
-            return None, 0.0
+            return None, 0.0, (None, None)
+        world, mask = self._backend.last_world, self._backend.last_mask
 
         lm = feats.reshape(NUM_LANDMARKS, 4)
         score = float(np.mean([lm[i, 3] for i in _SCORE_LANDMARKS]))
@@ -194,8 +200,15 @@ class UprightPoseEstimator:
             lm[:, 1] = back[1] / height
             # z is a depth in units of the subject's own scale and is
             # unaffected by an in-plane rotation; visibility likewise.
+            # World landmarks share the image axes: undo the rotation on x/y.
+            if world is not None:
+                rot = matrix[:, :2]
+                world = world.copy()
+                world[:, :2] = world[:, :2] @ np.linalg.inv(rot).T
+            if mask is not None:
+                mask = cv2.warpAffine(mask, inverse, (width, height), flags=cv2.INTER_LINEAR)
 
-        return lm.reshape(-1).astype(np.float32), score
+        return lm.reshape(-1).astype(np.float32), score, (world, mask)
 
     # ── public ───────────────────────────────────────────────────────────
 
@@ -210,17 +223,19 @@ class UprightPoseEstimator:
         angle. Passing None just means the search does more work.
         """
         self.stats["frames"] += 1
+        self.last_world, self.last_mask = None, None
         if not self._backend.available:
             return np.zeros(FEATURE_DIM, dtype=np.float32)
 
         # 1. The angle that worked last frame. Orientation changes slowly, so
         #    this is right almost always and costs a single inference.
-        feats, score = self._try_angle(frame_rgb, self._working_angle)
+        feats, score, extra = self._try_angle(frame_rgb, self._working_angle)
         if feats is not None and score >= min_score:
             self.stats["hit_first_try"] += 1
+            self.last_world, self.last_mask = extra
             return feats
 
-        best_feats, best_score, best_angle = feats, score, self._working_angle
+        best_feats, best_score, best_angle, best_extra = feats, score, self._working_angle, extra
 
         # 2. The rack's own roll, and its 180-degree flip.
         candidates: List[float] = []
@@ -236,9 +251,9 @@ class UprightPoseEstimator:
             angle = float(angle) % 360.0
             if abs(angle - self._working_angle) < 1e-3:
                 continue
-            feats, score = self._try_angle(frame_rgb, angle)
+            feats, score, extra = self._try_angle(frame_rgb, angle)
             if feats is not None and score > best_score:
-                best_feats, best_score, best_angle = feats, score, angle
+                best_feats, best_score, best_angle, best_extra = feats, score, angle, extra
                 if score >= min_score:
                     break
 
@@ -251,6 +266,7 @@ class UprightPoseEstimator:
             logger.debug("upright pose: working angle %.1f -> %.1f (score %.2f)",
                          self._working_angle, best_angle, best_score)
             self._working_angle = best_angle
+        self.last_world, self.last_mask = best_extra
         return best_feats
 
     def reset(self) -> None:
