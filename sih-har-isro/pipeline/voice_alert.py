@@ -51,6 +51,7 @@ class VoiceAlertSystem:
         # Retained even when audio is disabled.  This makes the simulator able
         # to verify the exact recovery guidance without playing sound.
         self.history: list[str] = []
+        self.spoken = 0   # monotonic count of speak() calls; the monitor captions each new one
 
         # Start background speaker thread
         self._thread = threading.Thread(target=self._speaker_loop, daemon=True)
@@ -95,6 +96,7 @@ class VoiceAlertSystem:
         with self._lock:
             self.history.append(text)
             del self.history[:-100]
+            self.spoken += 1
         if not self.enabled or self._backend == "none":
             logger.info("[VOICE SUPPRESSED] %s", text)
             return

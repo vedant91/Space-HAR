@@ -47,7 +47,8 @@ logger = logging.getLogger("main")
 def run_pipeline(source, headless: bool = False,
                  enable_streaming: bool | None = None,
                  stream_host: str | None = None, stream_port: int | None = None,
-                 enable_cnn_ensemble: bool | None = None):
+                 enable_cnn_ensemble: bool | None = None,
+                 show_3d_panel: bool = False, viz_3d: str = "blazepose"):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -69,7 +70,8 @@ def run_pipeline(source, headless: bool = False,
     pipeline = HARPipeline(source=source, headless=headless, gui_queue=gui_queue,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
-                           enable_cnn_ensemble=enable_cnn_ensemble)
+                           enable_cnn_ensemble=enable_cnn_ensemble,
+                           show_3d_panel=show_3d_panel, viz_3d=viz_3d)
 
     if not use_qt:
         pipeline.run()
@@ -271,6 +273,16 @@ Modes:
                             "(overrides config.CNN_ENSEMBLE_ENABLED=True). Off by "
                             "default — retrain the CNN with the current (leakage-fixed) "
                             "train/train_cnn.py before relying on this in production.")
+    parser.add_argument("--show-3d-panel", action="store_true",
+                        help="Draw a corner panel showing the camera frame's body converted "
+                            "to a live, slowly-rotating 3D pose (train/hmr3d_model.py). "
+                            "Display-only - never touches the LSTM's actual features, and "
+                            "costs one extra model call per HMR re-run regardless of "
+                            "config.HMR_BACKEND. Off by default.")
+    parser.add_argument("--viz-3d", choices=["blazepose", "hmr"], default="blazepose",
+                        help="Source of the monitor's 3D view: BlazePose world landmarks "
+                            "(default) or HMR3DNet depth lifted onto the 2D skeleton. "
+                            "Display-only either way.")
     parser.add_argument("--mock",     action="store_true",
                         help="Use mock data (no Gemini API needed)")
     parser.add_argument("--render", action="store_true",
@@ -290,7 +302,8 @@ Modes:
         run_pipeline(source, headless=args.headless,
                     enable_streaming=True if args.stream else None,
                     stream_host=args.stream_host, stream_port=args.stream_port,
-                    enable_cnn_ensemble=True if args.cnn_ensemble else None)
+                    enable_cnn_ensemble=True if args.cnn_ensemble else None,
+                    show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d)
 
     elif args.mode == "train":
         run_training()

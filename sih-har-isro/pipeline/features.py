@@ -282,10 +282,13 @@ def stack_windows(seq: np.ndarray, labels: np.ndarray, **kw) -> Tuple[np.ndarray
 def contract_of(meta: dict) -> dict:
     """The input contract a checkpoint or sequence set was built under.
     Missing fields mean it predates layouts: the legacy contract (132-dim
-    pose, every frame). rack_normalized None = not recorded."""
+    pose, every frame). rack_normalized None = not recorded.
+    detector_backend None = not recorded (every checkpoint before the
+    2026-09-27 fix for a real HSV-trained/YOLO-served mismatch)."""
     return {"feature_layout": meta.get("feature_layout", LEGACY_LAYOUT),
             "sample_every": int(meta.get("sample_every", 1)),
-            "rack_normalized": meta.get("rack_normalized")}
+            "rack_normalized": meta.get("rack_normalized"),
+            "detector_backend": meta.get("detector_backend")}
 
 
 # ── selftest ─────────────────────────────────────────────────────────────────
@@ -386,7 +389,8 @@ def _selftest() -> None:
 
     # 9) Contracts: no fields = legacy.
     assert contract_of({"feature_dim": 132}) == {
-        "feature_layout": LEGACY_LAYOUT, "sample_every": 1, "rack_normalized": None}
+        "feature_layout": LEGACY_LAYOUT, "sample_every": 1, "rack_normalized": None,
+        "detector_backend": None}
     print("features selftest passed: legacy identity, constant sentinel, shared transform, "
           "no-pose absence, resampling == decimation on renders, interpolation rules, "
           "gap reset, purity, contracts")

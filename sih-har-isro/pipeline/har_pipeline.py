@@ -18,6 +18,7 @@ Usage:
     python pipeline/har_pipeline.py --video path/to/video.mp4
 """
 
+import os
 import sys
 import cv2
 import time
@@ -79,9 +80,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # unimportable on any current install. The backend picks the Tasks API when
 # available and falls back to the legacy Solutions API on older versions.
 from pipeline.pose_backend import PoseBackend, describe as describe_pose_backend
+from pipeline import pose_viz as pv
 
 _POSE_INFO = describe_pose_backend()
 MP_AVAILABLE = bool(_POSE_INFO.get("usable"))
+
 if not MP_AVAILABLE:
     logger.warning("No usable MediaPipe pose backend (%s). Skeleton features disabled.",
                    _POSE_INFO)
@@ -154,6 +157,12 @@ class ThreadedInference:
         return self._hsv_result, self._mp_result
 
 
+# Width of the monitor side panel _annotate_frame() appends to the camera view.
+SIDE_PANEL_W = 420
+# Torso + limbs: the joints whose visibility decides if a 3D pose is usable.
+_CORE_JOINTS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
+
+
 def to_frame_size(frame_bgr: np.ndarray) -> np.ndarray:
     """Every source - camera, video file, rendered PNG - is brought to
     FRAME_WIDTH x FRAME_HEIGHT before perception, live and offline alike: the
@@ -214,7 +223,8 @@ class OptimizedMPWrapper:
                  min_trk_conf: float = MEDIAPIPE_MIN_TRK_CONF,
                  frame_wh: tuple = (FRAME_WIDTH, FRAME_HEIGHT),
                  static_image_mode: bool = False,
-                 upright: Optional[bool] = None):
+                 upright: Optional[bool] = None,
+                 output_mask: bool = False):
         w, h = frame_wh
         self.small_w = int(POSE_INPUT_WIDTH)
         self.small_h = max(int(round(h * POSE_INPUT_WIDTH / float(w))), 16)
@@ -231,6 +241,7 @@ class OptimizedMPWrapper:
                 downscale=1,
                 frame_width=self.small_w,
                 frame_height=self.small_h,
+                output_mask=output_mask,
             )
         else:
             self._backend = PoseBackend(
@@ -241,6 +252,7 @@ class OptimizedMPWrapper:
                 frame_width=self.small_w,
                 frame_height=self.small_h,
                 static_image_mode=static_image_mode,
+                output_mask=output_mask,
             )
         if self._backend.available:
             logger.info(
@@ -255,6 +267,18 @@ class OptimizedMPWrapper:
     @property
     def backend_name(self) -> str:
         return self._backend.backend
+
+    @property
+    def last_world(self) -> Optional[np.ndarray]:
+        """(33, 4) metric 3D skeleton from the last process() call, or None.
+        Display-only: never part of the feature vector."""
+        return getattr(self._backend, "last_world", None)
+
+    @property
+    def last_mask(self) -> Optional[np.ndarray]:
+        """Body segmentation (input resolution, 0..1) from the last call, or
+        None unless constructed with output_mask=True."""
+        return getattr(self._backend, "last_mask", None)
 
     def process(self, frame_rgb_full: np.ndarray,
                 detections: Optional[list] = None) -> np.ndarray:
@@ -313,7 +337,9 @@ class HARPipeline:
                  enable_recording: bool = True,
                  enable_cnn_ensemble: Optional[bool] = None,
                  use_threaded: Optional[bool] = None,
-                 lstm_path: Optional[str] = None):
+                 lstm_path: Optional[str] = None,
+                 show_3d_panel: bool = False,
+                 viz_3d: str = "blazepose"):
         """`lstm_path`: serve this .pt checkpoint (PyTorch) instead of the
         promoted models/lstm_classifier.{onnx,pt}. Either way the pipeline
         builds exactly the inputs the loaded model records it was trained on
@@ -368,6 +394,39 @@ class HARPipeline:
             from pipeline.hmr_backend import HMRBackend
             self.hmr = HMRBackend(backend=HMR_BACKEND)
 
+        # Display-only state (pipeline/pose_viz.py): temporal smoothing and the
+        # side panel's 3D view. None of it reaches the features. The 3D view
+        # comes from BlazePose's world landmarks (same inference, no extra
+        # cost); show_3d_panel additionally loads HMR3DNet as the fallback for
+        # frames where MediaPipe loses the body (e.g. a strongly rolled crew
+        # member) - a SEPARATE HMRBackend from self.hmr, so the LSTM's input
+        # contract is never touched.
+        # viz_3d picks the 3D view's source: "blazepose" (default) or "hmr",
+        # which drives it from HMR3DNet every frame as a 2D->3D lift: x/y
+        # from the stabilised 2D skeleton on the crew member (image-accurate),
+        # depth from HMR3DNet. HMR3DNet's own x/y fits the body poorly on real
+        # footage (0.66 Procrustes residual vs BlazePose 0.09, measured on
+        # test-har-3), so only its depth is used.
+        if viz_3d not in ("blazepose", "hmr"):
+            raise ValueError(f"viz_3d must be 'blazepose' or 'hmr', not {viz_3d!r}")
+        self.viz_3d = viz_3d
+        show_3d_panel = show_3d_panel or viz_3d == "hmr"
+        self.show_3d_panel = show_3d_panel
+        self._viz_hmr = None
+        self._viz_t = 0.0
+        self._stab2d = pv.Skeleton2DStabilizer()
+        self._rig3d = pv.RigidSkeleton3D()
+        self._box_track = pv.BoxDisplayTracker()
+        self._cam3d = None
+        self._last_joints3d = None
+        self._voice_seen, self._voice_line = 0, None
+        if show_3d_panel:
+            from pipeline.hmr_backend import HMRBackend
+            self._viz_hmr = HMRBackend(backend="custom")
+            if not self._viz_hmr.available:
+                logger.warning("show_3d_panel requested but the custom HMR model failed to "
+                               "load - the 3D corner panel will stay empty.")
+
         # ── Models ────────────────────────────────────────────
         self.mp_wrapper     = None
         self.lstm_model     = None
@@ -414,7 +473,9 @@ class HARPipeline:
         """Load LSTM and CNN models. Gracefully skip if not trained yet."""
         # MediaPipe Pose: config defaults, the same pose stage training uses.
         if MP_AVAILABLE:
-            self.mp_wrapper = OptimizedMPWrapper()
+            # Segmentation mask on for the live view only (landmarks are
+            # bit-identical with it on; training builds its own wrapper).
+            self.mp_wrapper = OptimizedMPWrapper(output_mask=True)
 
         self._lstm_label_map = {}
         self.model_banner = "MODEL none - no step classifier loaded"
@@ -435,6 +496,27 @@ class HARPipeline:
         # load means MediaPipe is), against the one the model was trained on.
         check_pose_source(name, meta or {}, self.hmr.backend_name if self.hmr else "none")
         contract = contract_of(meta or {})
+        # Detector-source guard: a confirmed real bug (2026-09-27 audit) had
+        # the deployed LSTM trained on HSV box detections but served on
+        # YOLO's - same 11 object slots, different distribution, and nothing
+        # caught it because no checkpoint recorded which detector built its
+        # training data. Refuse a KNOWN mismatch; a checkpoint that predates
+        # this fix (detector_backend unrecorded) only gets a loud warning,
+        # since refusing every currently-deployed model outright would just
+        # break the pipeline rather than fix anything.
+        trained_detector = contract["detector_backend"]
+        live_detector = type(self.hsv_detector).__name__
+        if trained_detector is None:
+            logger.warning(
+                "%s: detector_backend not recorded (predates the 2026-09-27 fix) - "
+                "cannot verify it was trained on %s. Rebuild sequences and retrain "
+                "to close this gap.", name, live_detector)
+        elif trained_detector != live_detector:
+            raise RuntimeError(
+                f"{name}: detector mismatch. Trained on {trained_detector!r} but this "
+                f"runtime serves {live_detector!r} (config DETECTOR_BACKEND). Same object "
+                f"feature slots, different distribution: refusing to run rather than "
+                f"degrade silently. Rebuild sequences with the current detector and retrain.")
         layout = contract["feature_layout"]
         want = LAYOUT_DIMS.get(layout)
         if want is None or (input_dim is not None and int(input_dim) != want):
@@ -811,6 +893,7 @@ class HARPipeline:
         and process_frame(), and a sample is the unit STEP_CONFIRM_FRAMES is
         expressed in. `label` (sim/eval only) rides along with the sample.
         Returns the number of samples emitted."""
+        self._viz_t = float(t)
         def on_sample():
             if self.skeleton_buffer.full:
                 self._last_pred = self._predict_and_feed_state_machine()
@@ -835,82 +918,89 @@ class HARPipeline:
     def _annotate_frame(self, frame: np.ndarray,
                         detections: list,
                         pred_step: int,
-                        confidence: float) -> np.ndarray:
-        """Draw HUD overlay on frame with space physics simulation."""
-        vis = frame.copy()
+                        confidence: float,
+                        skel: Optional[np.ndarray] = None,
+                        hmr_feats: Optional[np.ndarray] = None) -> np.ndarray:
+        """Monitor view: the camera frame with the perceived body and boxes,
+        plus a side panel (3D pose + objects, current/next step, 8-step
+        checklist). Display-only - see pipeline/pose_viz.py; nothing drawn
+        here reaches the features or the LSTM.
 
-        # ── SPACE SIMULATION VISUAL PHYSICS ──
-        # Add a subtle cyan/blue tint to simulate ISS module lighting
-        tint = np.full_like(vis, (50, 20, 0), dtype=np.uint8) # BGR (Blueish)
-        cv2.addWeighted(vis, 0.85, tint, 0.15, 0, vis)
-        
-        # Simulate microgravity drifting particles (dust/debris)
-        if not hasattr(self, '_particles'):
-            self._particles = np.random.rand(40, 5) 
-            self._particles[:, 0] *= frame.shape[1]
-            self._particles[:, 1] *= frame.shape[0]
-            self._particles[:, 2] = (self._particles[:, 2] - 0.5) * 1.5  # vx
-            self._particles[:, 3] = (self._particles[:, 3] - 0.5) * 1.5  # vy
-            self._particles[:, 4] = self._particles[:, 4] * 2 + 1        # size
+        Returns an image SIDE_PANEL_W pixels wider than `frame` (the
+        recorder and network stream take the raw frame, not this one)."""
+        t = self._viz_t
+        fh, fw = frame.shape[:2]
+        view = frame.copy()
+        status = self.state_machine.get_status_summary()
+        current = status.get("current_step")
+        task = tuple((current or {}).get("required_objects") or ())
 
-        # Update and draw particles in zero-g
-        for p in self._particles:
-            p[0] = (p[0] + p[2]) % frame.shape[1]
-            p[1] = (p[1] + p[3]) % frame.shape[0]
-            # Draw particle with slight glow
-            cv2.circle(vis, (int(p[0]), int(p[1])), int(p[4]), (255, 230, 200), -1)
-            
-        # Draw floating zero-g tracking grid
-        grid_offset = int((time.time() * 15) % 100)
-        for i in range(0, frame.shape[0], 100):
-            cv2.line(vis, (0, i + grid_offset), (frame.shape[1], i + grid_offset), (50, 30, 0), 1)
-        for i in range(0, frame.shape[1], 100):
-            cv2.line(vis, (i + grid_offset, 0), (i + grid_offset, frame.shape[0]), (50, 30, 0), 1)
-        # ──────────────────────────────────────
+        skel_s = self._stab2d(skel if skel is not None and np.any(skel) else None, t)
+        mask = self.mp_wrapper.last_mask if self.mp_wrapper is not None else None
+        pv.draw_body_overlay(view, skel_s, mask)
+        boxes = self._box_track(detections)
+        pv.draw_boxes(view, boxes, task)
 
-        # Draw HSV detections
-        vis = self.hsv_detector.draw(vis, detections)
+        # 3D body: BlazePose's metric world skeleton from the same inference
+        # when the body is well seen (rigid bones, smoothed); HMR3DNet only as
+        # a fallback where MediaPipe loses the body (e.g. strong roll).
+        joints, caption = None, "3D: no body"
+        world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
+        if self._stab2d.rejected and self._last_joints3d is not None:
+            joints, caption = self._last_joints3d, "3D: holding last good pose (glitched frame rejected)"
+        elif self.viz_3d == "hmr" and hmr_feats is not None and np.any(hmr_feats) and skel_s is not None:
+            # 2D->3D lift: x/y from the 2D skeleton drawn on the crew member,
+            # depth from HMR3DNet (hip-relative), both scaled so torso ~0.5 m.
+            h = np.asarray(hmr_feats, dtype=np.float64).reshape(33, 4)
+            p2 = np.asarray(skel_s, dtype=np.float64).reshape(33, 4)
+            hip = 0.5 * (p2[23, :2] + p2[24, :2]) * (fw, fh)
+            sh = 0.5 * (p2[11, :2] + p2[12, :2]) * (fw, fh)
+            k = 0.5 / max(float(np.linalg.norm(sh - hip)), 1.0)
+            z = (h[:, 2] - 0.5 * (h[23, 2] + h[24, 2])) * fw * k
+            xyz = np.c_[(p2[:, 0] * fw - hip[0]) * k, (p2[:, 1] * fh - hip[1]) * k, z]
+            vis = np.minimum(p2[:, 3], np.clip(h[:, 3] + 0.3, 0.0, 1.0))
+            rig = self._rig3d(np.c_[xyz, vis], t)
+            joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
+            caption = f"3D: HMR3DNet depth + 2D pose (lifted), rigid bones | conf {float(h[:, 3].mean()):.2f}"
+        elif world is not None and float(world[_CORE_JOINTS, 3].mean()) >= 0.5:
+            rig = self._rig3d(world, t)
+            joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
+            caption = f"3D: BlazePose world, rigid bones | vis {float(world[_CORE_JOINTS, 3].mean()):.2f}"
+        elif hmr_feats is not None and np.any(hmr_feats):
+            h = np.asarray(hmr_feats, dtype=np.float64).reshape(33, 4)
+            hip = 0.5 * (h[23, :2] + h[24, :2]) * (fw, fh)
+            sh = 0.5 * (h[11, :2] + h[12, :2]) * (fw, fh)
+            k = 0.5 / max(float(np.linalg.norm(sh - hip)), 1.0)       # torso ~0.5 m
+            xyz = np.c_[(h[:, 0] * fw - hip[0]) * k, (h[:, 1] * fh - hip[1]) * k, h[:, 2] * fw * k]
+            rig = self._rig3d(np.c_[xyz, h[:, 3]], t)
+            joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
+            caption = f"3D: HMR3DNet fallback | conf {float(h[:, 3].mean()):.2f}"
+        if joints is not None:
+            self._last_joints3d = joints
+        objs = pv.place_objects(skel_s, joints, boxes, (fw, fh)) if joints is not None else []
 
-        # Status overlay
-        sm_status = self.state_machine.get_status_summary()
-        current = sm_status.get("current_step")
-        nxt     = sm_status.get("next_step")
+        def scene(v):
+            if self._cam3d is None or (self._cam3d.w, self._cam3d.h) != (v.shape[1], v.shape[0]):
+                self._cam3d = pv.Camera3D(v.shape[1], v.shape[0])
+            pv.render_scene_3d(v, joints, objs, self._cam3d, task, caption)
 
-        overlay = vis.copy()
-        cv2.rectangle(overlay, (0, 0), (420, 120), (20, 20, 20), -1)
-        cv2.addWeighted(overlay, 0.6, vis, 0.4, 0, vis)
-
-        step_name = current["name"] if current else "COMPLETE"
-        cv2.putText(vis, f"Current: Step {current['id'] if current else '-'}: {step_name}",
-                    (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 100), 1)
-        next_name = nxt["name"] if nxt else "—"
-        cv2.putText(vis, f"Next:    Step {nxt['id'] if nxt else '-'}: {next_name}",
-                    (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 1)
-        cv2.putText(vis, f"Predict: Step {pred_step} ({confidence:.2f})",
-                    (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
-        cv2.putText(vis, f"Elapsed: {sm_status['elapsed_sec']:.1f}s",
-                    (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 180, 180), 1)
-        if (self.rack_normalizer is not None
-                and self.rack_normalizer.rack_angle_deg is not None):
-            cv2.putText(vis, f"Rack frame: {self.rack_normalizer.rack_angle_deg:.1f} deg",
-                        (10, 122), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 220, 255), 1)
-
-        # Which model is running, and on what inputs - always on screen.
-        if self.model_banner:
-            warn = "NOT THE DEPLOYED" in self.model_banner or "none" in self.model_banner
-            y = frame.shape[0] - 12
-            cv2.rectangle(vis, (0, y - 20), (frame.shape[1], frame.shape[0]), (20, 20, 20), -1)
-            cv2.putText(vis, self.model_banner, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (0, 190, 255) if warn else (200, 200, 200), 1)
-
-        # FPS + latency
+        fps = ms = None
         if len(self._times) > 1:
-            avg_ms = np.mean(list(self._times)) * 1000
-            fps_actual = 1000.0 / max(avg_ms, 0.1)
-            cv2.putText(vis, f"ISRO HAR | {fps_actual:.0f} FPS | {avg_ms:.1f}ms",
-                        (frame.shape[1] - 280, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 255, 150), 1)
-
-        return vis
+            ms = float(np.mean(list(self._times)) * 1000)
+            fps = 1000.0 / max(ms, 0.1)
+        rec = status.get("recovery") or {}
+        alert = ""
+        spoken = getattr(self.voice, "spoken", 0)
+        if spoken != self._voice_seen and getattr(self.voice, "history", None):
+            self._voice_seen, self._voice_line = spoken, (self.voice.history[-1], t)
+        if self._voice_line and t - self._voice_line[1] < 4.0:
+            alert = f"VOICE: {self._voice_line[0]}"        # what the crew just heard
+        elif rec.get("active") and rec.get("expected_step_id"):
+            alert = f"Step {rec['expected_step_id']} missed - return to it before continuing"
+        panel = np.zeros((fh, SIDE_PANEL_W, 3), dtype=np.uint8)
+        pv.render_side_panel(panel, status, pred_step, confidence, fps, ms, scene,
+                             banner=self.model_banner or "", alert=alert)
+        return np.hstack([view, panel])
 
     # ── Headless / simulation API ─────────────────────────────────────────────
 
@@ -969,7 +1059,15 @@ class HARPipeline:
         pred_step, pred_conf = self._last_pred
         lstm_ms = (time.perf_counter() - t_lstm) * 1000.0
 
-        vis = self._annotate_frame(frame, detections, pred_step, pred_conf) if annotate else None
+        vis = None
+        if annotate:
+            hmr_feats = None
+            world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
+            if (self.show_3d_panel and self._viz_hmr is not None and self._viz_hmr.available
+                    and (self.viz_3d == "hmr" or world is None
+                         or float(world[_CORE_JOINTS, 3].mean()) < 0.5)):
+                hmr_feats, _ = self._viz_hmr.get_pose_features(self._frame_rgb_full)
+            vis = self._annotate_frame(frame, detections, pred_step, pred_conf, skel, hmr_feats)
         total_ms = (time.perf_counter() - t0) * 1000.0
         self._times.append(total_ms / 1000.0)
 
@@ -1000,6 +1098,14 @@ class HARPipeline:
             self.mp_wrapper.reset()       # re-latch the upright working angle
         if self.hmr is not None:
             self.hmr.reset()              # drop the tracked body and the reused ROMP result
+        if self._viz_hmr is not None:
+            self._viz_hmr.reset()
+        self._stab2d.reset()              # display-only state, see _annotate_frame
+        self._rig3d.reset()
+        self._box_track.reset()
+        self._cam3d = None
+        self._last_joints3d = None
+        self._voice_line = None
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
@@ -1045,7 +1151,20 @@ class HARPipeline:
     def run(self):
         cap = cv2.VideoCapture(self.source)
         if not cap.isOpened():
-            raise RuntimeError(f"Cannot open video source: {self.source}")
+            # run() executes in a background daemon thread (main.py starts it
+            # via threading.Thread(target=pipeline.run, daemon=True), so the
+            # GUI event loop can own the main thread). An uncaught exception
+            # here kills only THIS thread - the main thread's Qt event loop
+            # has no idea the capture backend just died, so it keeps running
+            # forever with an empty window and no data. Confirmed real: this
+            # left a zombie python.exe process after every failed DroidCam
+            # connection attempt during live testing, and the zombie process
+            # itself then blocked the NEXT attempt from connecting at all
+            # ("DroidCam is Busy") - each failure compounded the next one.
+            # This is a fatal, unrecoverable startup condition; force the
+            # whole process to exit rather than leave that zombie behind.
+            logger.error("Cannot open video source: %s - exiting.", self.source)
+            os._exit(1)
 
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
@@ -1150,7 +1269,13 @@ class HARPipeline:
             pred_step, pred_conf = self._last_pred
 
             # ── Build annotated frame & push to GUI ──────────
-            vis = self._annotate_frame(frame, detections, pred_step, pred_conf)
+            hmr_feats = None
+            world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
+            if (self.show_3d_panel and self._viz_hmr is not None and self._viz_hmr.available
+                    and (self.viz_3d == "hmr" or world is None
+                         or float(world[_CORE_JOINTS, 3].mean()) < 0.5)):
+                hmr_feats, _ = self._viz_hmr.get_pose_features(self._frame_rgb_full)
+            vis = self._annotate_frame(frame, detections, pred_step, pred_conf, skel, hmr_feats)
 
             if self.gui_queue:
                 try:
