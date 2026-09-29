@@ -1,113 +1,140 @@
-# Space-HAR
+# Space-HAR — Astronaut Activity Recognition for the BAS Protocol
 
-**AI Human Activity Recognition for on-board BAS experiments.**
+**Team Traviators** · Smart India Hackathon 2026
 
-An on-board assistant that watches a fixed payload camera, recognises which
-step of a scientific protocol the crew member is performing, tells them what
-comes next, and raises a voice alert when a step is skipped or performed out
-of order — entirely offline, with no link to the ground.
+| Field | Detail |
+|---|---|
+| Problem Statement ID | **26174** |
+| Problem Statement Title | AI Human Activity Recognition for On-board BAS Experiments |
+| Organization | Indian Space Research Organisation (ISRO) |
+| Theme | Space Technology |
+| Category | Software |
+| Team Name | Traviators |
 
-The reference protocol is an 8-step red/yellow payload sort at a payload rack.
+A single fixed camera watches a crew member run an 8-step scientific
+protocol on the Bharatiya Antariksh Station. The system recognises which
+step is being performed, confirms it, tells the crew what to do next, and
+raises a voice alert the moment a step is skipped or done out of order —
+**entirely offline**, on one laptop GPU, with no link to the ground. That
+matters here specifically because orbital communication delay runs from
+1.3 seconds to 24 minutes: real-time verification from mission control is
+not physically possible, so the verification has to happen on board.
 
 ```
-camera ─┬─► HSV colour detector ────► box positions ─┐
-        │                                            ├─► state machine ─┬─► voice alert
-        └─► MediaPipe pose ─► 30-frame buffer ─► LSTM ┘                 ├─► timestamped log (txt + JSONL)
-                                                                        ├─► Qt dashboard
-                                                                        └─► local recording + UDP stream
+CAPTURE               VISION (3 models, run together)              TEMPORAL MODEL            PROTOCOL ENGINE
+──────────            ───────────────────────────────               ──────────────            ────────────────
+fixed camera   ──┬──► YOLOv8n            → red/yellow/main box  ──┐
+100 ms clock      │   MediaPipe (2D)      → 33-landmark skeleton  ├─► fuse → 143-d features ─► BiLSTM 3×256   ─► confirm / advance /
+upright + rack    │                                               │    → 3 s / 30-sample        + attention       skip-check / HOLD
+frame             └──► HMR3DNet (ours)    → 3D pose, any roll   ──┘    sliding window        → entropy gate       + recover
+                                                                                                                ─► voice · dashboard ·
+                                                                                                                   JSONL/TXT log ·
+                                                                                                                   UDP stream · MP4
 ```
+
+Full diagram: [`sih-har-isro/docs/sih-architecture/slide1.png`](sih-har-isro/docs/sih-architecture/slide1.png).
+Literature grounding and prior-art comparison: [`sih-har-isro/docs/sih-architecture/research.png`](sih-har-isro/docs/sih-architecture/research.png).
+
+---
+
+## What makes this different from "run YOLO + MediaPipe on a video"
+
+1. **A perception model trained specifically for a suited body in microgravity.**
+   Pretrained 3D human-pose models are trained on clothed people standing
+   upright on Earth. Measured directly on this project's own footage, a
+   pretrained model tracks **0.00** of the body at 60° of roll — not
+   degraded, failed. There is no public dataset of suited astronauts at
+   arbitrary orientations to fine-tune from, so we built one: a Blender
+   digital twin of the rack, boxes and suited crew member rendered at every
+   roll, pitch and lighting condition, with exact 3D ground truth baked in
+   by the render itself (33 takes, 31,891 frames). Our model, **HMR3DNet**,
+   trained on that data, goes from 0.00 to **0.77** tracked joints at 60°
+   roll, and 0.60 to **0.91** upside down — see the honest before/after table
+   below, including where it still doesn't work.
+2. **Orientation-agnostic by construction.** The frame is canonicalised
+   upright and every joint is expressed relative to the payload rack, not
+   the camera's floor — so a crew member floating at any angle produces the
+   same features a ground-standing one would.
+3. **A model-contract guard, not a hope.** Every checkpoint records the
+   exact feature layout, sampling clock and detector it was trained on.
+   `pipeline/har_pipeline.py` refuses to serve a model whose recorded
+   contract doesn't match the runtime, instead of silently producing
+   wrong predictions on mismatched features — this is how a real
+   train/serve mismatch was actually caught during development.
+4. **An entropy-gated decision engine, not a raw softmax.** A step is only
+   confirmed after 5 consecutive samples agree, with confidence ≥ 0.65 and
+   prediction entropy ≤ 1.4 nats. The system is built to stay silent when
+   unsure rather than announce a wrong step with false confidence.
+5. **Honest evaluation, split by take, never by frame.** Every accuracy
+   number below is measured on protocol runs the reporting model never
+   trained on. Adjacent frames of the same take are near-duplicates; a
+   frame-level split would leak and inflate every number in this file.
 
 ---
 
 ## Quick start
 
 ```bash
-python -m venv .venv && .venv/Scripts/activate     # or source .venv/bin/activate
+python -m venv .venv && .venv/Scripts/activate      # or source .venv/bin/activate
 pip install -r sih-har-isro/requirements.txt
 
 cd sih-har-isro
-python tools/fetch_pose_model.py                   # one-time, then fully offline
-python main.py --mode status                       # verify the install
-python main.py                                     # run the pipeline on camera 0
+python tools/fetch_pose_model.py                    # one-time, then fully offline
+python main.py --mode status                        # verify weights + backends are present
+python main.py --mode pipeline --camera 0            # run live
 ```
-
-`--mode status` is the thing to run first. It reports which pose backend is
-actually usable, not just whether MediaPipe imports — those are different
-questions since MediaPipe 1.0 (see below).
 
 | Command | What it does |
 |---|---|
-| `python main.py` | Real-time pipeline with the Qt dashboard |
-| `python main.py --headless` | No GUI, terminal only |
-| `python main.py --video clip.mp4` | Run against a file instead of a camera |
-| `python main.py --stream --stream-host 10.0.0.5 --stream-port 5000` | Also push H.264 over UDP |
-| `python main.py --mode tuner` | Interactive HSV calibration for your lighting |
-| `python main.py --mode status` | Model, data and backend availability |
+| `python main.py --mode pipeline --camera 0` | Real-time pipeline on a webcam, with the Qt dashboard |
+| `python main.py --mode pipeline --video clip.mp4 --headless` | Run against a file, no GUI |
+| `python main.py --mode pipeline --camera 0 --viz-3d hmr` | Drive the monitor's 3D panel from HMR3DNet instead of MediaPipe's own 3D |
+| `python main.py --mode pipeline --stream --stream-host <ip> --stream-port 5000` | Also push H.264 over UDP to a ground station |
+| `python main.py --mode status` | Reports which pose backend, detector and model checkpoints actually load |
+| `python tools/render_har_video.py --video clip.mp4 --out monitor.mp4 --viz-3d hmr` | Render the full monitor view (skeleton, 3D panel, checklist) for a video file, offline |
 
 ---
 
-## How accuracy is measured
+## Measured results
 
-**Read this before quoting any number from this repository.**
+Every number below is on takes the reporting model was never trained on, held out
+by take (whole protocol run), not by frame. Full test suite: 56 automated
+checks — `cd sih-har-isro && pytest`.
 
-`logs/e2e_report.md` reports eleven passing gates including
-`lstm_test_acc 0.984` and `oracle_step_acc 1.000`. Those numbers are
-**self-referential and should not be cited**:
+**Object detector — YOLOv8n, fine-tuned on the exact rack, boxes and suit**
 
-- Training and test data both come from `data_generation/synthetic_pose.py`,
-  the same closed-form generator, differing only by random seed. The metric
-  measures the LSTM's ability to invert a 24-waypoint interpolator.
-- `oracle_step_acc` comes from `run_pipeline_on_clip(inject_pose=True)`, which
-  feeds ground-truth pose straight into the classifier. MediaPipe is bypassed,
-  so camera→pose was never measured.
-- `hsv_*_recall` was measured on frames whose boxes `simulation/renderer.py`
-  paints in colours chosen to sit inside the detector's own thresholds, drawn
-  last so nothing could occlude them.
+| | mAP@50 |
+|---|---:|
+| Synthetic-only baseline, on synthetic validation | 0.933 |
+| Synthetic-only baseline, on an unseen real clip | 0.355 |
+| Fine-tuned on real + synthetic, on an unseen real clip (held out entirely) | **0.798** |
 
-The supported way to produce an accuracy claim is
-[`tools/retrain_and_evaluate.sh`](sih-har-isro/tools/retrain_and_evaluate.sh),
-which scores the pipeline against photoreal rendered video whose ground truth
-comes from a **different process than the thing being scored**:
+**3D pose — HMR3DNet vs. a pretrained human-mesh-recovery model, same crop**
 
-```bash
-# 1. Render the dataset (see blender/README.md; ~3 h on CPU-only hardware)
-tools/render_dataset_resilient.sh dataset/blender study
+Tracked = median upper-body joint error under 0.5× torso length, against Blender's
+exact ground truth, on takes never seen during training.
 
-# 2. Rebuild sequences, retrain, score, and table against the baseline
-tools/retrain_and_evaluate.sh
-```
-
-`tools/evaluate_real.py` reports `step_acc_real` (camera→MediaPipe→LSTM),
-`step_acc_oracle` (ground-truth pose→LSTM), and the gap between them as
-`perception_cost` — which tells you whether to fix the classifier or the pose
-stage.
-
-### Measured results
-
-Full numbers and reproduction steps: [`sih-har-isro/logs/RESULTS.md`](sih-har-isro/logs/RESULTS.md).
-Chance accuracy is 0.125 (8 steps). Held-out takes are two unseen crew
-orientations plus an unseen lighting failure.
-
-| Model | Train takes | **Held-out takes** |
+| Orientation | Pretrained model | HMR3DNet (ours) |
 |---|---:|---:|
-| Shipped (`synthetic_pose`-trained) | 0.124 | 0.170 |
-| Retrained on rendered video, raw coords | 0.753 | 0.165 |
-| Retrained, rack-normalised | 0.561 | **0.201** |
+| 30° roll | 0.00 – 0.04 | **0.80** |
+| 60° roll | 0.00 | **0.77** |
+| 180° roll (inverted) | 0.60 | **0.91** |
+| 90° roll (edge-on to one camera) | 0.00 | 0.07 — still an open limit |
 
-The shipped model is **at chance on every split** — its reported 0.984 does
-not survive contact with an image. The retrained models fit the takes they saw
-and do not yet generalise: with seven training takes they memorise
-performances. The binding constraint is dataset size, not architecture.
+At exactly 90°, half the body is self-occluded from a single fixed camera. That's
+a genuine information limit of one viewpoint, not something more training data
+alone fixes — a second camera angle is the honest next step, not claimed as solved.
 
-Two things that did improve concretely and independently of the classifier:
+**Step classifier — BiLSTM, 3 layers × 256, attention, 143-d features**
 
-- **Pose detection under crew roll: 25–60% → 95–100%.** MediaPipe stops
-  detecting entirely when the subject is not upright;
-  `pipeline/upright_pose.py` rotates the frame upright first, using the
-  payload rack's own roll. `rack_frame.py` cannot fix this alone — it
-  normalises landmarks, and at 90° there were none to normalise.
-- **HSV recall measured honestly**: red 0.324, yellow 0.118, main 0.885, all
-  at precision 1.000 — against a reported 1.000.
+| | Step accuracy |
+|---|---:|
+| Reported validation accuracy (own split) | 0.754 |
+| Apples-to-apples: same held-out takes, before this session's detector retrain | 0.680 |
+| Apples-to-apples: same held-out takes, after | **0.707** |
+
+**Live throughput:** 14–16 FPS end-to-end (capture → perception → fusion →
+classification → decision → render) on a single RTX 3050 laptop GPU, fully offline.
 
 ---
 
@@ -115,63 +142,35 @@ Two things that did improve concretely and independently of the classifier:
 
 ```
 sih-har-isro/
-  main.py                  Entry point for every mode
-  config/                  Protocol definition, thresholds, HSV bands, gates
+  main.py                    Entry point for every mode (pipeline / train / status / ...)
+  config/experiment_config.py  Protocol steps, thresholds, sampling clock, feature layout
   pipeline/
-    har_pipeline.py        Real-time orchestration
-    pose_backend.py        MediaPipe Tasks API (+ legacy fallback)
-    hsv_detector.py        Colour-segmentation object detection (no YOLO)
-    state_machine.py       Sequence validation with hold-and-recover
-    rack_frame.py          Orientation-agnostic rack-anchored pose normaliser
-    hmr_backend.py         Optional 3D human mesh recovery
-    voice_alert.py         Offline TTS (Piper, pyttsx3 fallback)
-    logger.py              Timestamped txt + JSONL experiment log
-    stream_sender.py       ffmpeg → UDP video push
-  train/                   LSTM and CNN training
-  simulation/              2D synthetic harness (legacy; see caveats above)
-  blender/                 3D scene + dataset generator — see blender/README.md
-  tools/                   Evaluation, sequence building, model fetch, overlays
+    har_pipeline.py          Real-time orchestration: capture → perceive → fuse → classify → decide
+    yolo_detector.py         YOLOv8n red/yellow/main-box detector
+    pose_backend.py          MediaPipe Tasks API pose (Tasks API + legacy fallback)
+    upright_pose.py          Rotates the frame upright before pose runs (crew at any roll)
+    rack_frame.py            Joints expressed relative to the payload rack, not the camera
+    hmr_backend.py           HMR3DNet: our own 3D pose model for suited, floating crew
+    pose_viz.py              Display-only: stabilised skeleton, rigid-bone 3D view, monitor panel
+    features.py              Shared feature-building code — used by BOTH training and live inference
+    state_machine.py         Confirm / advance / skip-check / HOLD-and-recover
+    voice_alert.py           Offline TTS (Piper, pyttsx3 fallback)
+    logger.py                Timestamped JSONL + TXT experiment log
+    stream_sender.py         ffmpeg → UDP video push
+  train/
+    train_lstm.py            Step classifier, held out by take
+    train_hmr3d.py            HMR3DNet, supervised by Blender's own 3D ground truth
+    hmr3d_model.py           MobileNetV3-Small backbone + regression head
+  tools/
+    build_sequences.py       Camera frames → training windows (same code path the live loop runs)
+    promote_model.py         Checks a checkpoint's contract before it can be served live
+    evaluate_real.py         Honest accuracy scoring on real/held-out footage
+    render_har_video.py      Renders the full live monitor view for an offline video file
+  blender/                   Digital-twin scene + dataset generator
+  gui/qt_dashboard.py        PyQt6 monitoring GUI
+  docs/sih-architecture/     Architecture and research-reference diagrams (source + rendered PNGs)
+  tests/                     56 pytest checks: contract guard, feature layout, state machine, ...
 ```
-
----
-
-## Requirements notes
-
-**MediaPipe 1.0 removed the `mp.solutions` API.** This project originally
-called `mp.solutions.pose.Pose` directly and so failed at import on any
-current install. Pose now goes through `pipeline/pose_backend.py`, which
-prefers the Tasks API (`PoseLandmarker`) and falls back to the legacy
-Solutions API on older versions, behind one unchanged 132-dim contract.
-
-The Tasks API needs a `.task` bundle on disk. `pose_landmarker_lite` and
-`_full` ship via Git LFS so a fresh clone is offline-capable;
-`tools/fetch_pose_model.py --variant heavy` fetches the larger one on demand.
-
-**Optional, off by default** (each documented in `config/experiment_config.py`):
-`ENABLE_STREAMING`, `CNN_ENSEMBLE_ENABLED`, `RACK_FRAME_NORMALIZE`,
-`HMR_BACKEND`.
-
----
-
-## Known issues
-
-- **`.runtime/site-packages` is ~300 MB of checked-in torch/numpy/sympy**,
-  which is why a clone is ~330 MB when the source is under 1 MB. It is now
-  git-ignored, but reclaiming the space needs a history rewrite that
-  invalidates every existing clone — the repository owner's call.
-- **`Astra` is a submodule gitlink with no `.gitmodules`**, so
-  `git clone --recursive` fails with
-  `no submodule mapping found in .gitmodules for path 'Astra'`. Left in place
-  pending intent: either add the mapping or `git rm --cached Astra`.
-- **`dataset/synthetic_gemini/`** contains 1,027 JPEGs that are flat colour
-  cards with the step name printed on them — no astronaut, no boxes. They are
-  placeholders from a mock generator, not training data.
-- **`end_to_end_loop.py`'s auto-fix loop relaxes its own gates**: a latency
-  failure increases `warmup_frames` (excluding frames from the *measurement*),
-  and a state-machine failure lowers `STEP_CONFIRM_FRAMES` — the safety
-  debounce — and persists it to `config/tuned_overrides.json` so the relaxed
-  value ships. Left unchanged because gating policy is a project decision, but
-  it is why the e2e report always passes.
 
 ---
 
@@ -179,11 +178,48 @@ The Tasks API needs a `.task` bundle on disk. `pose_landmarker_lite` and
 
 | Requirement | Where |
 |---|---|
-| Continuously process local video to track the sequence | `pipeline/har_pipeline.py` |
-| Suggest the next step at start and after each step | `voice_alert.alert_step_next`, called from the state machine callbacks |
-| Voice alert on skipped or out-of-sequence steps | `pipeline/voice_alert.py`, `pipeline/state_machine.py` |
-| Timestamped structured log with outcomes | `pipeline/logger.py` (txt + JSONL, three-tier outcome) |
-| Stream to a specific IP **and** store locally | `pipeline/stream_sender.py` + `cv2.VideoWriter` |
-| GUI for monitoring | `gui/qt_dashboard.py` |
-| Runs offline on a standalone system | No network at inference; pose weights ship with the repo |
-| *Optional:* orientation-agnostic 3D tracking | `pipeline/rack_frame.py` (validated by the 0–180° render sweep), `pipeline/hmr_backend.py` |
+| Train an AI model that recognises and validates a pre-defined experiment sequence | `train/train_lstm.py`, `train/train_hmr3d.py`, `train/train_yolo_boxes.py` |
+| Standalone / edge: process locally, no raw video to ground | `pipeline/har_pipeline.py` — inference is fully offline; only `--stream` optionally pushes an annotated feed |
+| Dataset generation for detection, pose and hand-object interaction | `blender/` digital twin (33 takes, 31,891 frames), `tools/build_sequences.py` |
+| Continuously process local video, suggest the next step | `pipeline/state_machine.py`, `pipeline/voice_alert.alert_step_next` |
+| Voice alert on a skipped or out-of-sequence step | `pipeline/voice_alert.py` + `pipeline/state_machine.py`'s recovery path |
+| Timestamped, structured, lightweight log of steps and outcomes | `pipeline/logger.py` (JSONL + TXT) |
+| Stream to a specific IP **and** store locally | `pipeline/stream_sender.py` (UDP) + `cv2.VideoWriter` (local MP4), both running together |
+| GUI for monitoring | `gui/qt_dashboard.py`, plus the render-side monitor in `pipeline/pose_viz.py` |
+| Deliverable: trained model on an offline standalone system | `models/*.pt` / `*.onnx`, served through `tools/promote_model.py`'s contract check |
+| *Optional:* orientation-agnostic 3D tracking relative to the rack, not the floor | `pipeline/rack_frame.py`, `pipeline/upright_pose.py`, `pipeline/hmr_backend.py` |
+
+---
+
+## Known limitations
+
+Stated plainly, because every number above is reported the same way:
+
+- **Exactly 90° roll is still an open problem** (0.07 tracked, see table above) — a
+  single-camera self-occlusion limit, not yet closed by more training data.
+- **A camera mounted directly overhead** degrades MediaPipe's 2D skeleton — it is
+  trained on front/side viewpoints. Object detection and step classification are
+  largely unaffected; the skeleton overlay is the part that suffers.
+- **A clip that starts mid-protocol** correctly reports step 1 as skipped — that's
+  the state machine working as specified, not a bug, but it currently repeats the
+  warning every few seconds rather than once per missed step.
+- **`Astra/`** is a separate, unrelated prototype tracked as a bare gitlink with no
+  `.gitmodules` entry — not part of this submission; left untouched.
+
+---
+
+## Tech stack
+
+Python · PyTorch · Ultralytics YOLOv8 · MediaPipe (BlazePose) · OpenCV · ONNX Runtime ·
+PyQt6 · NumPy · FFmpeg · Blender (digital-twin data generation) · pytest (56 tests) ·
+CUDA (RTX 3050, real-time inference)
+
+---
+
+## Team
+
+| Name | Role |
+|---|---|
+| _fill in_ | _fill in_ |
+
+Demo video: `<link>` · Presentation: `<link>`
