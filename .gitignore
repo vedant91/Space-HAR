@@ -126,3 +126,8 @@ weights/
 # ── Python bytecode in tracked subdirs ────────────────────────────────────────
 sih-har-isro/gui/__pycache__/
 sih-har-isro/pipeline/__pycache__/
+
+# ── Not part of this submission (kept locally, never pushed) ─────────────────
+/Astra/
+/tmp/
+sih-har-isro/dataset/synthetic_gemini/
