@@ -82,7 +82,10 @@ def setup_render(scene: bpy.types.Scene,
     a detector failure rather than a colour-management choice. See
     materials.py for the full note. Use "AgX" only for showcase stills.
     """
-    scene.render.engine = "BLENDER_EEVEE"
+    try:
+        scene.render.engine = "BLENDER_EEVEE"
+    except TypeError:  # Blender 4.2-4.5 registered EEVEE under its transitional name
+        scene.render.engine = "BLENDER_EEVEE_NEXT"
     scene.render.resolution_x, scene.render.resolution_y = resolution
     scene.render.resolution_percentage = 100
     scene.render.film_transparent = False
