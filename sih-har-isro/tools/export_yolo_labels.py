@@ -54,11 +54,13 @@ def write_labels_for_take(take_dir: Path) -> tuple[int, list[Path]]:
 
     payload = json.loads((cam / "payload.json").read_text(encoding="utf-8"))
     frames = sorted((cam / "frames").glob("*.png"))
-    n = min(len(frames), len(payload))
 
     written = []
-    for i in range(n):
-        w, h = _image_size(frames[i])
+    for frame in frames:
+        i = int(frame.stem)  # renderer uses zero-based frame offsets, even after a partial render
+        if not 0 <= i < len(payload):
+            raise ValueError(f'{frame}: no corresponding payload record')
+        w, h = _image_size(frame)
         lines = []
         for cls_id, key in enumerate(CLASSES):
             box = payload[i].get(key)
@@ -72,10 +74,10 @@ def write_labels_for_take(take_dir: Path) -> tuple[int, list[Path]]:
                 continue
             cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
             lines.append(f"{cls_id} {cx/w:.6f} {cy/h:.6f} {bw/w:.6f} {bh/h:.6f}")
-        label_path = frames[i].with_suffix(".txt")
+        label_path = frame.with_suffix(".txt")
         label_path.write_text("\n".join(lines), encoding="utf-8")
-        written.append(frames[i])
-    return n, written
+        written.append(frame)
+    return len(written), written
 
 
 _size_cache: dict = {}
