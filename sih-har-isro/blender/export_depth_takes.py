@@ -28,12 +28,23 @@ ATTITUDES = {
 }
 
 
-def export(out, previews=False, only_split=None):
+# Extra animation seeds cover mixed attitudes and out-of-camera-plane motion.
+# Keep the original seed indices stable for users who already have those takes.
+for split, count, rng_seed in (("train", 30, 5921), ("val", 6, 5951), ("audit", 12, 5981)):
+    rng = np.random.default_rng(rng_seed)
+    attitudes = ATTITUDES.setdefault(split, [])
+    for roll in np.linspace(-175, 175, count):
+        attitudes.append((float(roll), float(rng.uniform(-70, 70)), float(rng.uniform(-55, 55))))
+
+
+def export(out, previews=False, only_split=None, start=0):
     width, height = 640, 360
     for split_id, (split, attitudes) in enumerate(ATTITUDES.items()):
         if only_split and split != only_split:
             continue
         for index, (roll, yaw, pitch) in enumerate(attitudes):
+            if index < start:
+                continue
             seed = 8100 + 100 * split_id + index
             root = out / split / f"take_{seed}"
             root.mkdir(parents=True, exist_ok=True)
@@ -41,7 +52,12 @@ def export(out, previews=False, only_split=None):
             built = build(seed=seed, body_roll_deg=roll, facing_deg=yaw, body_pitch_deg=pitch,
                           frames_per_step=24, lighting=lighting, resolution=(width, height), samples=4)
             scene = built["scene"]
-            camera = built["cameras"]["payload_wide" if split == "test" and index == 3 else "payload_a"]
+            camera_name = "payload_a"
+            if split == "test" and index == 3:
+                camera_name = "payload_wide"
+            elif (split == "train" and index >= 12) or (split == "val" and index >= 3) or split == "audit":
+                camera_name = ("payload_a", "payload_b", "payload_wide", "payload_over")[index % 4]
+            camera = built["cameras"][camera_name]
             scene.camera = camera
             sampler = GroundTruthSampler(scene, camera, built["crew"]["rig"], built["payload"])
             boxes = []
@@ -76,7 +92,7 @@ def export(out, previews=False, only_split=None):
             if previews:
                 (root / "boxes.json").write_text(json.dumps(boxes))
             np.savez_compressed(root / "pose.npz", pose=poses, world=worlds, step=steps,
-                                size=[width, height], attitude=[roll, yaw, pitch], seed=seed,
+                                size=[width, height], attitude=[roll, yaw, pitch], seed=seed, camera=camera_name, lighting=lighting,
                                 metres_per_width=metres_per_width)
             print(f"{split} {seed}: {len(poses)} frames", flush=True)
 
@@ -86,6 +102,7 @@ if __name__ == "__main__":
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--previews", action="store_true", help="Render sparse aligned RGB for detector evaluation")
     parser.add_argument("--split", choices=ATTITUDES)
+    parser.add_argument("--start", type=int, default=0, help="First take index within split")
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     args = parser.parse_args(argv)
-    export(args.out, args.previews, args.split)
+    export(args.out, args.previews, args.split, args.start)

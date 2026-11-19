@@ -424,7 +424,9 @@ class HMRBackend:
 
     def _track(self, rgb: np.ndarray) -> None:
         """Per-frame, cheap: move the box and torso angle with MediaPipe."""
-        lm = self._landmarks(rgb)
+        self._update_track(rgb, self._landmarks(rgb))
+
+    def _update_track(self, rgb, lm):
         if lm is None:
             # Coast on the last box a few frames (blur, occlusion), then drop
             # it; with no box, a stock-YOLO person box stands in until
@@ -536,8 +538,21 @@ class HMRBackend:
 
     def _custom_features(self, frame_rgb: np.ndarray) -> np.ndarray:
         """Use the current crop each frame, including reaches at constant torso roll."""
+        return self._custom_with_landmarks(frame_rgb, self._landmarks(frame_rgb))
+
+    def custom_from_pose(self, frame_rgb, pose):
+        """Reuse this frame's measured landmarks when custom HMR runs for display."""
+        h, w = frame_rgb.shape[:2]
+        lm = np.asarray(pose, dtype=np.float64).reshape(33, 4).copy()
+        lm[~np.isfinite(lm).all(axis=1)] = 0
+        lm[:, :2] *= (w, h)
+        if (lm[:, 3] >= TRACK_MIN_VIS).sum() < TRACK_MIN_POINTS:
+            lm = None
+        return self._custom_with_landmarks(frame_rgb, lm)
+
+    def _custom_with_landmarks(self, frame_rgb, lm):
         self.stats["frames"] += 1
-        self._track(frame_rgb)
+        self._update_track(frame_rgb, lm)
         if self._box is None:
             return np.zeros(FEATURE_DIM, dtype=np.float32)
         self.stats["romp_runs"] += 1

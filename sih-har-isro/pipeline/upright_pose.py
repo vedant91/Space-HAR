@@ -152,6 +152,7 @@ class UprightPoseEstimator:
         self.last_world: Optional[np.ndarray] = None
         self.last_mask: Optional[np.ndarray] = None
         self._working_angle = 0.0
+        self._fitted = True
         self.stats = {"frames": 0, "hit_first_try": 0, "searched": 0,
                       "failed": 0, "angle_changes": 0}
 
@@ -165,7 +166,7 @@ class UprightPoseEstimator:
 
     # ── internals ────────────────────────────────────────────────────────
 
-    def _try_angle(self, frame_rgb: np.ndarray, degrees: float
+    def _try_angle(self, frame_rgb: np.ndarray, degrees: float, fitted: bool = False
                    ) -> Tuple[Optional[np.ndarray], float, tuple]:
         """Run pose on the frame rotated by `degrees`; return (feats, score)
         with feats already mapped back to the ORIGINAL image's normalised
@@ -183,6 +184,10 @@ class UprightPoseEstimator:
                                      flags=cv2.INTER_LINEAR,
                                      borderMode=cv2.BORDER_REPLICATE)
 
+        # Some foreshortened suits are easier for the detector to acquire
+        # in the legacy fixed-aspect view. Use this as a recovery hypothesis.
+        if fitted and (new_w, new_h) != (self._backend.small_w, self._backend.small_h):
+            rotated = cv2.resize(rotated, (self._backend.small_w, self._backend.small_h))
         feats = self._backend.process(rotated)
         if not np.any(feats):
             return None, 0.0, (None, None)
@@ -231,7 +236,7 @@ class UprightPoseEstimator:
 
         # 1. The angle that worked last frame. Orientation changes slowly, so
         #    this is right almost always and costs a single inference.
-        feats, score, extra = self._try_angle(frame_rgb, self._working_angle)
+        feats, score, extra = self._try_angle(frame_rgb, self._working_angle, self._fitted)
         if feats is not None and score >= min_score:
             self.stats["hit_first_try"] += 1
             self.last_world, self.last_mask = extra
@@ -249,15 +254,25 @@ class UprightPoseEstimator:
         candidates += list(self.search_angles)
 
         self.stats["searched"] += 1
-        for angle in candidates:
-            angle = float(angle) % 360.0
-            if abs(angle - self._working_angle) < 1e-3:
-                continue
-            feats, score, extra = self._try_angle(frame_rgb, angle)
-            if feats is not None and score > best_score:
-                best_feats, best_score, best_angle, best_extra = feats, score, angle, extra
-                if score >= min_score:
+        tried = {(self._working_angle % 360, self._fitted)}
+        best_fitted = self._fitted
+        for fitted in (self._fitted, not self._fitted):
+            for angle in [self._working_angle, *candidates]:
+                angle = float(angle) % 360.0
+                # At 0/180 the two input aspect ratios already agree.
+                key = (angle, fitted and angle % 180 != 0)
+                if key in tried:
+                    continue
+                tried.add(key)
+                feats, score, extra = self._try_angle(frame_rgb, angle, fitted)
+                if feats is not None and score > best_score:
+                    best_feats, best_score, best_angle, best_extra = feats, score, angle, extra
+                    best_fitted = fitted
+                if best_score >= min_score:
                     break
+            if best_score >= min_score:
+                break
+        self._fitted = best_fitted
 
         if best_feats is None:
             self.stats["failed"] += 1
@@ -274,6 +289,7 @@ class UprightPoseEstimator:
     def reset(self) -> None:
         """Forget the working angle. Call between takes/sessions."""
         self._working_angle = 0.0
+        self._fitted = True
 
     def close(self) -> None:
         self._backend.close()

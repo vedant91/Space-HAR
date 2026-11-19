@@ -11,16 +11,20 @@ from pipeline.har_pipeline import OptimizedMPWrapper, _make_box_detector
 from pipeline.hmr_backend import HMRBackend
 
 
-def cache(root):
+def cache(root, split=None):
     pose = OptimizedMPWrapper()
     incumbent = HMRBackend("custom")
     if not pose.available or not incumbent.available:
         raise RuntimeError("Scoring requires both the MediaPipe bundle and the RGB HMR checkpoint")
     try:
-        for path in sorted(root.glob("*/*/pose.npz")):
+        detector = None
+        detector_size = None
+        for path in sorted(root.glob(f"{split or '*'}/take_*/pose.npz")):
             with np.load(path) as labels:
                 width, height = labels["size"]
-            detector = _make_box_detector(int(width), int(height))
+            if detector_size != (width, height):
+                detector_size = (width, height)
+                detector = _make_box_detector(int(width), int(height))
             pose.reset()
             incumbent.reset()
             offsets, skeletons, rgb_depths = [], [], []
@@ -30,7 +34,7 @@ def cache(root):
                 rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
                 skeletons.append(pose.process(rgb, detections=previous).reshape(33, 4))
                 previous = detector.detect(bgr)
-                rgb_depths.append(incumbent.get_pose_features(rgb)[0].reshape(33, 4))
+                rgb_depths.append(incumbent.custom_from_pose(rgb, skeletons[-1]).reshape(33, 4))
                 offsets.append(int(image.stem))
             if not offsets:
                 raise ValueError(f"{path}: export with --previews to measure image inputs")
@@ -45,4 +49,6 @@ def cache(root):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", type=Path)
-    cache(parser.parse_args().dataset)
+    parser.add_argument("--split", choices=["train", "val", "test", "audit"])
+    args = parser.parse_args()
+    cache(args.dataset, args.split)
