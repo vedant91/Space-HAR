@@ -188,7 +188,8 @@ class PoseBackend:
             running_mode = (vision.RunningMode.IMAGE if self._static
                             else vision.RunningMode.VIDEO)
             options = vision.PoseLandmarkerOptions(
-                base_options=mp_python.BaseOptions(model_asset_path=str(path)),
+                base_options=mp_python.BaseOptions(model_asset_path=str(path),
+                                                   delegate=mp_python.BaseOptions.Delegate.CPU),
                 running_mode=running_mode,
                 num_poses=1,
                 min_pose_detection_confidence=float(min_det_conf),

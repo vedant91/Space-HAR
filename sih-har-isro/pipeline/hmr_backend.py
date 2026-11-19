@@ -308,7 +308,7 @@ class HMRBackend:
         from wham_api import WHAM  # type: ignore
         return WHAM()
 
-    def _load_tracker(self) -> None:
+    def _load_tracker(self, optional_person=False) -> None:
         """MediaPipe (box + torso angle) and the stock person detector, shared
         by every learned backend that needs a tracked crop (romp, custom).
         Missing either must fail the load the same way a missing backend
@@ -324,6 +324,11 @@ class HMRBackend:
                                         frame_width=self._mp_wh[0], frame_height=self._mp_wh[1])
         if not self._mp.available:
             raise RuntimeError("MediaPipe pose (needed for the crop) is unavailable")
+        self._person = None
+        if optional_person and not PERSON_WEIGHTS.exists():
+            logger.info("Using MediaPipe crop tracking without the optional COCO person detector")
+            self.reset()
+            return
         if not PERSON_WEIGHTS.exists():   # never let ultralytics fetch weights: offline system
             raise FileNotFoundError(f"stock person detector weights missing: {PERSON_WEIGHTS}")
         os.environ.setdefault("YOLO_AUTOINSTALL", "False")   # its auto-pip must not run either
@@ -359,8 +364,12 @@ class HMRBackend:
         model.eval()
         self._custom_device = "cuda" if torch.cuda.is_available() else "cpu"
         model = model.to(self._custom_device)
-        self._load_tracker()
+        self._load_tracker(optional_person=True)
         return model
+
+    def close(self):
+        if getattr(self, "_mp", None) is not None:
+            self._mp.close()
 
     def reset(self) -> None:
         """Forget the tracked body. Call between takes/trials."""
@@ -404,6 +413,8 @@ class HMRBackend:
         return lm
 
     def _person_box(self, rgb: np.ndarray):
+        if self._person is None:
+            return None
         r = self._person.predict(np.ascontiguousarray(rgb[..., ::-1]), classes=[0],
                                  conf=PERSON_CONF, verbose=False)[0]
         if len(r.boxes) == 0:
@@ -524,25 +535,14 @@ class HMRBackend:
         return feats.reshape(-1), float(np.mean(feats[:, 3]))
 
     def _custom_features(self, frame_rgb: np.ndarray) -> np.ndarray:
-        """Same track-crop-schedule shape as _romp_features, without the
-        confidence-retry/full-frame-fallback machinery that exists
-        specifically to work around ROMP's known failure modes - this
-        network's own failure modes are not measured yet, so that complexity
-        is not warranted until evidence says it is (see docs/architecture.html
-        section 3 on why the ROMP fixes were each driven by a measured
-        problem, not applied speculatively)."""
+        """Use the current crop each frame, including reaches at constant torso roll."""
         self.stats["frames"] += 1
         self._track(frame_rgb)
-        self._since += 1
-        stale = (self._last is None or self._since >= ROMP_MAX_STALE_FRAMES
-                 or abs(wrap180(self._angle - self._last_angle)) > ROMP_REROTATE_DEG)
-        if stale:
-            self.stats["romp_runs"] += 1
-            feats, conf = self._custom_at(frame_rgb, self._box, self._angle)
-            self._last, self._last_angle, self._since = feats, self._angle, 0
-        if self._last is None:
+        if self._box is None:
             return np.zeros(FEATURE_DIM, dtype=np.float32)
-        return self._last.copy()
+        self.stats["romp_runs"] += 1
+        feats, _ = self._custom_at(frame_rgb, self._box, self._angle)
+        return feats
 
     # ── public API ────────────────────────────────────────────────────────
 

@@ -906,8 +906,17 @@ class HARPipeline:
 
     def _perceive(self, frame: np.ndarray, timings: Optional[dict] = None):
         """HSV + pose for the current frame via the shared perceive()."""
-        dets, pose = perceive(frame, self._frame_rgb_full, self.hsv_detector,
-                              self.mp_wrapper, self._prev_dets, self.threaded, timings)
+        if self.hmr is not None and self.hmr.available:
+            started = time.perf_counter()
+            dets = self.hsv_detector.detect(frame)
+            after_boxes = time.perf_counter()
+            pose, _ = self.hmr.get_pose_features(self._frame_rgb_full)
+            if timings is not None:
+                timings.update(hsv_ms=(after_boxes - started) * 1000,
+                               pose_ms=(time.perf_counter() - after_boxes) * 1000)
+        else:
+            dets, pose = perceive(frame, self._frame_rgb_full, self.hsv_detector,
+                                  self.mp_wrapper, self._prev_dets, self.threaded, timings)
         self._prev_dets = dets
         return dets, pose
 
@@ -1036,14 +1045,7 @@ class HARPipeline:
 
         t_perc = time.perf_counter()
         timings = {}
-        if self.hmr is not None and self.hmr.available:
-            # Stage 2: root-relative 3D from the HMR mesh (same 132-dim contract).
-            detections = self.hsv_detector.detect(frame)
-            timings["hsv_ms"] = (time.perf_counter() - t_perc) * 1000.0
-            skel_mp, _ = self.hmr.get_pose_features(self._frame_rgb_full)
-            self._prev_dets = detections
-        else:
-            detections, skel_mp = self._perceive(frame, timings)
+        detections, skel_mp = self._perceive(frame, timings)
         perc_ms = (time.perf_counter() - t_perc) * 1000.0
         hsv_ms = timings.get("hsv_ms", 0.0)          # threaded: not separable
         mp_ms = timings.get("pose_ms", perc_ms - hsv_ms)
@@ -1142,6 +1144,9 @@ class HARPipeline:
         if self.streamer is not None:
             self.streamer.close()
             self.streamer = None
+        for backend in (self.hmr, self._viz_hmr):
+            if backend is not None:
+                backend.close()
         if self.mp_wrapper is not None:
             self.mp_wrapper.close()
             self.mp_wrapper = None
@@ -1296,14 +1301,7 @@ class HARPipeline:
         # Cleanup
         self._running = False
         cap.release()
-        if self.video_writer:
-            self.video_writer.release()
-            self.video_writer = None
-        if self.streamer:
-            self.streamer.close()
-            self.streamer = None
-        if self.mp_wrapper:
-            self.mp_wrapper.close()
+        self.close()
         if not self.headless and self.gui_queue is None:
             cv2.destroyAllWindows()
         logger.info("Pipeline stopped. Log: %s", self.exp_logger.get_log_path())
