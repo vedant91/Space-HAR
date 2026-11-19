@@ -37,6 +37,10 @@ for split, count, rng_seed in (("train", 30, 5921), ("val", 6, 5951), ("audit", 
         attitudes.append((float(roll), float(rng.uniform(-70, 70)), float(rng.uniform(-55, 55))))
 
 
+# Appended after audit to preserve the seed IDs of the earlier splits.
+ATTITUDES["motion"] = [(0, 0, 0), (90, 15, 0), (135, 0, 30), (-60, -35, 15)]
+
+
 def export(out, previews=False, only_split=None, start=0):
     width, height = 640, 360
     for split_id, (split, attitudes) in enumerate(ATTITUDES.items()):
@@ -74,7 +78,7 @@ def export(out, previews=False, only_split=None, start=0):
                 if distance <= 0:
                     raise ValueError(f"Rig behind camera at frame {frame} in {root}")
                 metres_per_width.append(distance * camera.data.sensor_width / camera.data.lens)
-                if previews and (len(poses) - 1) % 8 == 0:
+                if previews and (split == "motion" or (len(poses) - 1) % 8 == 0):
                     offset = len(poses) - 1
                     payload = sampler.sample_payload(bpy.context.evaluated_depsgraph_get())
                     lines = []

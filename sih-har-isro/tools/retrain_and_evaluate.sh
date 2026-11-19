@@ -43,7 +43,7 @@
 
 set -euo pipefail
 
-usage() { sed -n '/^# Usage:/,/^$/s/^#\( \|$\)//p' "${BASH_SOURCE[0]}"; }
+usage() { sed -n '/^# Usage:/,/^$/s/^# *//p' "${BASH_SOURCE[0]}"; }
 
 case "${1:-}" in
     -h|--help) usage; exit 0 ;;

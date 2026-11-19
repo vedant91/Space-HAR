@@ -76,7 +76,9 @@ class YOLOBoxDetector:
         self.model = YOLO(str(weights_path))
         # Checkpoint class IDs depend on the dataset used for training.
         names = self.model.names
-        self.labels = {i: name for i, name in names.items() if name in CLASSES}
+        aliases = {"main_box_open": "main_box", "main_box_closed": "main_box"}
+        self.labels = {i: aliases.get(name, name) for i, name in names.items()
+                       if name in CLASSES or name in aliases}
         if set(self.labels.values()) != set(CLASSES):
             raise ValueError(f"Expected payload classes {CLASSES} in {weights_path}, found {names}")
         logger.info("YOLOBoxDetector initialized (weights=%s, conf=%.2f)", weights_path, conf)
@@ -109,7 +111,9 @@ class YOLOBoxDetector:
             "red_bbox": None, "yellow_bbox": None,
             "red_area_ratio": 0.0, "yellow_area_ratio": 0.0,
         }
-        for d in dets:
+        # Multiple proposals for one payload are common with distractors.
+        # Fill the single-object feature slot with the strongest proposal last.
+        for d in sorted(dets, key=lambda item: item.confidence):
             if d.label == "red_box":
                 result["red_visible"] = True
                 result["red_centroid"] = d.centroid

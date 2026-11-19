@@ -371,8 +371,13 @@ def _export_lstm_onnx(model_pt_path: str, onnx_path: str = None):
                          if Path(model_pt_path).resolve() == Path(LSTM_PATH).resolve()
                          else str(candidate))
 
+        # The deployment contract uses opset 17 and dynamic_axes. Newer
+        # PyTorch defaults to the dynamo exporter, which targets newer opsets.
+        import inspect
+        exporter = {"dynamo": False} if "dynamo" in inspect.signature(torch.onnx.export).parameters else {}
         torch.onnx.export(
             model, dummy, onnx_path,
+            **exporter,
             export_params=True,
             opset_version=17,
             input_names=["skeleton_sequence"],

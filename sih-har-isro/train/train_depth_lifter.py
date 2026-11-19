@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from pipeline.pose_viz import HipDepthFilter
 from pipeline.depth_lifter import DepthLifter, FORMAT, WEIGHTS, encode, refine_image_pose
 
 BODY = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]
@@ -42,7 +43,10 @@ def camera_joints(pose, depths, size, metres, fov):
 def evaluate(model, root, split):
     model.eval()
     totals = {k: [] for k in ("fused", "lift", "rgb_hmr", "mediapipe", "flat")}
+    if split == "motion":
+        totals.update(fused_filtered=[], rgb_filtered=[])
     distances = {k: [] for k in totals}
+    depth_change = {k: [] for k in totals}
     pck = {k: [] for k in ("raw", "refined")}
     per_take = {}
     per_joint = {j: [] for j in BODY}
@@ -66,13 +70,28 @@ def evaluate(model, root, split):
             pck[key].extend(hit[:, BODY][visible[:, BODY]].tolist())
         estimates = {"fused": fused, "lift": prediction, "rgb_hmr": old[..., 2], "mediapipe": inp[..., 2],
                      "flat": np.zeros_like(prediction)}
+        if split == "motion":
+            for key, source in (("fused_filtered", fused), ("rgb_filtered", rgb_z)):
+                depth_filter = HipDepthFilter()
+                result = source.copy()
+                for i in range(len(source)):
+                    if mask[i]:
+                        result[i] = depth_filter(source[i], i / 10)
+                    else:
+                        depth_filter.reset()
+                estimates[key] = result
         row = {"frames": len(gt), "lifted": int(valid.sum()), "common": int(mask.sum())}
         for method, depths in estimates.items():
             depths = depths - depths[:, [23, 24]].mean(axis=1, keepdims=True)
             errors = abs(depths - gt[..., 2]) * metres[:, None] * 100
+            if split == "motion":
+                # Motion takes render every sampled rig frame, 3/30 s apart.
+                signed = (depths - gt[..., 2]) * metres[:, None] * 100
+                consecutive = visible[1:, BODY] & visible[:-1, BODY]
+                depth_change[method].extend(abs(np.diff(signed[:, BODY], axis=0))[consecutive].tolist())
             selected = errors[:, BODY][visible[:, BODY]]
             totals[method].extend(selected.tolist())
-            xyz = camera_joints(refined if method == "fused" else inp, depths, size, metres, fov)
+            xyz = camera_joints(refined if method.startswith("fused") else inp, depths, size, metres, fov)
             dist = np.linalg.norm(xyz - target_xyz, axis=-1) * 1000
             distances[method].extend(dist[:, BODY][visible[:, BODY]].tolist())
             row[method] = float(selected.mean()) if selected.size else None
@@ -83,6 +102,7 @@ def evaluate(model, root, split):
     return {"frames": total_frames, "lifted": lifted, "common": common,
             "visible_joint_observations": len(totals["lift"]),
             "depth_mae_cm": {m: float(np.mean(v)) if v else None for m, v in totals.items()},
+            "depth_change_mae_cm_per_100ms": {m: float(np.mean(v)) for m,v in depth_change.items() if v},
             "root_relative_mpjpe_mm": {m: float(np.mean(v)) if v else None for m,v in distances.items()},
             "pck_half_torso": {m: float(np.mean(v)) if v else None for m,v in pck.items()},
             "joint_mae_cm": {j: float(np.mean(v)) if v else None for j, v in per_joint.items()},
@@ -154,7 +174,7 @@ if __name__ == "__main__":
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--seed", type=int, default=41)
     ap.add_argument("--evaluate", action="store_true", help="Score existing weights on test takes")
-    ap.add_argument("--split", choices=("test", "audit", "val"), default="audit")
+    ap.add_argument("--split", choices=("test", "audit", "val", "motion"), default="audit")
     args = ap.parse_args()
     if not args.evaluate:
         train(args.dataset, args.out, args.epochs, args.seed)

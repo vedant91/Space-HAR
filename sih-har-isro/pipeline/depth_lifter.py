@@ -79,7 +79,7 @@ class DepthLifter(nn.Module):
         if not valid[0]:
             return None
         result = np.asarray(pose, dtype=np.float32).reshape(33, 4).copy()
-        result[~np.isfinite(result).all(axis=1)] = 0
+        result[~np.isfinite(result[:, [0, 1, 3]]).all(axis=1)] = 0
         result[:, 2] = self(torch.from_numpy(encoded))[0].numpy() * scale[0]
         if rgb_pose is not None:
             rgb = np.asarray(rgb_pose).reshape(33, 4)

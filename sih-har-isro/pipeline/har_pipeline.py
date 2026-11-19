@@ -420,6 +420,7 @@ class HARPipeline:
         self._viz_t = 0.0
         self._stab2d = pv.Skeleton2DStabilizer()
         self._rig3d = pv.RigidSkeleton3D()
+        self._depth_filter = pv.HipDepthFilter()
         self._box_track = pv.BoxDisplayTracker()
         self._cam3d = None
         self._last_joints3d = None
@@ -948,7 +949,10 @@ class HARPipeline:
             if lifted is not None:
                 self._depth_source = ("BAS skeleton + RGB depth" if rgb_pose is not None and np.any(rgb_pose)
                                       else "BAS skeleton depth")
+                joints = lifted.reshape(33, 4)
+                joints[:, 2] = self._depth_filter(joints[:, 2], self._viz_t)
                 return lifted
+        self._depth_filter.reset()
         return rgb_pose
 
     def _frame_features(self, skel: np.ndarray, detections: list) -> np.ndarray:
@@ -1126,6 +1130,7 @@ class HARPipeline:
             self._viz_hmr.reset()
         self._stab2d.reset()              # display-only state, see _annotate_frame
         self._rig3d.reset()
+        self._depth_filter.reset()
         self._box_track.reset()
         self._cam3d = None
         self._last_joints3d = None

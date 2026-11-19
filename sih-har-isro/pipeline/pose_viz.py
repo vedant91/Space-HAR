@@ -113,6 +113,15 @@ class OneEuro:
         return self.x.copy()
 
 
+class HipDepthFilter(OneEuro):
+    """Smooth camera-width depths on the capture clock, resetting after a tracking gap."""
+    def __call__(self, depths, t):
+        if self.t is not None and t - self.t > .5:
+            self.reset()
+        z = super().__call__(depths, t)
+        return z - z[[23, 24]].mean()
+
+
 class Skeleton2DStabilizer:
     """(33, 4) image-normalised landmarks -> smoothed landmarks.
 
