@@ -196,6 +196,18 @@ def _with_virtual(j: np.ndarray) -> np.ndarray:
     return np.vstack([xyz, hip, sh])
 
 
+def display_body(pose, size):
+    """Hip-relative display coordinates at a nominal 0.5 m 3D torso length."""
+    width, height = size
+    body = np.asarray(pose, dtype=np.float64).reshape(33, 4).copy()
+    xyz = body[:, :3]
+    xyz *= (width, height, width)
+    xyz -= xyz[[L_HIP, R_HIP]].mean(axis=0)
+    torso = np.linalg.norm(xyz[[L_SH, R_SH]].mean(axis=0))
+    xyz *= 0.5 / max(torso, 1.0)
+    return body
+
+
 class RigidSkeleton3D:
     """Metric world landmarks -> the same pose rebuilt with constant bone
     lengths (running median, left/right pooled), One-Euro smoothed.

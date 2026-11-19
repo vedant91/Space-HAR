@@ -339,7 +339,7 @@ class HARPipeline:
                  use_threaded: Optional[bool] = None,
                  lstm_path: Optional[str] = None,
                  show_3d_panel: bool = False,
-                 viz_3d: str = "blazepose"):
+                 viz_3d: str = "blazepose", detector_weights: Optional[str] = None):
         """`lstm_path`: serve this .pt checkpoint (PyTorch) instead of the
         promoted models/lstm_classifier.{onnx,pt}. Either way the pipeline
         builds exactly the inputs the loaded model records it was trained on
@@ -377,7 +377,11 @@ class HARPipeline:
         self.state_machine  = ExperimentStateMachine()
         self.voice          = VoiceAlertSystem(enabled=voice_on)
         self.exp_logger     = ExperimentLogger()
-        self.hsv_detector   = _make_box_detector(FRAME_WIDTH, FRAME_HEIGHT)
+        if detector_weights is None:
+            self.hsv_detector = _make_box_detector(FRAME_WIDTH, FRAME_HEIGHT)
+        else:
+            from pipeline.yolo_detector import YOLOBoxDetector
+            self.hsv_detector = YOLOBoxDetector(FRAME_WIDTH, FRAME_HEIGHT, weights=detector_weights)
 
         # ── Orientation-agnostic pose (no fixed 'up' in microgravity) ──
         # Stage 1: rack-anchored reference frame (CPU, always available).
@@ -407,10 +411,10 @@ class HARPipeline:
         # depth from HMR3DNet. HMR3DNet's own x/y fits the body poorly on real
         # footage (0.66 Procrustes residual vs BlazePose 0.09, measured on
         # test-har-3), so only its depth is used.
-        if viz_3d not in ("blazepose", "hmr"):
-            raise ValueError(f"viz_3d must be 'blazepose' or 'hmr', not {viz_3d!r}")
+        if viz_3d not in ("blazepose", "hmr", "lift"):
+            raise ValueError(f"viz_3d must be 'blazepose', 'hmr' or 'lift', not {viz_3d!r}")
         self.viz_3d = viz_3d
-        show_3d_panel = show_3d_panel or viz_3d == "hmr"
+        show_3d_panel = show_3d_panel or viz_3d in ("hmr", "lift")
         self.show_3d_panel = show_3d_panel
         self._viz_hmr = None
         self._viz_t = 0.0
@@ -420,7 +424,12 @@ class HARPipeline:
         self._cam3d = None
         self._last_joints3d = None
         self._voice_seen, self._voice_line = 0, None
-        if show_3d_panel:
+        self._depth_lifter = None
+        self._depth_source = "RGB HMR"
+        if viz_3d in ("lift", "hmr"):
+            from pipeline.depth_lifter import DepthLifter
+            self._depth_lifter = DepthLifter.load()
+        if show_3d_panel and viz_3d != "lift":
             from pipeline.hmr_backend import HMRBackend
             self._viz_hmr = HMRBackend(backend="custom")
             if not self._viz_hmr.available:
@@ -920,6 +929,28 @@ class HARPipeline:
         self._prev_dets = dets
         return dets, pose
 
+    def _display_depth(self, pose):
+        rgb_pose = None
+        world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
+        need_rgb = self.viz_3d == "hmr" or world is None or world[_CORE_JOINTS, 3].mean() < 0.5
+        rgb = self._frame_rgb_full
+        if self._viz_hmr is not None and self._viz_hmr.available and need_rgb:
+            if self.hmr is not None and self.hmr.available:
+                if self.hmr.backend_name == "custom":
+                    rgb_pose = pose
+                else:
+                    rgb_pose, _ = self._viz_hmr.get_pose_features(rgb)
+            else:
+                rgb_pose = self._viz_hmr.custom_from_pose(rgb, pose)
+        self._depth_source = "RGB HMR"
+        if self._depth_lifter is not None and (self.hmr is None or not self.hmr.available):
+            lifted = self._depth_lifter.lift(pose, (rgb.shape[1], rgb.shape[0]), rgb_pose)
+            if lifted is not None:
+                self._depth_source = ("BAS skeleton + RGB depth" if rgb_pose is not None and np.any(rgb_pose)
+                                      else "BAS skeleton depth")
+                return lifted
+        return rgb_pose
+
     def _frame_features(self, skel: np.ndarray, detections: list) -> np.ndarray:
         return build_frame_features(skel, detections, (FRAME_WIDTH, FRAME_HEIGHT),
                                     self.rack_normalizer, self.feature_layout)
@@ -944,7 +975,10 @@ class HARPipeline:
         current = status.get("current_step")
         task = tuple((current or {}).get("required_objects") or ())
 
-        skel_s = self._stab2d(skel if skel is not None and np.any(skel) else None, t)
+        display_pose = skel
+        if self.viz_3d == "hmr" and self._depth_source == "BAS skeleton + RGB depth":
+            display_pose = hmr_feats
+        skel_s = self._stab2d(display_pose if display_pose is not None and np.any(display_pose) else None, t)
         mask = self.mp_wrapper.last_mask if self.mp_wrapper is not None else None
         pv.draw_body_overlay(view, skel_s, mask)
         boxes = self._box_track(detections)
@@ -957,31 +991,24 @@ class HARPipeline:
         world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
         if self._stab2d.rejected and self._last_joints3d is not None:
             joints, caption = self._last_joints3d, "3D: holding last good pose (glitched frame rejected)"
-        elif self.viz_3d == "hmr" and hmr_feats is not None and np.any(hmr_feats) and skel_s is not None:
+        elif self.viz_3d in ("hmr", "lift") and hmr_feats is not None and np.any(hmr_feats) and skel_s is not None:
             # 2D->3D lift: x/y from the 2D skeleton drawn on the crew member,
             # depth from HMR3DNet (hip-relative), both scaled so torso ~0.5 m.
             h = np.asarray(hmr_feats, dtype=np.float64).reshape(33, 4)
             p2 = np.asarray(skel_s, dtype=np.float64).reshape(33, 4)
-            hip = 0.5 * (p2[23, :2] + p2[24, :2]) * (fw, fh)
-            sh = 0.5 * (p2[11, :2] + p2[12, :2]) * (fw, fh)
-            k = 0.5 / max(float(np.linalg.norm(sh - hip)), 1.0)
-            z = (h[:, 2] - 0.5 * (h[23, 2] + h[24, 2])) * fw * k
-            xyz = np.c_[(p2[:, 0] * fw - hip[0]) * k, (p2[:, 1] * fh - hip[1]) * k, z]
-            vis = np.minimum(p2[:, 3], np.clip(h[:, 3] + 0.3, 0.0, 1.0))
-            rig = self._rig3d(np.c_[xyz, vis], t)
+            lifted = p2.copy()
+            lifted[:, 2] = h[:, 2]
+            lifted[:, 3] = np.minimum(p2[:, 3], h[:, 3])
+            rig = self._rig3d(pv.display_body(lifted, (fw, fh)), t)
             joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
-            caption = f"3D: HMR3DNet depth + 2D pose (lifted), rigid bones | conf {float(h[:, 3].mean()):.2f}"
+            caption = f"3D: {self._depth_source} (estimated scale)"
         elif world is not None and float(world[_CORE_JOINTS, 3].mean()) >= 0.5:
             rig = self._rig3d(world, t)
             joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
             caption = f"3D: BlazePose world, rigid bones | vis {float(world[_CORE_JOINTS, 3].mean()):.2f}"
         elif hmr_feats is not None and np.any(hmr_feats):
             h = np.asarray(hmr_feats, dtype=np.float64).reshape(33, 4)
-            hip = 0.5 * (h[23, :2] + h[24, :2]) * (fw, fh)
-            sh = 0.5 * (h[11, :2] + h[12, :2]) * (fw, fh)
-            k = 0.5 / max(float(np.linalg.norm(sh - hip)), 1.0)       # torso ~0.5 m
-            xyz = np.c_[(h[:, 0] * fw - hip[0]) * k, (h[:, 1] * fh - hip[1]) * k, h[:, 2] * fw * k]
-            rig = self._rig3d(np.c_[xyz, h[:, 3]], t)
+            rig = self._rig3d(pv.display_body(h, (fw, fh)), t)
             joints = np.c_[pv.to_yup(rig[:, :3]), rig[:, 3]]
             caption = f"3D: HMR3DNet fallback | conf {float(h[:, 3].mean()):.2f}"
         if joints is not None:
@@ -1063,12 +1090,7 @@ class HARPipeline:
 
         vis = None
         if annotate:
-            hmr_feats = None
-            world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
-            if (self.show_3d_panel and self._viz_hmr is not None and self._viz_hmr.available
-                    and (self.viz_3d == "hmr" or world is None
-                         or float(world[_CORE_JOINTS, 3].mean()) < 0.5)):
-                hmr_feats, _ = self._viz_hmr.get_pose_features(self._frame_rgb_full)
+            hmr_feats = self._display_depth(skel_mp) if self.show_3d_panel else None
             vis = self._annotate_frame(frame, detections, pred_step, pred_conf, skel, hmr_feats)
         total_ms = (time.perf_counter() - t0) * 1000.0
         self._times.append(total_ms / 1000.0)
@@ -1274,12 +1296,7 @@ class HARPipeline:
             pred_step, pred_conf = self._last_pred
 
             # ── Build annotated frame & push to GUI ──────────
-            hmr_feats = None
-            world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
-            if (self.show_3d_panel and self._viz_hmr is not None and self._viz_hmr.available
-                    and (self.viz_3d == "hmr" or world is None
-                         or float(world[_CORE_JOINTS, 3].mean()) < 0.5)):
-                hmr_feats, _ = self._viz_hmr.get_pose_features(self._frame_rgb_full)
+            hmr_feats = self._display_depth(skel) if self.show_3d_panel else None
             vis = self._annotate_frame(frame, detections, pred_step, pred_conf, skel, hmr_feats)
 
             if self.gui_queue:

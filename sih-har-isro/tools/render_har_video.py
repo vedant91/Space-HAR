@@ -37,8 +37,9 @@ def main() -> None:
     ap.add_argument("--lstm", default=None, help="checkpoint to serve (default: the promoted model)")
     ap.add_argument("--show-3d-panel", action="store_true",
                     help="load HMR3DNet as the 3D fallback when MediaPipe loses the body")
-    ap.add_argument("--viz-3d", choices=["blazepose", "hmr"], default="blazepose",
-                    help="3D view source: BlazePose world, or HMR3DNet depth lifted onto the 2D skeleton")
+    ap.add_argument("--detector-weights", help="YOLO payload checkpoint for this render")
+    ap.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift"], default="blazepose",
+                    help="3D view source: BlazePose world, skeleton-only lift, or fused HMR depth")
     ap.add_argument("--max-frames", type=int, default=0)
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -50,7 +51,8 @@ def main() -> None:
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     p = HARPipeline(lstm_path=args.lstm, headless=True, enable_voice=False, enable_recording=False,
-                    use_threaded=False, show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d)
+                    use_threaded=False, show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
+                    detector_weights=args.detector_weights)
     # Same experiment start the live loop performs before its first frame.
     p.voice.alert_experiment_start()
     first = p.state_machine.current_step

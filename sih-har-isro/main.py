@@ -48,7 +48,8 @@ def run_pipeline(source, headless: bool = False,
                  enable_streaming: bool | None = None,
                  stream_host: str | None = None, stream_port: int | None = None,
                  enable_cnn_ensemble: bool | None = None,
-                 show_3d_panel: bool = False, viz_3d: str = "blazepose"):
+                 show_3d_panel: bool = False, viz_3d: str = "blazepose",
+                 detector_weights: str | None = None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -71,7 +72,7 @@ def run_pipeline(source, headless: bool = False,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
                            enable_cnn_ensemble=enable_cnn_ensemble,
-                           show_3d_panel=show_3d_panel, viz_3d=viz_3d)
+                           show_3d_panel=show_3d_panel, viz_3d=viz_3d, detector_weights=detector_weights)
 
     if not use_qt:
         pipeline.run()
@@ -279,9 +280,10 @@ Modes:
                             "Display-only - never touches the LSTM's actual features, and "
                             "costs one extra model call per HMR re-run regardless of "
                             "config.HMR_BACKEND. Off by default.")
-    parser.add_argument("--viz-3d", choices=["blazepose", "hmr"], default="blazepose",
+    parser.add_argument("--detector-weights", help="YOLO payload checkpoint for this run")
+    parser.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift"], default="blazepose",
                         help="Source of the monitor's 3D view: BlazePose world landmarks "
-                            "(default) or HMR3DNet depth lifted onto the 2D skeleton. "
+                            "(default), BAS skeleton depth (lift), or skeleton and RGB depth (hmr). "
                             "Display-only either way.")
     parser.add_argument("--mock",     action="store_true",
                         help="Use mock data (no Gemini API needed)")
@@ -303,7 +305,7 @@ Modes:
                     enable_streaming=True if args.stream else None,
                     stream_host=args.stream_host, stream_port=args.stream_port,
                     enable_cnn_ensemble=True if args.cnn_ensemble else None,
-                    show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d)
+                    show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d, detector_weights=args.detector_weights)
 
     elif args.mode == "train":
         run_training()
