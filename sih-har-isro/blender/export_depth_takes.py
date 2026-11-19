@@ -4,6 +4,7 @@ Run with Blender's Python or blender --background --python ... -- --out DIR.
 A take (animation seed, body attitude and camera) belongs to just one split.
 """
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -13,6 +14,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_scene import build
 from bas_har.groundtruth import GroundTruthSampler
+
+BOX_NAMES = ("red_box", "yellow_box", "main_box")
 
 
 # (roll, yaw, pitch) in degrees. Validation and test use independent animations.
@@ -34,14 +37,15 @@ def export(out, previews=False, only_split=None):
             seed = 8100 + 100 * split_id + index
             root = out / split / f"take_{seed}"
             root.mkdir(parents=True, exist_ok=True)
+            lighting = ("nominal", "dim", "single_fail")[index % 3]
             built = build(seed=seed, body_roll_deg=roll, facing_deg=yaw, body_pitch_deg=pitch,
-                          frames_per_step=24, resolution=(width, height), samples=4)
+                          frames_per_step=24, lighting=lighting, resolution=(width, height), samples=4)
             scene = built["scene"]
             camera = built["cameras"]["payload_wide" if split == "test" and index == 3 else "payload_a"]
             scene.camera = camera
             sampler = GroundTruthSampler(scene, camera, built["crew"]["rig"], built["payload"])
+            boxes = []
             poses, worlds, steps, metres_per_width = [], [], [], []
-            view = np.array(camera.matrix_world.inverted())
             for frame in range(scene.frame_start, scene.frame_end + 1, 3):
                 scene.frame_set(frame)
                 features, world = sampler.sample_pose(bpy.context.evaluated_depsgraph_get())
@@ -49,11 +53,28 @@ def export(out, previews=False, only_split=None):
                 poses.append(features.reshape(33, 4))
                 worlds.append(world)
                 hip = world[[23, 24]].mean(axis=0)
+                view = np.array(camera.matrix_world.inverted())
                 distance = -(view[2, :3] @ hip + view[2, 3])
+                if distance <= 0:
+                    raise ValueError(f"Rig behind camera at frame {frame} in {root}")
                 metres_per_width.append(distance * camera.data.sensor_width / camera.data.lens)
-                if previews and split == "test" and (len(poses) - 1) % 8 == 0:
+                if previews and (len(poses) - 1) % 8 == 0:
+                    offset = len(poses) - 1
+                    payload = sampler.sample_payload(bpy.context.evaluated_depsgraph_get())
+                    lines = []
+                    annotations = []
+                    for cls, name in enumerate(BOX_NAMES):
+                        if payload[name]["visible"]:
+                            x1, y1, x2, y2 = payload[name]["bbox"]
+                            annotations.append(dict(label=name, bbox_xywh=[x1, y1, x2-x1, y2-y1]))
+                            lines.append(f"{cls} {(x1+x2)/(2*width):.6f} {(y1+y2)/(2*height):.6f} "
+                                         f"{(x2-x1)/width:.6f} {(y2-y1)/height:.6f}")
+                    (root / f"{offset:04d}.txt").write_text("\n".join(lines))
+                    boxes.append(dict(image=f"{offset:04d}.png", annotations=annotations))
                     scene.render.filepath = str((root / f"{len(poses)-1:04d}.png").resolve())
                     bpy.ops.render.render(write_still=True)
+            if previews:
+                (root / "boxes.json").write_text(json.dumps(boxes))
             np.savez_compressed(root / "pose.npz", pose=poses, world=worlds, step=steps,
                                 size=[width, height], attitude=[roll, yaw, pitch], seed=seed,
                                 metres_per_width=metres_per_width)
@@ -63,7 +84,7 @@ def export(out, previews=False, only_split=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--previews", action="store_true", help="Render sparse test RGB for detector evaluation")
+    parser.add_argument("--previews", action="store_true", help="Render sparse aligned RGB for detector evaluation")
     parser.add_argument("--split", choices=ATTITUDES)
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     args = parser.parse_args(argv)
