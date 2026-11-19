@@ -198,14 +198,16 @@ class UprightPoseEstimator:
             back = inverse @ pts
             lm[:, 0] = back[0] / width
             lm[:, 1] = back[1] / height
-            # z is a depth in units of the subject's own scale and is
-            # unaffected by an in-plane rotation; visibility likewise.
+            # Normalized landmark depth is expressed in input-image widths.
+            lm[:, 2] *= new_w / width
             # World landmarks share the image axes: undo the rotation on x/y.
             if world is not None:
                 rot = matrix[:, :2]
                 world = world.copy()
                 world[:, :2] = world[:, :2] @ np.linalg.inv(rot).T
             if mask is not None:
+                if mask.shape != (new_h, new_w):
+                    mask = cv2.resize(mask, (new_w, new_h))
                 mask = cv2.warpAffine(mask, inverse, (width, height), flags=cv2.INTER_LINEAR)
 
         return lm.reshape(-1).astype(np.float32), score, (world, mask)

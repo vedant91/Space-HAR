@@ -240,10 +240,12 @@ class PoseBackend:
 
     def _downscale(self, frame_rgb: np.ndarray) -> np.ndarray:
         import cv2
-        if frame_rgb.shape[1] == self.small_w and frame_rgb.shape[0] == self.small_h:
+        h, w = frame_rgb.shape[:2]
+        scale = min(1.0, max(self.small_w, self.small_h) / max(w, h))
+        if scale == 1.0:
             return frame_rgb
-        return cv2.resize(frame_rgb, (self.small_w, self.small_h),
-                          interpolation=cv2.INTER_LINEAR)
+        return cv2.resize(frame_rgb, (max(1, round(w * scale)), max(1, round(h * scale))),
+                          interpolation=cv2.INTER_AREA)
 
     def process(self, frame_rgb_full: np.ndarray,
                 timestamp_ms: Optional[int] = None) -> np.ndarray:
