@@ -74,6 +74,11 @@ class YOLOBoxDetector:
         os.environ.setdefault("YOLO_OFFLINE", "True")
         from ultralytics import YOLO   # type: ignore
         self.model = YOLO(str(weights_path))
+        # Checkpoint class IDs depend on the dataset used for training.
+        names = self.model.names
+        self.labels = {i: name for i, name in names.items() if name in CLASSES}
+        if set(self.labels.values()) != set(CLASSES):
+            raise ValueError(f"Expected payload classes {CLASSES} in {weights_path}, found {names}")
         logger.info("YOLOBoxDetector initialized (weights=%s, conf=%.2f)", weights_path, conf)
 
     def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
@@ -81,12 +86,12 @@ class YOLOBoxDetector:
         detections = []
         for box in results.boxes:
             cls_id = int(box.cls[0])
-            if cls_id >= len(CLASSES):
+            if cls_id not in self.labels:
                 continue   # a weights file trained on a different class set must not mislabel silently
             x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
             area = max(0, x2 - x1) * max(0, y2 - y1)
             detections.append(Detection(
-                label=CLASSES[cls_id],
+                label=self.labels[cls_id],
                 bbox=(x1, y1, x2, y2),
                 confidence=float(box.conf[0]),
                 centroid=((x1 + x2) // 2, (y1 + y2) // 2),
