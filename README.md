@@ -14,7 +14,7 @@
   <img alt="MediaPipe" src="https://img.shields.io/badge/MediaPipe-BlazePose-0097A7">
   <img alt="ONNX Runtime" src="https://img.shields.io/badge/ONNX-Runtime-005CED?logo=onnx&logoColor=white">
   <img alt="Blender" src="https://img.shields.io/badge/Blender-digital%20twin-E87D0D?logo=blender&logoColor=white">
-  <img alt="56 tests passing" src="https://img.shields.io/badge/tests-56%20passing-16A34A">
+  <img alt="64 tests passing" src="https://img.shields.io/badge/tests-64%20passing-16A34A">
 </p>
 
 # Space-HAR: Astronaut Activity Recognition for the BAS Protocol
@@ -34,7 +34,7 @@
 
 - **Problem.** An astronaut runs an 8-step experiment on the Bharatiya Antariksh Station (BAS). A skipped or out-of-order step can spoil it, nobody on the ground is watching the video feed, and crew time is precious.
 - **Solution.** One fixed camera plus an AI pipeline that **recognises each step, confirms it, announces the next one, and speaks up the moment a step is skipped**. It runs fully **offline on a single laptop GPU**.
-- **Why it is different.** Off-the-shelf pose models fail on a suited, floating body (they track **0%** of it at 60° of roll). We built a Blender **digital twin** to generate exact training data and trained our own 3D pose model, **HMR3DNet**, which tracks **77%**.
+- **Perception results.** On 12 held-out Blender takes, the fused model reduced root-relative joint error from 440 to 409 mm. The twin-trained YOLO detector found 222 of 258 visible payload objects. [Evaluation, limitations and reproduction](sih-har-isro/docs/bas-perception.md)
 
 <p align="center">
   <img src="sih-har-isro/docs/readme/demo.gif" alt="Live monitor: skeleton and body outline on the suited astronaut, YOLO boxes, 3D pose view, 8-step checklist advancing from step 3 to step 4 with a voice caption" width="92%">
@@ -75,7 +75,7 @@ This is hard for a reason that is easy to miss: the crew member is **floating** 
 | SIH criterion | What we built | Evidence in this repo |
 |---|---|---|
 | **Innovation and novelty** | Our own 3D pose model for suited, floating crew, trained on a Blender digital twin. Orientation-agnostic features (rack frame). A model-contract guard that refuses a mismatched checkpoint. An entropy-gated decision engine. | [`results.png`](sih-har-isro/docs/readme/results.png), [`train/hmr3d_model.py`](sih-har-isro/train/hmr3d_model.py), [`pipeline/rack_frame.py`](sih-har-isro/pipeline/rack_frame.py) |
-| **Technical depth** | Three vision models, a temporal classifier and a state machine, with one shared feature code path for training and live inference. Every number is held out **by take, never by frame**. | [`pipeline/features.py`](sih-har-isro/pipeline/features.py), [`tools/promote_model.py`](sih-har-isro/tools/promote_model.py), [`tests/`](sih-har-isro/tests) (56 tests) |
+| **Technical depth** | Three vision models, a temporal classifier and a state machine, with one shared feature code path for training and live inference. Every number is held out **by take, never by frame**. | [`pipeline/features.py`](sih-har-isro/pipeline/features.py), [`tools/promote_model.py`](sih-har-isro/tools/promote_model.py), [`tests/`](sih-har-isro/tests) (64 tests) |
 | **Feasibility and practicability** | Runs **offline** on one RTX 3050 laptop at roughly **10 to 18 FPS**. ONNX export for the classifier. Works with a phone camera (DroidCam) as well as a USB webcam. No cloud call anywhere. | [`pipeline/har_pipeline.py`](sih-har-isro/pipeline/har_pipeline.py), [Quick start](#quick-start) |
 | **User experience** | A monitor that shows what the system perceives and decides: skeleton, boxes, 3D view, checklist, and a caption of every voice alert. | [What you see on screen](#what-you-see-on-screen) |
 | **Scalability** | The protocol (steps and required objects) lives in one config file. A new rack or protocol means a new scene in the digital twin, regenerated labelled data and a retrain. | [`config/experiment_config.py`](sih-har-isro/config/experiment_config.py), [`blender/`](sih-har-isro/blender) |
@@ -147,7 +147,7 @@ python main.py --mode status                       # verifies weights, pose back
 
 | Goal | Command |
 |---|---|
-| Run live on a camera (USB or DroidCam) with the 3D view driven by HMR3DNet | `python main.py --mode pipeline --camera 0 --viz-3d hmr` |
+| Run the BAS skeleton and RGB depth models with the twin-trained payload detector | `python main.py --mode pipeline --camera 0 --viz-3d hmr --detector-weights models/yolo_boxes_twin.pt` |
 | Run on a video file, no GUI | `python main.py --mode pipeline --video clip.mp4 --headless` |
 | Render the full monitor view for a video to an MP4 | `python tools/render_har_video.py --video clip.mp4 --out monitor.mp4 --viz-3d hmr` |
 | Also push the annotated feed to a ground station over UDP | `python main.py --mode pipeline --stream --stream-host <ip> --stream-port 5000` |
@@ -198,7 +198,7 @@ Space-HAR/
     ├── blender/                      digital-twin scene and dataset generator
     ├── gui/qt_dashboard.py           PyQt6 monitoring GUI
     ├── models/                       trained weights (Git LFS)
-    ├── tests/                        56 pytest checks: contract guard, features, state machine, ...
+    ├── tests/                        64 pytest checks: contract guard, features, state machine, ...
     └── docs/                         architecture, research references, design notes
 ```
 
