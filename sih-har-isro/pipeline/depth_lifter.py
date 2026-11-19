@@ -36,9 +36,23 @@ def encode(pose, size):
     return np.concatenate([local, vis[..., None]], axis=-1), scale, valid
 
 
+def refine_image_pose(pose, rgb_pose, size):
+    """Fuse nearby image measurements and recover weak joints from the RGB regressor."""
+    p = np.asarray(pose).reshape(-1, 33, 4).copy()
+    r = np.asarray(rgb_pose).reshape(p.shape)
+    torso = (p[:, [11, 12], :2].mean(1) - p[:, [23, 24], :2].mean(1)) * size
+    length = np.linalg.norm(torso, axis=1)
+    distance = np.linalg.norm((r[..., :2] - p[..., :2]) * size, axis=-1)
+    use = (r[..., 3] >= 0.32) & ((distance <= length[:, None]) | (p[..., 3] < 0.4))
+    p[..., :2] = np.where(use[..., None], (p[..., :2] + r[..., :2]) * 0.5, p[..., :2])
+    p[..., 3] = np.where(use, np.maximum(p[..., 3], r[..., 3]), p[..., 3])
+    return p.reshape(np.shape(pose))
+
+
 class DepthLifter(nn.Module):
     def __init__(self):
         super().__init__()
+        self.skeleton_weight = 1.0
         self.net = nn.Sequential(nn.Flatten(), nn.Linear(99, 256), nn.LayerNorm(256),
                                  nn.SiLU(), nn.Linear(256, 256), nn.SiLU(), nn.Linear(256, 33))
 
@@ -52,11 +66,12 @@ class DepthLifter(nn.Module):
         if checkpoint.get("format") != FORMAT:
             raise ValueError(f"Unsupported depth checkpoint at {path}")
         model = cls()
+        model.skeleton_weight = float(checkpoint["skeleton_weight"])
         model.load_state_dict(checkpoint["model_state"])
         return model.eval()
 
     @torch.inference_mode()
-    def lift(self, pose, size):
+    def lift(self, pose, size, rgb_pose=None):
         """Replace depth only; return None when the torso cannot anchor a lift."""
         encoded, scale, valid = encode(pose, size)
         if len(valid) != 1:
@@ -66,4 +81,10 @@ class DepthLifter(nn.Module):
         result = np.asarray(pose, dtype=np.float32).reshape(33, 4).copy()
         result[~np.isfinite(result).all(axis=1)] = 0
         result[:, 2] = self(torch.from_numpy(encoded))[0].numpy() * scale[0]
+        if rgb_pose is not None:
+            rgb = np.asarray(rgb_pose).reshape(33, 4)
+            if np.isfinite(rgb).all() and np.any(rgb[:, 3] > 0):
+                result = refine_image_pose(result, rgb, size)
+                rgb_z = rgb[:, 2] - rgb[[23, 24], 2].mean()
+                result[:, 2] = self.skeleton_weight * result[:, 2] + (1 - self.skeleton_weight) * rgb_z
         return result.reshape(-1)

@@ -93,7 +93,8 @@ def export(out, previews=False, only_split=None, start=0):
                 (root / "boxes.json").write_text(json.dumps(boxes))
             np.savez_compressed(root / "pose.npz", pose=poses, world=worlds, step=steps,
                                 size=[width, height], attitude=[roll, yaw, pitch], seed=seed, camera=camera_name, lighting=lighting,
-                                metres_per_width=metres_per_width)
+                                metres_per_width=metres_per_width,
+                                sensor_over_focal=camera.data.sensor_width / camera.data.lens)
             print(f"{split} {seed}: {len(poses)} frames", flush=True)
 
 
