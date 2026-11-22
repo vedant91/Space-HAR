@@ -398,23 +398,12 @@ class HARPipeline:
             from pipeline.hmr_backend import HMRBackend
             self.hmr = HMRBackend(backend=HMR_BACKEND)
 
-        # Display-only state (pipeline/pose_viz.py): temporal smoothing and the
-        # side panel's 3D view. None of it reaches the features. The 3D view
-        # comes from BlazePose's world landmarks (same inference, no extra
-        # cost); show_3d_panel additionally loads HMR3DNet as the fallback for
-        # frames where MediaPipe loses the body (e.g. a strongly rolled crew
-        # member) - a SEPARATE HMRBackend from self.hmr, so the LSTM's input
-        # contract is never touched.
-        # viz_3d picks the 3D view's source: "blazepose" (default) or "hmr",
-        # which drives it from HMR3DNet every frame as a 2D->3D lift: x/y
-        # from the stabilised 2D skeleton on the crew member (image-accurate),
-        # depth from HMR3DNet. HMR3DNet's own x/y fits the body poorly on real
-        # footage (0.66 Procrustes residual vs BlazePose 0.09, measured on
-        # test-har-3), so only its depth is used.
-        if viz_3d not in ("blazepose", "hmr", "lift"):
-            raise ValueError(f"viz_3d must be 'blazepose', 'hmr' or 'lift', not {viz_3d!r}")
+        # The panel can use BlazePose world landmarks or a BAS pose estimate.
+        # Its smoothing state is separate from the step classifier.
+        if viz_3d not in ("blazepose", "hmr", "lift", "refined"):
+            raise ValueError(f"Unsupported 3D display mode {viz_3d!r}")
         self.viz_3d = viz_3d
-        show_3d_panel = show_3d_panel or viz_3d in ("hmr", "lift")
+        show_3d_panel = show_3d_panel or viz_3d != "blazepose"
         self.show_3d_panel = show_3d_panel
         self._viz_hmr = None
         self._viz_t = 0.0
@@ -427,9 +416,13 @@ class HARPipeline:
         self._voice_seen, self._voice_line = 0, None
         self._depth_lifter = None
         self._depth_source = "RGB HMR"
-        if viz_3d in ("lift", "hmr"):
+        self._pose_refiner = None
+        if viz_3d != "blazepose":
             from pipeline.depth_lifter import DepthLifter
             self._depth_lifter = DepthLifter.load()
+        if viz_3d == "refined":
+            from pipeline.pose_refiner import PoseRefiner
+            self._pose_refiner = PoseRefiner.load()
         if show_3d_panel and viz_3d != "lift":
             from pipeline.hmr_backend import HMRBackend
             self._viz_hmr = HMRBackend(backend="custom")
@@ -933,7 +926,7 @@ class HARPipeline:
     def _display_depth(self, pose):
         rgb_pose = None
         world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
-        need_rgb = self.viz_3d == "hmr" or world is None or world[_CORE_JOINTS, 3].mean() < 0.5
+        need_rgb = self.viz_3d in ("hmr", "refined") or world is None or world[_CORE_JOINTS, 3].mean() < 0.5
         rgb = self._frame_rgb_full
         if self._viz_hmr is not None and self._viz_hmr.available and need_rgb:
             if self.hmr is not None and self.hmr.available:
@@ -945,10 +938,16 @@ class HARPipeline:
                 rgb_pose = self._viz_hmr.custom_from_pose(rgb, pose)
         self._depth_source = "RGB HMR"
         if self._depth_lifter is not None and (self.hmr is None or not self.hmr.available):
-            lifted = self._depth_lifter.lift(pose, (rgb.shape[1], rgb.shape[0]), rgb_pose)
+            size = (rgb.shape[1], rgb.shape[0])
+            lifted = self._depth_lifter.lift(pose, size, rgb_pose)
             if lifted is not None:
                 self._depth_source = ("BAS skeleton + RGB depth" if rgb_pose is not None and np.any(rgb_pose)
                                       else "BAS skeleton depth")
+                if self._pose_refiner is not None:
+                    refined = self._pose_refiner.refine(pose, rgb_pose, lifted, size)
+                    if refined is not lifted:
+                        lifted = refined
+                        self._depth_source = "Refined BAS pose"
                 joints = lifted.reshape(33, 4)
                 joints[:, 2] = self._depth_filter(joints[:, 2], self._viz_t)
                 return lifted
@@ -980,7 +979,7 @@ class HARPipeline:
         task = tuple((current or {}).get("required_objects") or ())
 
         display_pose = skel
-        if self.viz_3d == "hmr" and self._depth_source == "BAS skeleton + RGB depth":
+        if self._depth_source in ("BAS skeleton + RGB depth", "Refined BAS pose"):
             display_pose = hmr_feats
         skel_s = self._stab2d(display_pose if display_pose is not None and np.any(display_pose) else None, t)
         mask = self.mp_wrapper.last_mask if self.mp_wrapper is not None else None
@@ -995,7 +994,7 @@ class HARPipeline:
         world = self.mp_wrapper.last_world if self.mp_wrapper is not None else None
         if self._stab2d.rejected and self._last_joints3d is not None:
             joints, caption = self._last_joints3d, "3D: holding last good pose (glitched frame rejected)"
-        elif self.viz_3d in ("hmr", "lift") and hmr_feats is not None and np.any(hmr_feats) and skel_s is not None:
+        elif self.viz_3d != "blazepose" and hmr_feats is not None and np.any(hmr_feats) and skel_s is not None:
             # 2D->3D lift: x/y from the 2D skeleton drawn on the crew member,
             # depth from HMR3DNet (hip-relative), both scaled so torso ~0.5 m.
             h = np.asarray(hmr_feats, dtype=np.float64).reshape(33, 4)

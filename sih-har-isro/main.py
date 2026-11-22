@@ -281,9 +281,9 @@ Modes:
                             "costs one extra model call per HMR re-run regardless of "
                             "config.HMR_BACKEND. Off by default.")
     parser.add_argument("--detector-weights", help="YOLO payload checkpoint for this run")
-    parser.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift"], default="blazepose",
+    parser.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift", "refined"], default="blazepose",
                         help="Source of the monitor's 3D view: BlazePose world landmarks "
-                            "(default), BAS skeleton depth (lift), or skeleton and RGB depth (hmr). "
+                            "(default), BAS skeleton depth (lift), skeleton and RGB depth (hmr), or calibrated BAS pose (refined). "
                             "Display-only either way.")
     parser.add_argument("--mock",     action="store_true",
                         help="Use mock data (no Gemini API needed)")

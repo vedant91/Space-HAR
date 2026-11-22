@@ -38,8 +38,8 @@ def main() -> None:
     ap.add_argument("--show-3d-panel", action="store_true",
                     help="load HMR3DNet as the 3D fallback when MediaPipe loses the body")
     ap.add_argument("--detector-weights", help="YOLO payload checkpoint for this render")
-    ap.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift"], default="blazepose",
-                    help="3D view source: BlazePose world, skeleton-only lift, or fused HMR depth")
+    ap.add_argument("--viz-3d", choices=["blazepose", "hmr", "lift", "refined"], default="blazepose",
+                    help="3D view source: BlazePose world, skeleton-only lift, fused HMR depth, or refined BAS pose")
     ap.add_argument("--max-frames", type=int, default=0)
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
