@@ -52,9 +52,9 @@ def score(model, takes, motion=False):
         by_take[name] = {}
         for key, pose in (("published", base), ("refined", pred)):
             xyz = camera_joints(pose, pose[..., 2], size, metres, fov)
-            errors = np.linalg.norm(xyz - truth_3d, axis=-1)[:, BODY][mask] * 1000
-            totals[key].extend(errors.tolist())
             joint_errors = np.linalg.norm(xyz - truth_3d, axis=-1)[:, BODY] * 1000
+            errors = joint_errors[mask]
+            totals[key].extend(errors.tolist())
             for index in range(len(BODY)):
                 by_joint[key][index].extend(joint_errors[mask[:, index], index].tolist())
             delta_z = abs(pose[..., 2] - gt[..., 2]) * metres[:, None] * 100
@@ -95,6 +95,8 @@ def train(model, root, lifter, epochs, output, width):
         targets.append(goal)
         weights.append(weight * metres[:, None])
     x, y, weight = [torch.from_numpy(np.concatenate(a)).float() for a in (inputs, targets, weights)]
+    if not len(x) or not validation:
+        raise ValueError("Training and validation each require paired camera observations")
     opt = torch.optim.AdamW(model.parameters(), lr=0.0005)
     best = float("inf")
     for epoch in range(1, epochs + 1):

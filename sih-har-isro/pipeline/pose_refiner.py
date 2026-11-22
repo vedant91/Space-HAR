@@ -52,7 +52,10 @@ class PoseRefiner(nn.Module):
 
     @torch.inference_mode()
     def refine(self, skeleton, rgb, fused, size):
-        if rgb is None or not np.isfinite(rgb).all() or not np.any(np.asarray(rgb).reshape(33, 4)[:, 3] > 0):
+        if rgb is None:
+            return fused
+        joints = np.asarray(rgb).reshape(33, 4)
+        if not np.isfinite(joints).all() or not np.any(joints[:, 3] > 0):
             return fused
         x = observations(skeleton, rgb, fused, size)
         result = fused.copy().reshape(33, 4)

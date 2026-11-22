@@ -27,3 +27,19 @@ def test_load_uses_saved_width(tmp_path):
     torch.save(dict(format="bas-pose-refiner-v1", width=32, model=model.state_dict()), path)
     x = torch.randn((1, 33, 12))
     torch.testing.assert_close(PoseRefiner.load(path)(x), model(x))
+
+
+def test_yolo_class_profile_and_explicit_override(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import ultralytics
+    from pipeline.yolo_detector import CLASSES, YOLOBoxDetector
+
+    path = tmp_path / "payload.pt"
+    path.touch()
+    path.with_suffix(".thresholds.json").write_text('{"red_box": 0.55, "main_box": 0.15}')
+    model = SimpleNamespace(names=dict(enumerate(CLASSES)))
+    monkeypatch.setattr(ultralytics, "YOLO", lambda _: model)
+    assert YOLOBoxDetector(weights=path).thresholds == {
+        "red_box": .55, "yellow_box": .25, "main_box": .15,
+    }
+    assert set(YOLOBoxDetector(weights=path, conf=.25).thresholds.values()) == {.25}
