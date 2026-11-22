@@ -34,7 +34,7 @@
 
 - **Problem.** An astronaut runs an 8-step experiment on the Bharatiya Antariksh Station (BAS). A skipped or out-of-order step can spoil it, nobody on the ground is watching the video feed, and crew time is precious.
 - **Solution.** One fixed camera plus an AI pipeline that **recognises each step, confirms it, announces the next one, and speaks up the moment a step is skipped**. It runs fully **offline on a single laptop GPU**.
-- **Perception results.** On 12 held-out Blender takes, the fused model reduced root-relative joint error from 440 to 409 mm. The twin-trained YOLO detector found 222 of 258 visible payload objects. [Evaluation, limitations and reproduction](sih-har-isro/docs/bas-perception.md)
+- **Perception results.** On 12 held-out Blender takes, the fused model reduced root-relative joint error from 440 to 409 mm. The twin-trained YOLO detector found 222 of 258 visible payload objects. [Evaluation, limitations and reproduction](sih-har-isro/docs/bas-perception.md) The optional refined view reduced 3D joint error from 434 to 326 mm on 12 new takes. [Pose refinement results](sih-har-isro/docs/bas-pose-refinement.md)
 
 <p align="center">
   <img src="sih-har-isro/docs/readme/demo.gif" alt="Live monitor: skeleton and body outline on the suited astronaut, YOLO boxes, 3D pose view, 8-step checklist advancing from step 3 to step 4 with a voice caption" width="92%">
