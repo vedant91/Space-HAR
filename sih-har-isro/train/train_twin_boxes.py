@@ -11,12 +11,14 @@ sys.path.insert(0, str(ROOT))
 from pipeline.yolo_detector import CLASSES, DEFAULT_WEIGHTS
 
 
-def train(root, work, epochs, device):
+def train(root, work, epochs, device, initial_weights=DEFAULT_WEIGHTS):
     from ultralytics import YOLO
     work.mkdir(parents=True, exist_ok=True)
     config = {"names": CLASSES}
     for split in ("train", "val"):
         files = sorted((root / split).glob("take_*/*.png"))
+        if split == "train":
+            files.extend(sorted((root / "refine_train").glob("take_*/*.png")))
         if not files or any(not f.with_suffix(".txt").is_file() for f in files):
             raise ValueError(f"{split} requires RGB and aligned boxes from export_depth_takes.py")
         listing = work / f"{split}.txt"
@@ -24,7 +26,7 @@ def train(root, work, epochs, device):
         config[split] = str(listing.resolve())
     data = work / "data.yaml"
     data.write_text(yaml.safe_dump(config))
-    model = YOLO(DEFAULT_WEIGHTS)
+    model = YOLO(initial_weights)
     model.train(data=str(data), epochs=epochs, patience=8, imgsz=448, batch=8,
                 workers=0, device=device, amp=False, seed=17, optimizer="AdamW",
                 lr0=0.001, freeze=6, degrees=20, mosaic=0.4, close_mosaic=3,
@@ -39,5 +41,6 @@ if __name__ == "__main__":
     ap.add_argument("--epochs", type=int, default=24)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else
                     "mps" if torch.backends.mps.is_available() else "cpu")
+    ap.add_argument("--init", type=Path, default=DEFAULT_WEIGHTS)
     args = ap.parse_args()
-    train(args.dataset, args.work, args.epochs, args.device)
+    train(args.dataset, args.work, args.epochs, args.device, args.init)

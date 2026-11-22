@@ -19,6 +19,7 @@ much worse failure to debug than one that never started.
 """
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from dataclasses import dataclass
@@ -57,17 +58,24 @@ class YOLOBoxDetector:
 
     def __init__(self, frame_width: int = 1280, frame_height: int = 720,
                 use_morphology: bool = True,   # accepted, unused: HSV-only knob, kept for signature compatibility
-                weights: Optional[str] = None, conf: float = DEFAULT_CONF):
+                weights: Optional[str] = None, conf: Optional[float] = None):
         self.fw = frame_width
         self.fh = frame_height
         self.frame_area = frame_width * frame_height
-        self.conf = conf
 
         weights_path = Path(weights) if weights else DEFAULT_WEIGHTS
         if not weights_path.exists():
             raise FileNotFoundError(
                 f"YOLO box weights missing: {weights_path} "
                 f"(train with train/train_yolo_boxes.py, or pass weights=... explicitly)")
+
+        profile = weights_path.with_suffix(".thresholds.json")
+        thresholds = json.loads(profile.read_text(encoding="utf-8")) if conf is None and profile.is_file() else {}
+        if any(name not in CLASSES or not 0 < float(value) <= 1 for name, value in thresholds.items()):
+            raise ValueError(f"Invalid class thresholds in {profile}")
+        default_conf = DEFAULT_CONF if conf is None else float(conf)
+        self.thresholds = {name: float(thresholds.get(name, default_conf)) for name in CLASSES}
+        self.conf = min(self.thresholds.values())
 
         import os
         os.environ.setdefault("YOLO_AUTOINSTALL", "False")   # never let ultralytics fetch anything: offline system
@@ -81,7 +89,7 @@ class YOLOBoxDetector:
                        if name in CLASSES or name in aliases}
         if set(self.labels.values()) != set(CLASSES):
             raise ValueError(f"Expected payload classes {CLASSES} in {weights_path}, found {names}")
-        logger.info("YOLOBoxDetector initialized (weights=%s, conf=%.2f)", weights_path, conf)
+        logger.info("YOLOBoxDetector initialized (weights=%s, thresholds=%s)", weights_path, self.thresholds)
 
     def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
         results = self.model.predict(frame_bgr, conf=self.conf, verbose=False)[0]
@@ -90,12 +98,16 @@ class YOLOBoxDetector:
             cls_id = int(box.cls[0])
             if cls_id not in self.labels:
                 continue   # a weights file trained on a different class set must not mislabel silently
+            label = self.labels[cls_id]
+            confidence = float(box.conf[0])
+            if confidence < self.thresholds[label]:
+                continue
             x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
             area = max(0, x2 - x1) * max(0, y2 - y1)
             detections.append(Detection(
-                label=self.labels[cls_id],
+                label=label,
                 bbox=(x1, y1, x2, y2),
-                confidence=float(box.conf[0]),
+                confidence=confidence,
                 centroid=((x1 + x2) // 2, (y1 + y2) // 2),
                 area=area,
             ))
