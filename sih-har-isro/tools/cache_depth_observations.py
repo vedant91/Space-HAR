@@ -49,6 +49,6 @@ def cache(root, split=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--split", choices=["train", "val", "test", "audit", "motion"])
+    parser.add_argument("--split", choices=["train", "val", "test", "audit", "motion", "refine_test", "refine_train"])
     args = parser.parse_args()
     cache(args.dataset, args.split)

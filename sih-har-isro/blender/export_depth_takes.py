@@ -41,6 +41,17 @@ for split, count, rng_seed in (("train", 30, 5921), ("val", 6, 5951), ("audit", 
 ATTITUDES["motion"] = [(0, 0, 0), (90, 15, 0), (135, 0, 30), (-60, -35, 15)]
 
 
+rng = np.random.default_rng(6167)
+ATTITUDES["refine_test"] = [
+    (float(roll), float(rng.uniform(-70, 70)), float(rng.uniform(-55, 55)))
+    for roll in np.linspace(-165, 165, 12)
+]
+ATTITUDES["refine_train"] = [
+    (float(roll), float(rng.uniform(-70, 70)), float(rng.uniform(-55, 55)))
+    for roll in np.linspace(-175, 175, 28)
+]
+
+
 def export(out, previews=False, only_split=None, start=0):
     width, height = 640, 360
     for split_id, (split, attitudes) in enumerate(ATTITUDES.items()):
@@ -59,7 +70,7 @@ def export(out, previews=False, only_split=None, start=0):
             camera_name = "payload_a"
             if split == "test" and index == 3:
                 camera_name = "payload_wide"
-            elif (split == "train" and index >= 12) or (split == "val" and index >= 3) or split == "audit":
+            elif (split == "train" and index >= 12) or (split == "val" and index >= 3) or split in ("audit", "refine_test", "refine_train"):
                 camera_name = ("payload_a", "payload_b", "payload_wide", "payload_over")[index % 4]
             camera = built["cameras"][camera_name]
             scene.camera = camera
@@ -78,7 +89,7 @@ def export(out, previews=False, only_split=None, start=0):
                 if distance <= 0:
                     raise ValueError(f"Rig behind camera at frame {frame} in {root}")
                 metres_per_width.append(distance * camera.data.sensor_width / camera.data.lens)
-                if previews and (split == "motion" or (len(poses) - 1) % 8 == 0):
+                if previews and (split == "motion" or (len(poses) - 1) % (3 if split == "refine_train" else 8) == 0):
                     offset = len(poses) - 1
                     payload = sampler.sample_payload(bpy.context.evaluated_depsgraph_get())
                     lines = []
