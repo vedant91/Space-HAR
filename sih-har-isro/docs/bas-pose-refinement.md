@@ -17,13 +17,26 @@ The comparison uses 593 visible shoulder, arm, hip and leg joints. Both estimate
 
 On the separate 260-frame motion set, mean 3D error fell from 375 to 225 mm. Error in frame-to-frame depth change after filtering increased from 2.93 to 3.19 cm per 100 ms. These values measure pose estimates before rigid-bone rendering. Quantitative validation on real astronauts and across suit designs remains open.
 
+## Payload detection
+
+YOLO was fine-tuned for 14 epochs from the published twin checkpoint on 989 training images. The best checkpoint was selected by validation mAP. Class thresholds were then selected by F1 on the nine validation takes. The resulting minimum confidences are 0.30 for red and yellow payloads and 0.85 for the main box. The runtime reads the threshold profile beside the weights.
+
+| Visible payloads at IoU ≥ 0.5 | Published correct / visible | Updated correct / visible | False positives, before → after |
+|---|---:|---:|---:|
+| Red box | 36 / 53 | 47 / 53 | 6 → 6 |
+| Yellow box | 64 / 78 | 75 / 78 | 38 → 20 |
+| Main box | 82 / 87 | 78 / 87 | 21 → 8 |
+| All classes | 182 / 218 | 200 / 218 | 65 → 34 |
+
+Overall recall increased from 83.5% to 91.7% and precision from 73.7% to 85.5%. The stricter main-box threshold traded four true positives for 13 fewer false positives. [Detailed pose and detection results](bas-pose-refinement-results.json)
+
 ## Run and reproduce
 
 Run from the `sih-har-isro` directory. Fetch the models through Git LFS when initializing a new checkout.
 
 ```sh
-python main.py --mode pipeline --camera 0 --viz-3d refined
-python tools/render_har_video.py --video clip.mp4 --out monitor.mp4 --viz-3d refined
+python main.py --mode pipeline --camera 0 --viz-3d refined --detector-weights models/yolo_boxes_basmv.pt
+python tools/render_har_video.py --video clip.mp4 --out monitor.mp4 --viz-3d refined --detector-weights models/yolo_boxes_basmv.pt
 python -m zipfile -e dataset/bas_depth_samples.zip /tmp/bas-refinement
 python -m zipfile -e dataset/bas_pose_refinement_samples.zip /tmp/bas-refinement
 python train/train_pose_refiner.py /tmp/bas-refinement --evaluate refine_test
@@ -32,3 +45,12 @@ python train/train_pose_refiner.py /tmp/bas-refinement --epochs 45 --out /tmp/ba
 ```
 
 CPU retraining from the two observation archives reproduced every saved tensor. To regenerate the added images and observations, run the Blender exporter with `--previews --split refine_train` and `--previews --split refine_test` followed by `tools/cache_depth_observations.py` on those splits.
+
+
+With the original and additional training renders under the same data root, train and score the detector as follows.
+
+```sh
+python train/train_twin_boxes.py /tmp/bas-rendered /tmp/bas-box-fit --init models/yolo_boxes_twin.pt --epochs 14
+python tools/calibrate_payload_boxes.py /tmp/bas-box-fit/payload/weights/best.pt /tmp/bas-rendered/val --test /tmp/bas-rendered/refine_test
+python tools/score_payload_boxes.py --dataset /tmp/bas-rendered/refine_test --weights models/yolo_boxes_basmv.pt
+```
