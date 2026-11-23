@@ -36,3 +36,33 @@ The pose classifier tracks camera-visible actions represented in its training da
 - `voice.piper_model` points to a local Piper `.onnx` voice. Keep its `.onnx.json` config beside it. When Piper and `ffplay` are available, the configured Piper voice takes precedence over the system voice.
 
 Speech is synthesized offline from the configured text. Startup, confirmation, correction, reminder, and completion cues use the same selected voice.
+
+### Learn from reviewed activity mistakes
+
+For recordings that begin partway through a procedure, pass the first expected step
+ID with `--video clip.mp4 --start-step 3`. This limits the checklist and spoken
+guidance to the recorded part of the procedure. Camera sessions use the full protocol.
+
+Review an interval in which the same action is visible throughout. In the example
+below, 3 is the confirmed action ID and 2 and 7.8 are seconds from the start. The
+tool runs the project's actual perception pipeline and exports complete feature windows.
+Repeat on a different recording for evaluation. Use the same detector weights for
+both recordings and playback. For custom projects pass `--project` during extraction.
+
+```sh
+.venv/bin/python tools/review_activity_clip.py train-clip.mp4 3 2 7.8 corrections/train.npz
+.venv/bin/python tools/review_activity_clip.py audit-clip.mp4 3 1 5 corrections/audit.npz
+.venv/bin/python tools/learn_from_errors.py models/lstm_blender_core.pt \
+  dataset/seq_blender_core dataset/seq_blender_core_holdout runs/activity-learning/new.pt \
+  --corrections corrections/train.npz --review-audit corrections/audit.npz
+```
+
+The learner updates the final activity layer, automatically giving extra weight to
+mislabeled-by-the-model windows on each pass. The reference labels come from the
+digital twin or reviewed clips. Training and audit take IDs must be disjoint. Use
+the same take-ID namespace and preprocessing for both sequence sets. Older sequence
+sets may omit detector provenance. The output reports baseline correct, candidate
+correct and total windows per action, plus the separate reviewed-video result.
+Overlapping windows from one video describe that recording only. Preview a candidate
+with `--activity-checkpoint runs/activity-learning/new.pt` or a copy of the project's
+JSON pointing to that file. The default classifier is updated separately after review.
