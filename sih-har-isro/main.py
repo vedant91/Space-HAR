@@ -49,10 +49,11 @@ def run_pipeline(source, headless: bool = False,
                  stream_host: str | None = None, stream_port: int | None = None,
                  enable_cnn_ensemble: bool | None = None,
                  show_3d_panel: bool = False, viz_3d: str = "blazepose",
-                 detector_weights: str | None = None):
+                 detector_weights: str | None = None, enable_voice: bool | None = None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
+    from config.experiment_config import VOICE_ENABLED
     from pipeline.har_pipeline import HARPipeline
 
     # Qt (if installed) must own the main thread's event loop — decide up
@@ -69,6 +70,7 @@ def run_pipeline(source, headless: bool = False,
 
     gui_queue = queue.Queue(maxsize=30) if use_qt else None
     pipeline = HARPipeline(source=source, headless=headless, gui_queue=gui_queue,
+                           enable_voice=VOICE_ENABLED if enable_voice is None else enable_voice,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
                            enable_cnn_ensemble=enable_cnn_ensemble,
@@ -263,6 +265,8 @@ Modes:
     parser.add_argument("--camera",   type=int,  default=0)
     parser.add_argument("--video",    type=str,  default=None)
     parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--voice", action=argparse.BooleanOptionalAction,
+                        help="Enable or mute spoken procedure guidance, including headless runs")
     parser.add_argument("--stream",   action="store_true",
                         help="Also push video to --stream-host:--stream-port via ffmpeg")
     parser.add_argument("--stream-host", type=str, default=None,
@@ -305,7 +309,8 @@ Modes:
                     enable_streaming=True if args.stream else None,
                     stream_host=args.stream_host, stream_port=args.stream_port,
                     enable_cnn_ensemble=True if args.cnn_ensemble else None,
-                    show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d, detector_weights=args.detector_weights)
+                    show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
+                    detector_weights=args.detector_weights, enable_voice=args.voice)
 
     elif args.mode == "train":
         run_training()

@@ -156,6 +156,17 @@ python main.py --mode status                       # verifies weights, pose back
 
 Pose bundles ship via Git LFS so a fresh clone is offline-capable; `python tools/fetch_pose_model.py` re-fetches them if needed.
 
+### Spoken procedure guidance
+
+Voice guidance is enabled by default when launching the pipeline. It announces the first action, confirms recognized steps, names the action to take after a sequence error, and repeats the current instruction after 20 seconds without confirmation. You can run the procedure without opening the dashboard.
+
+```sh
+python main.py --mode pipeline --camera 0 --headless --voice
+python -m pipeline.voice_alert
+```
+
+Use `--no-voice` to mute playback. Speech runs offline through Piper when the local model and player are available. The launcher also supports macOS `say`, eSpeak, and pyttsx3. Guidance follows the procedure tracker's confirmed actions and holds.
+
 ## Reproduce the training
 
 ```bash

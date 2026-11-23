@@ -38,7 +38,7 @@ from config.experiment_config import (
     CAMERA_INDEX, FRAME_WIDTH, FRAME_HEIGHT, FPS,
     PROCESS_EVERY_N_FRAMES, SEQUENCE_WINDOW,
     LSTM_PATH, CNN_MODEL_PATH, CNN_ONNX_PATH, LSTM_ONNX_PATH, LSTM_USE_ONNX,
-    VOICE_ENABLED, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
+    VOICE_ENABLED, VOICE_REMINDER_INTERVAL_SEC, STREAM_HOST, STREAM_PORT, ENABLE_STREAMING, LOCAL_RECORDING_DIR,
     STEP_CONFIDENCE_THRESHOLD, SKELETON_FEATURES,
     MEDIAPIPE_MODEL_COMPLEXITY, MEDIAPIPE_MIN_DET_CONF, MEDIAPIPE_MIN_TRK_CONF,
     POSE_INPUT_WIDTH, HSV_DOWNSCALE, USE_THREADED_INFERENCE,
@@ -376,6 +376,10 @@ class HARPipeline:
         # ── Sub-systems ───────────────────────────────────────
         self.state_machine  = ExperimentStateMachine()
         self.voice          = VoiceAlertSystem(enabled=voice_on)
+        self._guidance_started = False
+        self._guidance_time = None
+        self._guidance_cue = 0
+        self._announced_hold_step = None
         self.exp_logger     = ExperimentLogger()
         if detector_weights is None:
             self.hsv_detector = _make_box_detector(FRAME_WIDTH, FRAME_HEIGHT)
@@ -659,45 +663,48 @@ class HARPipeline:
     def _bind_callbacks(self):
         sm = self.state_machine
 
+        def publish(event, payload):
+            if self.gui_queue:
+                try:
+                    self.gui_queue.put_nowait((event, payload))
+                except queue.Full:
+                    pass
+
         def on_step_started(rec: StepRecord):
             self.exp_logger.log_step_start(rec.step_id, rec.name, rec.confidence)
 
         def on_step_completed(rec: StepRecord):
+            self._announced_hold_step = None
             self.exp_logger.log_step_complete(
                 rec.step_id, rec.name, rec.confidence, rec.duration_sec or 0.0,
                 recovered=rec.recovered,
             )
-            if not rec.recovered:
-                self.voice.alert_step_complete(rec.step_id)
-            # current_step advances only after completion, so it is the
-            # instruction the astronaut should hear next.
             if sm.current_step and not rec.recovered:
-                self.voice.alert_step_next(sm.current_step["id"], sm.current_step["name"])
-            if self.gui_queue:
-                self.gui_queue.put_nowait(("step_complete", rec))
+                self.voice.alert_step_complete(rec.step_id, sm.current_step)
+            publish("step_complete", rec)
 
         def on_step_skipped(expected_id: int, observed_id: int):
-            from config.experiment_config import EXPERIMENT_STEPS
-            step = next((s for s in EXPERIMENT_STEPS if s["id"] == expected_id), None)
-            name = step["name"] if step else f"Step {expected_id}"
+            step = sm.current_step
+            name = step["name"]
             self.exp_logger.log_step_skipped(expected_id, name, observed_id)
-            self.voice.alert_skip(expected_id)
-            if self.gui_queue:
-                self.gui_queue.put_nowait(("step_skipped", expected_id))
+            if self._announced_hold_step != expected_id:
+                self._announced_hold_step = expected_id
+                self.voice.alert_skip(expected_id, step)
+            publish("step_skipped", expected_id)
 
         def on_out_of_sequence(expected_id: int, observed_id: int):
             self.exp_logger.log_out_of_sequence(expected_id, observed_id)
-            self.voice.alert_out_of_sequence(expected_id)
-            if self.gui_queue:
-                self.gui_queue.put_nowait(("out_of_sequence", expected_id))
+            if not sm.recovery_required:
+                self.voice.alert_out_of_sequence(expected_id, sm.current_step)
+            publish("out_of_sequence", expected_id)
 
         def on_step_recovered(rec: StepRecord, observed_id: int | None):
             self.exp_logger.log_alert(
                 f"Recovery confirmed: step {rec.step_id} corrected after observed step {observed_id}."
             )
-            self.voice.alert_step_recovered(rec.step_id, sm.current_step)
-            if self.gui_queue:
-                self.gui_queue.put_nowait(("step_recovered", rec.step_id))
+            if sm.current_step:
+                self.voice.alert_step_recovered(rec.step_id, sm.current_step)
+            publish("step_recovered", rec.step_id)
 
         def on_experiment_complete():
             summary = self.state_machine.get_status_summary()
@@ -712,8 +719,7 @@ class HARPipeline:
                 recovery_events=summary["recovery"]["events"],
             )
             self.voice.alert_experiment_complete()
-            if self.gui_queue:
-                self.gui_queue.put_nowait(("experiment_complete", summary))
+            publish("experiment_complete", summary)
 
         sm.on_step_started        = on_step_started
         sm.on_step_completed      = on_step_completed
@@ -721,6 +727,29 @@ class HARPipeline:
         sm.on_out_of_sequence     = on_out_of_sequence
         sm.on_step_recovered      = on_step_recovered
         sm.on_experiment_complete = on_experiment_complete
+
+    def _start_guidance(self):
+        if not self._guidance_started:
+            self._guidance_started = True
+            self.voice.alert_experiment_start(self.state_machine.current_step)
+            self.exp_logger.log_experiment_start()
+
+    def _guide_waiting(self, t: float):
+        """Repeat the expected action when a step has gone unconfirmed for a while."""
+        step = self.state_machine.current_step
+        if not self._guidance_started or step is None:
+            return
+        if (self._guidance_time is None or t < self._guidance_time
+                or self._guidance_cue != self.voice.spoken):
+            self._guidance_time = t
+            self._guidance_cue = self.voice.spoken
+        elif t - self._guidance_time >= VOICE_REMINDER_INTERVAL_SEC:
+            if self.state_machine.recovery_required:
+                self.voice.alert_skip(step["id"], step)
+            else:
+                self.voice.alert_uncertain(step["id"], step)
+            self._guidance_time = t
+            self._guidance_cue = self.voice.spoken
 
     # ── Per-Frame Processing (Optimized) ─────────────────────────────────────
 
@@ -848,11 +877,8 @@ class HARPipeline:
 
     def _handle_uncertain(self, lstm_step: int, lstm_conf: float,
                           cnn_step: int, cnn_conf: float):
-        """LSTM and CNN are each individually confident but disagree — ask
-        the astronaut to confirm rather than feed a guess to the state
-        machine."""
+        """Log a disagreement between two individually confident models."""
         expected = self.state_machine.expected_step_id
-        self.voice.alert_uncertain(expected)
         self.exp_logger.log_uncertain(expected, lstm_step, cnn_step, lstm_conf, cnn_conf)
         if self.gui_queue:
             try:
@@ -905,6 +931,7 @@ class HARPipeline:
         if self.skeleton_buffer.gap_resets != resets:
             logger.warning("Frame gap > %.1f s: model window cleared, warming up again.",
                            self.skeleton_buffer.max_gap)
+        self._guide_waiting(t)
         return n
 
     def _perceive(self, frame: np.ndarray, timings: Optional[dict] = None):
@@ -1033,7 +1060,7 @@ class HARPipeline:
         if spoken != self._voice_seen and getattr(self.voice, "history", None):
             self._voice_seen, self._voice_line = spoken, (self.voice.history[-1], t)
         if self._voice_line and t - self._voice_line[1] < 4.0:
-            alert = f"VOICE: {self._voice_line[0]}"        # what the crew just heard
+            alert = f"GUIDANCE: {self._voice_line[0]}"
         elif rec.get("active") and rec.get("expected_step_id"):
             alert = f"Step {rec['expected_step_id']} missed - return to it before continuing"
         panel = np.zeros((fh, SIDE_PANEL_W, 3), dtype=np.uint8)
@@ -1068,6 +1095,7 @@ class HARPipeline:
                 "timings_ms": {"hsv": 0.0, "mediapipe": 0.0, "lstm": 0.0, "total": 0.0},
             }
 
+        self._start_guidance()
         frame = to_frame_size(frame)
 
         self.frame_idx += 1
@@ -1133,7 +1161,12 @@ class HARPipeline:
         self._box_track.reset()
         self._cam3d = None
         self._last_joints3d = None
-        self._voice_line = None
+        self._voice_seen, self._voice_line = self.voice.spoken, None
+        self.voice.discard_pending()
+        self._guidance_started = False
+        self._guidance_time = None
+        self._guidance_cue = self.voice.spoken
+        self._announced_hold_step = None
         if self.rack_normalizer is not None:
             self.rack_normalizer.reset()  # re-latch rack polarity for the new trial
         self.state_machine.reset()
@@ -1176,6 +1209,7 @@ class HARPipeline:
         if self.mp_wrapper is not None:
             self.mp_wrapper.close()
             self.mp_wrapper = None
+        self.voice.close()
 
     # ── Main Loop ─────────────────────────────────────────────────────────────
 
@@ -1229,15 +1263,7 @@ class HARPipeline:
             if not self.streamer.available:
                 self.streamer = None
 
-        self.voice.alert_experiment_start()
-        # "At the start ... the model should suggest the next step to be
-        # performed" — alert_experiment_start() only ever named step 1 by
-        # number, never by action. Announce it properly, same as every later
-        # step gets via alert_step_next() after completion.
-        first_step = self.state_machine.current_step
-        if first_step:
-            self.voice.alert_step_next(first_step["id"], first_step["name"])
-        self.exp_logger.log_experiment_start()
+        self._start_guidance()
         self._running = True
 
         while self._running:

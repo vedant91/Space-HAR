@@ -265,6 +265,7 @@ MIN_BOX_AREA_PX  = 800              # Minimum contour area to consider a detecti
 
 # ── Voice Alert Settings ──────────────────────────────────────
 VOICE_ENABLED = True
+VOICE_REMINDER_INTERVAL_SEC = 20.0
 VOICE_MODEL = "en_US-lessac-medium"  # Piper TTS model name
 PIPER_BINARY = "piper"               # Assumes piper is in PATH
 

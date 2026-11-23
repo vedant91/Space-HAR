@@ -53,13 +53,6 @@ def main() -> None:
     p = HARPipeline(lstm_path=args.lstm, headless=True, enable_voice=False, enable_recording=False,
                     use_threaded=False, show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
                     detector_weights=args.detector_weights)
-    # Same experiment start the live loop performs before its first frame.
-    p.voice.alert_experiment_start()
-    first = p.state_machine.current_step
-    if first:
-        p.voice.alert_step_next(first["id"], first["name"])
-    p.exp_logger.log_experiment_start()
-
     out = Path(args.out)
     tmp = out.with_suffix(".raw.mp4")
     writer = None
