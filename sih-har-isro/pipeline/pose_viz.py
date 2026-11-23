@@ -630,7 +630,7 @@ def render_side_panel(panel: np.ndarray, status: dict, pred_step: int, pred_conf
     card_h = 92
     cv2.rectangle(panel, (10, y), (w - 10, y + card_h), PANEL, -1)
     if cur:
-        _text(panel, f"STEP {cur.get('number', cur['id'])} OF {len(status.get('steps', []))}", (22, y + 22), 0.45, CUR_C, 1)
+        _text(panel, f"STEP {cur.get('number', cur['id'])} OF {status.get('protocol_length', len(status.get('steps', [])))}", (22, y + 22), 0.45, CUR_C, 1)
         _text(panel, cur["name"], (22, y + 52), 0.72, INK, 2)
     else:
         _text(panel, "PROTOCOL COMPLETE", (22, y + 46), 0.7, OK_C, 2)

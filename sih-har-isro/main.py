@@ -50,7 +50,7 @@ def run_pipeline(source, headless: bool = False,
                  enable_cnn_ensemble: bool | None = None,
                  show_3d_panel: bool = False, viz_3d: str = "blazepose",
                  detector_weights: str | None = None, enable_voice: bool | None = None,
-                 project=None):
+                 project=None, start_step=None, activity_checkpoint=None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -73,7 +73,7 @@ def run_pipeline(source, headless: bool = False,
     if enable_voice is None and project is None:
         enable_voice = VOICE_ENABLED
     pipeline = HARPipeline(source=source, headless=headless, gui_queue=gui_queue,
-                           enable_voice=enable_voice, project=project,
+                           enable_voice=enable_voice, project=project, start_step=start_step, lstm_path=activity_checkpoint,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
                            enable_cnn_ensemble=enable_cnn_ensemble,
@@ -267,6 +267,8 @@ Modes:
     parser.add_argument("--mode", choices=["pipeline", "train", "datagen", "tuner", "status", "e2e", "sim", "sim3d"],
                         default="pipeline")
     parser.add_argument("--camera",   type=int,  default=0)
+    parser.add_argument("--activity-checkpoint", help="Preview a BAS activity classifier checkpoint for this run")
+    parser.add_argument("--start-step", type=int, help="First expected step ID for a partial video recording")
     parser.add_argument("--video",    type=str,  default=None)
     parser.add_argument("--project", type=Path, help="JSON procedure, activity checkpoint and voice settings")
     parser.add_argument("--headless", action="store_true")
@@ -317,6 +319,10 @@ Modes:
                 parser.error(f"Project checkpoint is missing at {project.checkpoint}. Train it first.")
             if args.cnn_ensemble:
                 parser.error("The bundled BAS CNN cannot be used with a project classifier")
+        if args.activity_checkpoint and project:
+            parser.error("Set the activity checkpoint in the selected project's JSON")
+        if args.start_step is not None and not args.video:
+            parser.error("--start-step requires --video")
         source = args.video if args.video else args.camera
         # None (not just-False) when the flag is absent, so an operator who
         # flips ENABLE_STREAMING/CNN_ENSEMBLE_ENABLED to True in config isn't
@@ -328,7 +334,8 @@ Modes:
                     stream_host=args.stream_host, stream_port=args.stream_port,
                     enable_cnn_ensemble=True if args.cnn_ensemble else None,
                     show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
-                    detector_weights=args.detector_weights, enable_voice=args.voice, project=project)
+                    detector_weights=args.detector_weights, enable_voice=args.voice, project=project, start_step=args.start_step,
+                    activity_checkpoint=args.activity_checkpoint)
 
     elif args.mode == "train":
         run_training()

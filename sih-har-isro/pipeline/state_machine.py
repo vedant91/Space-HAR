@@ -56,8 +56,15 @@ class ExperimentStateMachine:
       - on_experiment_complete()
     """
 
-    def __init__(self, steps=None):
+    def __init__(self, steps=None, start_step=None):
         self.steps = EXPERIMENT_STEPS if steps is None else steps
+        self.protocol_steps = self.steps
+        self.start_step = start_step
+        if start_step is not None:
+            ids = [step["id"] for step in self.steps]
+            if start_step not in ids:
+                raise ValueError(f"Unknown playback start step {start_step}. Project step IDs are {ids}")
+            self.steps = self.steps[ids.index(start_step):]
         self._positions = {step["id"]: index for index, step in enumerate(self.steps)}
         self.total_steps = len(self.steps)
 
@@ -281,6 +288,7 @@ class ExperimentStateMachine:
     def get_status_summary(self) -> dict:
         """Return current state for GUI display."""
         return {
+            "protocol_length": len(self.protocol_steps),
             "experiment_started": self.experiment_started,
             "experiment_complete": self.experiment_complete,
             "current_step": self.current_step,
@@ -310,7 +318,7 @@ class ExperimentStateMachine:
 
     def reset(self):
         """Reset machine for a new experiment run."""
-        self.__init__(self.steps)
+        self.__init__(self.protocol_steps, self.start_step)
         logger.info("State machine reset.")
 
 

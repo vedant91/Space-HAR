@@ -84,3 +84,15 @@ def test_loader_rejects_duplicate_ids_and_resolves_voice_asset(tmp_path):
     project = load_project(path)
     assert project.piper_model == tmp_path / "voices/guide.onnx"
     assert project.reminder_seconds == 0
+
+
+def test_partial_video_starts_at_selected_project_id():
+    from pipeline.state_machine import ExperimentStateMachine
+    steps = [{"id": step, "name": str(step)} for step in (30, 10, 20)]
+    sm = ExperimentStateMachine(steps, start_step=10)
+    assert sm.expected_step_id == 10
+    assert [record.step_id for record in sm.step_records] == [10, 20]
+    sm.reset()
+    assert sm.expected_step_id == 10
+    with pytest.raises(ValueError, match="Unknown playback start"):
+        ExperimentStateMachine(steps, start_step=99)

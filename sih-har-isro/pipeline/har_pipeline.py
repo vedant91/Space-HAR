@@ -341,7 +341,7 @@ class HARPipeline:
                  lstm_path: Optional[str] = None,
                  show_3d_panel: bool = False,
                  viz_3d: str = "blazepose", detector_weights: Optional[str] = None,
-                 project: Project | None = None):
+                 project: Project | None = None, start_step: int | None = None):
         """`lstm_path`: serve this .pt checkpoint (PyTorch) instead of the
         promoted models/lstm_classifier.{onnx,pt}. Either way the pipeline
         builds exactly the inputs the loaded model records it was trained on
@@ -387,7 +387,7 @@ class HARPipeline:
             voice_on = VOICE_ENABLED and not headless
 
         # ── Sub-systems ────────────────────────────────────────────
-        self.state_machine = ExperimentStateMachine(project.steps if project else None)
+        self.state_machine = ExperimentStateMachine(project.steps if project else None, start_step=start_step)
         self._reminder_interval = project.reminder_seconds if project else VOICE_REMINDER_INTERVAL_SEC
         self._guidance_started = False
         self._guidance_time = None

@@ -35,6 +35,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--video", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--start-step", type=int, help="First expected step ID in this clip")
     ap.add_argument("--project", type=Path, help="Project JSON for the monitor overlay")
     ap.add_argument("--lstm", default=None, help="checkpoint to serve (default: the promoted model)")
     ap.add_argument("--show-3d-panel", action="store_true",
@@ -60,7 +61,7 @@ def main() -> None:
 
     p = HARPipeline(lstm_path=args.lstm, headless=True, enable_voice=False, enable_recording=False,
                     use_threaded=False, show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
-                    detector_weights=args.detector_weights, project=project)
+                    detector_weights=args.detector_weights, project=project, start_step=args.start_step)
     out = Path(args.out)
     tmp = out.with_suffix(".raw.mp4")
     writer = None
