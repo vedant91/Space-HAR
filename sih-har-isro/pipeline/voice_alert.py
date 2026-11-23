@@ -20,13 +20,16 @@ logger = logging.getLogger(__name__)
 class VoiceAlertSystem:
     """Speak in a worker thread and keep the latest instruction ahead of stale cues."""
 
-    def __init__(self, voice_model: str = VOICE_MODEL,
-                 piper_binary: str = PIPER_BINARY, enabled: bool = True):
+    def __init__(self, voice_model: str | None = None,
+                 piper_binary: str = PIPER_BINARY, enabled: bool = True,
+                 system_voice: str | None = None):
         self.enabled = enabled
-        self.voice_model = Path(voice_model)
-        if self.voice_model.suffix != ".onnx":
-            self.voice_model = self.voice_model.with_suffix(".onnx")
+        model = voice_model or (None if system_voice else VOICE_MODEL)
+        self.voice_model = Path(model) if model else None
+        if self.voice_model is not None and self.voice_model.suffix != ".onnx":
+            self.voice_model = Path(f"{self.voice_model}.onnx")
         self.piper_binary = piper_binary
+        self.system_voice = system_voice
         self._pending = deque(maxlen=10)
         self._condition = threading.Condition()
         self._closed = False
@@ -41,7 +44,7 @@ class VoiceAlertSystem:
     def _backends(self):
         player = shutil.which("ffplay")
         piper = shutil.which(self.piper_binary)
-        if (player and piper and self.voice_model.is_file()
+        if (player and piper and self.voice_model is not None and self.voice_model.is_file()
                 and self.voice_model.with_suffix(".onnx.json").is_file()):
             yield "piper", lambda text: self._speak_piper(piper, player, text)
 
@@ -50,16 +53,28 @@ class VoiceAlertSystem:
         else:
             native = shutil.which("espeak-ng") or shutil.which("espeak")
         if native:
-            yield Path(native).name, lambda text: subprocess.run(
-                [native, "-r" if sys.platform == "darwin" else "-s", "165", text],
-                check=True, timeout=15, capture_output=True,
-            )
+            rate = "-r" if sys.platform == "darwin" else "-s"
+            options = ["-v", self.system_voice] if self.system_voice else []
+            def speak_native(text, voice_options=options):
+                subprocess.run([native, rate, "165", *voice_options, text],
+                               check=True, timeout=15, capture_output=True)
+            yield Path(native).name, speak_native
+            if options:
+                yield f"{Path(native).name} default", lambda text: speak_native(text, [])
 
         # Some speech drivers need initialization and playback on the same thread.
         try:
             import pyttsx3
             engine = pyttsx3.init()
             engine.setProperty("rate", 165)
+            if self.system_voice:
+                requested = self.system_voice.casefold()
+                voice = next((v for v in engine.getProperty("voices")
+                              if requested in (v.id.casefold(), v.name.casefold())), None)
+                if voice is None:
+                    logger.warning("System voice %s was not found. Using the default.", self.system_voice)
+                else:
+                    engine.setProperty("voice", voice.id)
         except Exception as exc:
             logger.debug("Could not initialize pyttsx3: %s", exc)
         else:
@@ -140,10 +155,10 @@ class VoiceAlertSystem:
 
     @staticmethod
     def _cue(step: dict) -> str:
-        return step.get("voice_cue") or f"Step {step['id']}. {step['name']}."
+        return step.get("voice_cue") or f"Step {step.get('number', step['id'])}. {step['name']}."
 
-    def alert_experiment_start(self, first_step: Optional[dict] = None):
-        message = "Experiment started."
+    def alert_experiment_start(self, first_step: Optional[dict] = None, project_name: str | None = None):
+        message = f"Starting {project_name}." if project_name else "Experiment started."
         if first_step:
             message += f" {self._cue(first_step)}"
         self.speak(message, priority=True)

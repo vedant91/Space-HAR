@@ -28,7 +28,10 @@ class ExperimentLogger:
     Each log entry is both human-readable and parseable as JSON Lines.
     """
 
-    def __init__(self, session_id: Optional[str] = None, log_dir: str = LOG_DIR):
+    def __init__(self, session_id: Optional[str] = None, log_dir: str = LOG_DIR,
+                 total_steps: int = len(EXPERIMENT_STEPS), project_name: Optional[str] = None):
+        self.total_steps = total_steps
+        self.project_name = project_name
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -57,13 +60,15 @@ class ExperimentLogger:
         # silently truncate a prior session's log.
         if self.txt_path.exists():
             return
+        project_line = f"Project    : {self.project_name}\n" if self.project_name else ""
         header = (
             "=" * 70 + "\n"
             f"ISRO HAR EXPERIMENT LOG\n"
             f"Session ID : {self.session_id}\n"
             f"Start Time : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Total Steps: {len(EXPERIMENT_STEPS)}\n"
-            "=" * 70 + "\n\n"
+            f"Total Steps: {self.total_steps}\n"
+            f"{project_line}"
+            + "=" * 70 + "\n\n"
         )
         self.txt_path.write_text(header, encoding="utf-8")
         self.jsonl_path.touch()
@@ -160,6 +165,8 @@ class ExperimentLogger:
         text = f"[{ts}] [STARTED]   Experiment execution begun."
         entry = {"event": "experiment_start", "timestamp": ts,
                  "wall_time": datetime.now().isoformat()}
+        if self.project_name:
+            entry["project"] = self.project_name
         self._write(text, entry)
 
     def log_experiment_complete(self, total_duration_sec: float,
@@ -183,7 +190,7 @@ class ExperimentLogger:
             "\n" + "=" * 70 + "\n"
             f"[{ts}] [COMPLETE]  EXPERIMENT FINISHED\n"
             f"           Total Duration : {total_duration_sec:.1f}s\n"
-            f"           Steps Completed: {steps_completed}/{len(EXPERIMENT_STEPS)}\n"
+            f"           Steps Completed: {steps_completed}/{self.total_steps}\n"
             f"           Steps Skipped  : {steps_skipped}\n"
             f"           Recovery Events: {recovery_events}\n"
             f"           Outcome        : {outcome}\n"

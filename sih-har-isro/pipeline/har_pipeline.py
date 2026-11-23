@@ -46,6 +46,7 @@ from config.experiment_config import (
     CNN_ENSEMBLE_ENABLED, CNN_CONFIDENCE_THRESHOLD, CNN_NUM_FRAMES_IN, CNN_IMG_SIZE,
     UPRIGHT_POSE, UPRIGHT_POSE_MIN_SCORE, SAMPLE_EVERY, FEATURE_LAYOUT,
 )
+from config.project import Project
 from pipeline.rack_frame import RackFrameNormalizer
 from pipeline.features import (
     SampleWindow, LAYOUT_DIMS, build_frame_features, contract_of,
@@ -339,7 +340,8 @@ class HARPipeline:
                  use_threaded: Optional[bool] = None,
                  lstm_path: Optional[str] = None,
                  show_3d_panel: bool = False,
-                 viz_3d: str = "blazepose", detector_weights: Optional[str] = None):
+                 viz_3d: str = "blazepose", detector_weights: Optional[str] = None,
+                 project: Project | None = None):
         """`lstm_path`: serve this .pt checkpoint (PyTorch) instead of the
         promoted models/lstm_classifier.{onnx,pt}. Either way the pipeline
         builds exactly the inputs the loaded model records it was trained on
@@ -357,6 +359,14 @@ class HARPipeline:
         self.streamer: Optional[NetworkStreamer] = None
         self.enable_cnn_ensemble = (CNN_ENSEMBLE_ENABLED if enable_cnn_ensemble is None
                                     else enable_cnn_ensemble)
+        self.project = project
+        if project is not None:
+            if lstm_path is not None:
+                raise ValueError("Choose the classifier in the project file")
+            if enable_cnn_ensemble:
+                raise ValueError("The bundled BAS CNN cannot be used with a project classifier")
+            self.enable_cnn_ensemble = False
+            lstm_path = str(project.checkpoint)
         self.lstm_path      = lstm_path
         # The model input contract. Config until _load_models() adopts the
         # loaded checkpoint's recorded contract.
@@ -369,18 +379,22 @@ class HARPipeline:
         self._running       = False
         self._last_pred     = (0, 0.0)
 
-        voice_on = VOICE_ENABLED if enable_voice is None else enable_voice
-        if headless and enable_voice is None:
-            voice_on = False
+        if enable_voice is not None:
+            voice_on = enable_voice
+        elif project is not None:
+            voice_on = project.voice_enabled
+        else:
+            voice_on = VOICE_ENABLED and not headless
 
-        # ── Sub-systems ───────────────────────────────────────
-        self.state_machine  = ExperimentStateMachine()
-        self.voice          = VoiceAlertSystem(enabled=voice_on)
+        # ── Sub-systems ────────────────────────────────────────────
+        self.state_machine = ExperimentStateMachine(project.steps if project else None)
+        self._reminder_interval = project.reminder_seconds if project else VOICE_REMINDER_INTERVAL_SEC
         self._guidance_started = False
         self._guidance_time = None
         self._guidance_cue = 0
         self._announced_hold_step = None
-        self.exp_logger     = ExperimentLogger()
+        self.exp_logger = ExperimentLogger(total_steps=self.state_machine.total_steps,
+                                             project_name=project.name if project else None)
         if detector_weights is None:
             self.hsv_detector = _make_box_detector(FRAME_WIDTH, FRAME_HEIGHT)
         else:
@@ -440,6 +454,12 @@ class HARPipeline:
         self.lstm_ort_sess  = None  # ONNX Runtime session for LSTM
         self.cnn_session    = None  # ONNX Runtime session for CNN
         self._load_models()
+        voice_options = {}
+        if project:
+            if project.piper_model is not None:
+                voice_options["voice_model"] = str(project.piper_model)
+            voice_options["system_voice"] = project.system_voice
+        self.voice = VoiceAlertSystem(enabled=voice_on, **voice_options)
 
         # ── Threaded inference ─────────────────────────────────
         threaded_flag = USE_THREADED_INFERENCE if use_threaded is None else use_threaded
@@ -515,7 +535,7 @@ class HARPipeline:
         live_detector = type(self.hsv_detector).__name__
         if trained_detector is None:
             logger.warning(
-                "%s: detector_backend not recorded (predates the 2026-09-27 fix) - "
+                "%s: detector_backend is unrecorded - "
                 "cannot verify it was trained on %s. Rebuild sequences and retrain "
                 "to close this gap.", name, live_detector)
         elif trained_detector != live_detector:
@@ -544,7 +564,7 @@ class HARPipeline:
         self.model_banner = (
             f"MODEL {Path(name).name} | {layout} ({want}-d) | "
             f"1 sample / {1000.0 * self.sample_every / FPS:.0f} ms | rack {rack_txt}")
-        if layout != FEATURE_LAYOUT or self.sample_every != SAMPLE_EVERY:
+        if self.project is None and (layout != FEATURE_LAYOUT or self.sample_every != SAMPLE_EVERY):
             self.model_banner += " | NOT THE DEPLOYED CONTRACT"
         logger.warning("Serving %s", self.model_banner)
 
@@ -552,13 +572,28 @@ class HARPipeline:
         """Serve a chosen .pt (PyTorch) under the contract it records."""
         from train.train_lstm import HARLSTMClassifier
         ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        label_map = {int(k): int(v) for k, v in ckpt.get("idx_to_label", {}).items()}
+        if self.project is not None:
+            recorded_project = ckpt.get("project_id")
+            if recorded_project is not None and recorded_project != self.project.id:
+                raise ValueError(f"{path} was trained for project {recorded_project!r}, expected {self.project.id!r}")
+            labels = set(label_map.values())
+            if (set(label_map) != set(range(ckpt["num_classes"])) or len(labels) != len(label_map)
+                    or labels - {0} != self.project.step_ids):
+                raise ValueError(f"{path} must map classifier outputs to project step IDs "
+                                 f"{sorted(self.project.step_ids)}, with optional idle label 0. "
+                                 f"Found {sorted(labels)}.")
+            if ckpt.get("window", SEQUENCE_WINDOW) != SEQUENCE_WINDOW:
+                raise ValueError(f"{path} must use {SEQUENCE_WINDOW} samples per window")
+            if recorded_project is None:
+                logger.warning("%s records step IDs but no project ID. Check that the labels have the same meaning.", path)
         self._adopt_contract(path, ckpt, ckpt["feature_dim"])
         self.lstm_model = HARLSTMClassifier(
             feature_dim=ckpt["feature_dim"], hidden_size=ckpt["hidden_size"],
             num_layers=ckpt["num_layers"], num_classes=ckpt["num_classes"])
         self.lstm_model.load_state_dict(ckpt["model_state"])
         self.lstm_model.eval()
-        self._lstm_label_map = {int(k): int(v) for k, v in ckpt.get("idx_to_label", {}).items()}
+        self._lstm_label_map = label_map
 
     def _load_promoted_lstm(self):
         """Load models/lstm_classifier.{onnx,pt} and serve it under the
@@ -680,7 +715,8 @@ class HARPipeline:
                 recovered=rec.recovered,
             )
             if sm.current_step and not rec.recovered:
-                self.voice.alert_step_complete(rec.step_id, sm.current_step)
+                self.voice.alert_step_complete(sm.steps[sm.current_step_idx - 1].get("number", rec.step_id),
+                                               sm.current_step)
             publish("step_complete", rec)
 
         def on_step_skipped(expected_id: int, observed_id: int):
@@ -689,7 +725,7 @@ class HARPipeline:
             self.exp_logger.log_step_skipped(expected_id, name, observed_id)
             if self._announced_hold_step != expected_id:
                 self._announced_hold_step = expected_id
-                self.voice.alert_skip(expected_id, step)
+                self.voice.alert_skip(step.get("number", expected_id), step)
             publish("step_skipped", expected_id)
 
         def on_out_of_sequence(expected_id: int, observed_id: int):
@@ -703,7 +739,8 @@ class HARPipeline:
                 f"Recovery confirmed: step {rec.step_id} corrected after observed step {observed_id}."
             )
             if sm.current_step:
-                self.voice.alert_step_recovered(rec.step_id, sm.current_step)
+                self.voice.alert_step_recovered(sm.steps[sm.current_step_idx - 1].get("number", rec.step_id),
+                                                sm.current_step)
             publish("step_recovered", rec.step_id)
 
         def on_experiment_complete():
@@ -731,21 +768,22 @@ class HARPipeline:
     def _start_guidance(self):
         if not self._guidance_started:
             self._guidance_started = True
-            self.voice.alert_experiment_start(self.state_machine.current_step)
+            self.voice.alert_experiment_start(self.state_machine.current_step,
+                                              self.project.name if self.project else None)
             self.exp_logger.log_experiment_start()
 
     def _guide_waiting(self, t: float):
         """Repeat the expected action when a step has gone unconfirmed for a while."""
         step = self.state_machine.current_step
-        if not self._guidance_started or step is None:
+        if not self._guidance_started or step is None or not self._reminder_interval:
             return
         if (self._guidance_time is None or t < self._guidance_time
                 or self._guidance_cue != self.voice.spoken):
             self._guidance_time = t
             self._guidance_cue = self.voice.spoken
-        elif t - self._guidance_time >= VOICE_REMINDER_INTERVAL_SEC:
+        elif t - self._guidance_time >= self._reminder_interval:
             if self.state_machine.recovery_required:
-                self.voice.alert_skip(step["id"], step)
+                self.voice.alert_skip(step.get("number", step["id"]), step)
             else:
                 self.voice.alert_uncertain(step["id"], step)
             self._guidance_time = t
@@ -1002,6 +1040,8 @@ class HARPipeline:
         fh, fw = frame.shape[:2]
         view = frame.copy()
         status = self.state_machine.get_status_summary()
+        if self.project:
+            status["project_name"] = self.project.name
         current = status.get("current_step")
         task = tuple((current or {}).get("required_objects") or ())
 
@@ -1062,7 +1102,8 @@ class HARPipeline:
         if self._voice_line and t - self._voice_line[1] < 4.0:
             alert = f"GUIDANCE: {self._voice_line[0]}"
         elif rec.get("active") and rec.get("expected_step_id"):
-            alert = f"Step {rec['expected_step_id']} missed - return to it before continuing"
+            step = status["current_step"]
+            alert = f"Return to step {step.get('number', step['id'])} before continuing"
         panel = np.zeros((fh, SIDE_PANEL_W, 3), dtype=np.uint8)
         pv.render_side_panel(panel, status, pred_step, confidence, fps, ms, scene,
                              banner=self.model_banner or "", alert=alert)

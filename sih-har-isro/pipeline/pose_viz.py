@@ -610,10 +610,10 @@ def render_side_panel(panel: np.ndarray, status: dict, pred_step: int, pred_conf
                       fps: Optional[float], latency_ms: Optional[float], scene_fn,
                       banner: str = "", alert: str = "") -> None:
     """Right-hand monitor column: header, 3D view (drawn by scene_fn on a
-    sub-canvas), current/next step with confidence, the 8-step checklist."""
+    sub-canvas), current/next step with confidence, the procedure checklist."""
     h, w = panel.shape[:2]
     panel[:] = BG
-    _text(panel, "BAS-HAR MONITOR", (16, 28), 0.62, INK, 2)
+    _text(panel, status.get("project_name", "BAS-HAR MONITOR"), (16, 28), 0.62, INK, 2)
     if fps is not None:
         s = f"{fps:4.1f} FPS  {latency_ms or 0:4.0f} ms"
         (tw, _), _ = cv2.getTextSize(s, FONT, 0.45, 1)
@@ -630,25 +630,30 @@ def render_side_panel(panel: np.ndarray, status: dict, pred_step: int, pred_conf
     card_h = 92
     cv2.rectangle(panel, (10, y), (w - 10, y + card_h), PANEL, -1)
     if cur:
-        _text(panel, f"STEP {cur['id']} OF 8", (22, y + 22), 0.45, CUR_C, 1)
+        _text(panel, f"STEP {cur.get('number', cur['id'])} OF {len(status.get('steps', []))}", (22, y + 22), 0.45, CUR_C, 1)
         _text(panel, cur["name"], (22, y + 52), 0.72, INK, 2)
     else:
         _text(panel, "PROTOCOL COMPLETE", (22, y + 46), 0.7, OK_C, 2)
     if nxt:
-        _text(panel, f"NEXT  {nxt['id']} . {nxt['name']}", (22, y + 80), 0.45, MUTED, 1)
+        _text(panel, f"NEXT  {nxt.get('number', nxt['id'])} . {nxt['name']}", (22, y + 80), 0.45, MUTED, 1)
     bx0, bx1, by = w - 150, w - 22, y + 18
     cv2.rectangle(panel, (bx0, by - 8), (bx1, by + 2), (60, 50, 40), -1)
     cv2.rectangle(panel, (bx0, by - 8), (bx0 + int((bx1 - bx0) * max(0.0, min(1.0, pred_conf))), by + 2),
                   OK_C if pred_conf >= 0.65 else CUR_C, -1)
-    _text(panel, f"model: step {pred_step}  {pred_conf:.2f}", (bx0, by + 20), 0.38, MUTED, 1)
+    steps = status.get("steps", [])
+    display_step = next((step.get("number", pred_step) for step in steps if step["id"] == pred_step), pred_step)
+    _text(panel, f"model: step {display_step}  {pred_conf:.2f}", (bx0, by + 20), 0.38, MUTED, 1)
 
     y += card_h + 12
-    steps = status.get("steps", [])
     rec = status.get("recovery", {}) or {}
     bottom = h - (64 if alert else 30)
     row = max(18, min(26, (bottom - y) // max(len(steps), 1)))
     cur_id = cur["id"] if cur else None
-    for st in steps:
+    # The overlay has fixed height. Keep the active step visible on long projects.
+    limit = max(1, (bottom - y) // row)
+    active_index = next((i for i, step in enumerate(steps) if step["id"] == cur_id), len(steps) - 1)
+    start = max(0, active_index - limit + 1)
+    for st in steps[start:start + limit]:
         sid, name, s = st["id"], st["name"], st["status"]
         if s == "COMPLETED":
             col, mark = OK_C, "done"
@@ -661,7 +666,7 @@ def render_side_panel(panel: np.ndarray, status: dict, pred_step: int, pred_conf
             col, mark = (110, 110, 110), ""
         cy = y + row // 2
         cv2.circle(panel, (26, cy), 7, col, -1 if s in ("COMPLETED", "IN_PROGRESS") else 2, cv2.LINE_AA)
-        _text(panel, f"{sid}  {name}", (44, cy + 5), 0.47, INK if (s != "PENDING" or sid == cur_id) else MUTED, 1)
+        _text(panel, f"{st.get('number', sid)}  {name}", (44, cy + 5), 0.47, INK if (s != "PENDING" or sid == cur_id) else MUTED, 1)
         if mark:
             (tw, _), _ = cv2.getTextSize(mark, FONT, 0.4, 1)
             _text(panel, mark, (w - tw - 20, cy + 5), 0.4, col, 1)

@@ -53,11 +53,12 @@ STATUS_COLORS = {
 
 class Dashboard(QMainWindow):
     def __init__(self, gui_queue: "queue.Queue", enable_streaming: bool = False,
-                 stream_host: str = STREAM_HOST, stream_port: int = STREAM_PORT):
+                 stream_host: str = STREAM_HOST, stream_port: int = STREAM_PORT,
+                 steps=None, project_name=None):
         super().__init__()
         self.gui_queue = gui_queue
         self._on_close = None
-        self.setWindowTitle("ISRO HAR — Experiment Monitor")
+        self.setWindowTitle(f"{project_name} — Experiment Monitor" if project_name else "ISRO HAR — Experiment Monitor")
         self.resize(1180, 640)
 
         self.video_label = QLabel("Waiting for video…")
@@ -77,7 +78,10 @@ class Dashboard(QMainWindow):
 
         self.step_list = QListWidget()
         self.step_items = {}
-        for step in EXPERIMENT_STEPS:
+        steps = EXPERIMENT_STEPS if steps is None else steps
+        self.step_names = {step["id"]: step["name"] for step in steps}
+        self.step_numbers = {step["id"]: step.get("number", step["id"]) for step in steps}
+        for step in steps:
             item = QListWidgetItem()
             self.step_list.addItem(item)
             self.step_items[step["id"]] = item
@@ -146,17 +150,17 @@ class Dashboard(QMainWindow):
                 elif kind == "status":
                     self._on_status(payload)
                 elif kind == "step_skipped":
-                    self._show_alert(f"⚠ Step {payload} skipped — awaiting correction", "#a83232")
+                    self._show_alert(f"⚠ Step {self._number_of(payload)} skipped — awaiting correction", "#a83232")
                 elif kind == "out_of_sequence":
-                    self._show_alert(f"⚠ Out of sequence — expected step {payload}", "#a83232")
+                    self._show_alert(f"⚠ Out of sequence — expected step {self._number_of(payload)}", "#a83232")
                 elif kind == "step_recovered":
-                    self._show_alert(f"Step {payload} recovered", "#1f8a3b")
+                    self._show_alert(f"Step {self._number_of(payload)} recovered", "#1f8a3b")
                 elif kind == "experiment_complete":
                     self._show_alert("Experiment complete", "#1f8a3b")
                 elif kind == "uncertain":
                     self._show_alert(
-                        f"⚠ Uncertain near step {payload.get('expected_step_id')} — "
-                        f"LSTM says {payload.get('lstm_step')}, CNN says {payload.get('cnn_step')}. "
+                        f"⚠ Uncertain near step {self._number_of(payload.get('expected_step_id'))} — "
+                        f"LSTM says {self._number_of(payload.get('lstm_step'))}, CNN says {payload.get('cnn_step')}. "
                         f"Please confirm.", "#c98a12")
             except queue.Empty:
                 return
@@ -181,16 +185,16 @@ class Dashboard(QMainWindow):
         cur = summary.get("current_step")
         nxt = summary.get("next_step")
         self.current_label.setText(
-            f"Current: Step {cur['id']}: {cur['name']}" if cur else "Current: COMPLETE")
+            f"Current: Step {self._number_of(cur['id'])}: {cur['name']}" if cur else "Current: COMPLETE")
         self.next_label.setText(
-            f"Next: Step {nxt['id']}: {nxt['name']}" if nxt else "Next: —")
+            f"Next: Step {self._number_of(nxt['id'])}: {nxt['name']}" if nxt else "Next: —")
         self.elapsed_label.setText(f"Elapsed: {summary.get('elapsed_sec', 0.0):.1f}s")
 
         recovery = summary.get("recovery") or {}
         if recovery.get("active"):
             self._show_alert(
-                f"⚠ HOLD — expected step {recovery['expected_step_id']}, "
-                f"observed step {recovery['observed_step_id']}", "#a83232", sticky=True)
+                f"⚠ HOLD — expected step {self._number_of(recovery['expected_step_id'])}, "
+                f"observed step {self._number_of(recovery['observed_step_id'])}", "#a83232", sticky=True)
         elif self.alert_label.property("sticky"):
             self._clear_alert()
 
@@ -210,14 +214,10 @@ class Dashboard(QMainWindow):
             status = status_by_id.get(step_id, "PENDING")
             item.setBackground(QColor(STATUS_COLORS.get(status, "#3a3a3a")))
             item.setForeground(QColor("white"))
-            item.setText(f"{step_id}. {self._name_of(step_id)}  [{status}]")
+            item.setText(f"{self._number_of(step_id)}. {self.step_names[step_id]}  [{status}]")
 
-    @staticmethod
-    def _name_of(step_id: int) -> str:
-        for s in EXPERIMENT_STEPS:
-            if s["id"] == step_id:
-                return s["name"]
-        return "?"
+    def _number_of(self, step_id):
+        return self.step_numbers.get(step_id, step_id)
 
     def _show_alert(self, text: str, color: str, sticky: bool = False):
         self.alert_label.setText(text)
@@ -233,14 +233,16 @@ class Dashboard(QMainWindow):
 
 def launch_qt_dashboard(gui_queue: "queue.Queue", on_close=None,
                         enable_streaming: bool = False,
-                        stream_host: str = STREAM_HOST, stream_port: int = STREAM_PORT):
+                        stream_host: str = STREAM_HOST, stream_port: int = STREAM_PORT,
+                        steps=None, project_name=None):
     """Blocking call — runs the Qt event loop. Must be called from the main
     thread (Qt/Cocoa requires the GUI event loop own the main thread); run
     the pipeline's capture loop in a background thread instead — see
     main.py's run_pipeline()."""
     app = QApplication.instance() or QApplication(sys.argv)
     window = Dashboard(gui_queue, enable_streaming=enable_streaming,
-                       stream_host=stream_host, stream_port=stream_port)
+                       stream_host=stream_host, stream_port=stream_port,
+                       steps=steps, project_name=project_name)
     if on_close:
         window.set_on_close(on_close)
     window.show()

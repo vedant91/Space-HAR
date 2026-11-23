@@ -56,8 +56,9 @@ class ExperimentStateMachine:
       - on_experiment_complete()
     """
 
-    def __init__(self):
-        self.steps = EXPERIMENT_STEPS
+    def __init__(self, steps=None):
+        self.steps = EXPERIMENT_STEPS if steps is None else steps
+        self._positions = {step["id"]: index for index, step in enumerate(self.steps)}
         self.total_steps = len(self.steps)
 
         # Step records for logging
@@ -140,7 +141,7 @@ class ExperimentStateMachine:
         if entropy is not None and entropy > STEP_ENTROPY_MAX:
             return  # Confident top-1, but the rest of the distribution is too spread out to trust
 
-        if predicted_step_id <= 0:
+        if predicted_step_id not in self._positions:
             return  # Idle/unknown
 
         # Start experiment on first confident prediction
@@ -165,11 +166,12 @@ class ExperimentStateMachine:
     def _process_stable_prediction(self, stable_step_id: int, confidence: float):
         """Called when a prediction has been stable for N frames."""
         expected = self.expected_step_id
+        observed_position = self._positions[stable_step_id]
 
         if stable_step_id == expected:
             self._confirm_step(stable_step_id, confidence)
 
-        elif stable_step_id > expected:
+        elif observed_position > self.current_step_idx:
             # Do not mark a future step complete.  In a safety-critical
             # experiment a skip is an interruption that must be corrected,
             # not a shortcut through the protocol.
@@ -190,13 +192,13 @@ class ExperimentStateMachine:
                 self.on_step_skipped(expected, stable_step_id)
             self._confirm_buffer.clear()
 
-        elif stable_step_id < expected:
+        else:
             # Regression: astronaut doing an already-completed step again.
             # The final pose of a just-completed action often persists for a
             # few frames while the astronaut moves to the next step.  Ignore
             # that immediate one-step tail; more distant regressions are still
             # safety events and are reported below.
-            if stable_step_id == expected - 1:
+            if observed_position == self.current_step_idx - 1:
                 self._confirm_buffer.clear()
                 return
             # Fire once per (expected, observed) pair — repeating it every
@@ -295,19 +297,20 @@ class ExperimentStateMachine:
                 {
                     "id": r.step_id,
                     "name": r.name,
+                    "number": self.steps[index].get("number", r.step_id),
                     "status": r.status.name,
                     "duration": r.duration_sec,
                     "confidence": round(r.confidence, 2),
                     "notes": r.notes,
                     "recovered": r.recovered,
                 }
-                for r in self.step_records
+                for index, r in enumerate(self.step_records)
             ],
         }
 
     def reset(self):
         """Reset machine for a new experiment run."""
-        self.__init__()
+        self.__init__(self.steps)
         logger.info("State machine reset.")
 
 

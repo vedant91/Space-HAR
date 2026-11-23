@@ -49,7 +49,8 @@ def run_pipeline(source, headless: bool = False,
                  stream_host: str | None = None, stream_port: int | None = None,
                  enable_cnn_ensemble: bool | None = None,
                  show_3d_panel: bool = False, viz_3d: str = "blazepose",
-                 detector_weights: str | None = None, enable_voice: bool | None = None):
+                 detector_weights: str | None = None, enable_voice: bool | None = None,
+                 project=None):
     """Launch the real-time HAR inference pipeline."""
     import queue
     import threading
@@ -69,8 +70,10 @@ def run_pipeline(source, headless: bool = False,
                            "falling back to the cv2 debug preview window.", e)
 
     gui_queue = queue.Queue(maxsize=30) if use_qt else None
+    if enable_voice is None and project is None:
+        enable_voice = VOICE_ENABLED
     pipeline = HARPipeline(source=source, headless=headless, gui_queue=gui_queue,
-                           enable_voice=VOICE_ENABLED if enable_voice is None else enable_voice,
+                           enable_voice=enable_voice, project=project,
                            enable_streaming=enable_streaming,
                            stream_host=stream_host, stream_port=stream_port,
                            enable_cnn_ensemble=enable_cnn_ensemble,
@@ -89,7 +92,8 @@ def run_pipeline(source, headless: bool = False,
     from gui.dashboard import launch_dashboard
     launch_dashboard(gui_queue, on_close=pipeline.stop,
                      enable_streaming=pipeline.enable_streaming,
-                     stream_host=pipeline.stream_host, stream_port=pipeline.stream_port)
+                     stream_host=pipeline.stream_host, stream_port=pipeline.stream_port,
+                     steps=pipeline.state_machine.steps, project_name=project.name if project else None)
     pipeline_thread.join()
 
 
@@ -264,6 +268,7 @@ Modes:
                         default="pipeline")
     parser.add_argument("--camera",   type=int,  default=0)
     parser.add_argument("--video",    type=str,  default=None)
+    parser.add_argument("--project", type=Path, help="JSON procedure, activity checkpoint and voice settings")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--voice", action=argparse.BooleanOptionalAction,
                         help="Enable or mute spoken procedure guidance, including headless runs")
@@ -294,11 +299,24 @@ Modes:
     parser.add_argument("--render", action="store_true",
                         help="For sim3d, rebuild and render all Blender frames before packaging")
     args = parser.parse_args()
+    if args.project and args.mode != "pipeline":
+        parser.error("--project selects a live project. Train it with train/train_lstm.py --project.")
 
     if args.mode == "status":
         print_status()
 
     elif args.mode == "pipeline":
+        project = None
+        if args.project:
+            from config.project import load_project
+            try:
+                project = load_project(args.project)
+            except ValueError as exc:
+                parser.error(str(exc))
+            if not project.checkpoint.is_file():
+                parser.error(f"Project checkpoint is missing at {project.checkpoint}. Train it first.")
+            if args.cnn_ensemble:
+                parser.error("The bundled BAS CNN cannot be used with a project classifier")
         source = args.video if args.video else args.camera
         # None (not just-False) when the flag is absent, so an operator who
         # flips ENABLE_STREAMING/CNN_ENSEMBLE_ENABLED to True in config isn't
@@ -310,7 +328,7 @@ Modes:
                     stream_host=args.stream_host, stream_port=args.stream_port,
                     enable_cnn_ensemble=True if args.cnn_ensemble else None,
                     show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
-                    detector_weights=args.detector_weights, enable_voice=args.voice)
+                    detector_weights=args.detector_weights, enable_voice=args.voice, project=project)
 
     elif args.mode == "train":
         run_training()
