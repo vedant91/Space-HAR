@@ -156,6 +156,10 @@ python main.py --mode status                       # verifies weights, pose back
 
 Pose bundles ship via Git LFS so a fresh clone is offline-capable; `python tools/fetch_pose_model.py` re-fetches them if needed.
 
+### Configure a project
+
+Use `--project projects/my-project.json` to load your own procedure, trained activity checkpoint, and voice settings. [Project setup, example config, and training commands](sih-har-isro/docs/project-setup.md)
+
 ### Spoken procedure guidance
 
 Voice guidance is enabled by default when launching the pipeline. It announces the first action, confirms recognized steps, names the action to take after a sequence error, and repeats the current instruction after 20 seconds without confirmation. You can run the procedure without opening the dashboard.

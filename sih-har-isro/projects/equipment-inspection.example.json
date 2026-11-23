@@ -1,0 +1,14 @@
+{
+  "id": "equipment-inspection",
+  "name": "Equipment inspection",
+  "checkpoint": "../models/equipment_inspection.pt",
+  "steps": [
+    {"id": 1, "name": "Position the equipment", "voice_cue": "Step 1. Place the equipment on the inspection bench."},
+    {"id": 2, "name": "Inspect the front panel", "voice_cue": "Step 2. Inspect the front panel."},
+    {"id": 3, "name": "Return the equipment", "voice_cue": "Step 3. Return the equipment to the storage tray."}
+  ],
+  "voice": {
+    "enabled": true,
+    "reminder_seconds": 20
+  }
+}
