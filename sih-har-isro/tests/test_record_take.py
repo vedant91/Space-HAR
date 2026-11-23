@@ -42,7 +42,8 @@ def _fake_clock(step=0.1):
     return _tick
 
 
-def test_meta_run_length_sequence_and_measured_fps(tmp_path, monkeypatch):
+@pytest.mark.parametrize("step_ids", [(1, 2), (30, 10)])
+def test_meta_run_length_sequence_and_measured_fps(tmp_path, monkeypatch, step_ids):
     # Keys pressed, one per read() iteration: start recording, hold step 1
     # for several frames, switch to step 2 for several frames, then quit.
     # The exact frame-to-keypress alignment (a key changes `step` for the
@@ -59,7 +60,14 @@ def test_meta_run_length_sequence_and_measured_fps(tmp_path, monkeypatch):
     monkeypatch.setattr(record_take.time, "perf_counter", _fake_clock(step=0.1))
 
     out_dir = tmp_path / "real"
-    monkeypatch.setattr(sys, "argv", ["record_take.py", "--out", str(out_dir), "--tag", "real_nominal"])
+    argv = ["record_take.py", "--out", str(out_dir), "--tag", "real_nominal"]
+    if step_ids != (1, 2):
+        import json
+        project = tmp_path / "project.json"
+        project.write_text(json.dumps({"id": "inspection", "name": "Inspection", "checkpoint": "model.pt",
+                                       "steps": [{"id": step_id, "name": "Inspect"} for step_id in step_ids]}))
+        argv += ["--project", str(project)]
+    monkeypatch.setattr(sys, "argv", argv)
     record_take.main()
 
     take_dir = out_dir / "take_0000"
@@ -70,8 +78,10 @@ def test_meta_run_length_sequence_and_measured_fps(tmp_path, monkeypatch):
 
     # Run-length sequence: [k for k, _ in groupby(labels)], not sorted(set()).
     from itertools import groupby
-    assert [k for k, _ in groupby(labels.tolist())] == [1, 2]
-    assert meta["sequence"] == [1, 2]
+    assert [k for k, _ in groupby(labels.tolist())] == list(step_ids)
+    assert meta["sequence"] == list(step_ids)
+    if step_ids != (1, 2):
+        assert meta["project_id"] == "inspection"
     assert meta["n_frames"] == len(labels) == len(times)
     assert meta["real"] is True
     assert meta["tag"] == "real_nominal"

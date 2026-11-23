@@ -47,6 +47,7 @@ from config.experiment_config import (
     TRAIN_VAL_SPLIT, SEQUENCE_WINDOW,
     LSTM_PATH, LSTM_ONNX_PATH, MODEL_FEATURE_DIM,
 )
+from config.project import Project, load_project
 from pipeline.features import LAYOUT_DIMS, contract_of  # noqa: E402
 
 # The deployed model input: pose + object channels (config.MODEL_FEATURE_DIM,
@@ -151,9 +152,9 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
                 epochs: int = None,
                 hidden_size: int = None,
                 dropout: float = None,
-                seed: int = 7):
+                seed: int = 7, project: Project | None = None):
     if output_path is None:
-        output_path = LSTM_PATH
+        output_path = str(project.checkpoint) if project else LSTM_PATH
     epochs = LSTM_EPOCHS if epochs is None else epochs
     hidden_size = LSTM_HIDDEN_SIZE if hidden_size is None else hidden_size
     dropout = LSTM_DROPOUT if dropout is None else dropout
@@ -173,12 +174,23 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
     X = np.load(str(X_path))
     y = np.load(str(y_path))
     logger.info("Loaded dataset: X=%s, y=%s", X.shape, y.shape)
+    project_meta = {}
+    if project:
+        labels = set(np.unique(y).tolist())
+        if labels - {0} != project.step_ids:
+            raise ValueError(f"Dataset labels {sorted(labels)} do not match project steps {sorted(project.step_ids)}")
+        if X.ndim != 3 or X.shape[1] != SEQUENCE_WINDOW:
+            raise ValueError(f"The activity model requires {SEQUENCE_WINDOW} samples per window")
+        project_meta["project_id"] = project.id
 
     # The input contract the sequences were built under (metadata.json from
     # tools/build_sequences.py). It is recorded in the checkpoint so the live
     # pipeline and evaluate_real build exactly these inputs, or refuse.
     meta_path = Path(data_dir) / "metadata.json"
     data_meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    dataset_project_id = data_meta.get("project_id")
+    if project and dataset_project_id is not None and dataset_project_id != project.id:
+        raise ValueError(f"Dataset was recorded for project {dataset_project_id!r}, expected {project.id!r}")
     contract = contract_of(data_meta)
     # What produced the pose (pipeline/hmr_backend.check_pose_source refuses
     # to serve the checkpoint under a different HMR_BACKEND).
@@ -307,6 +319,7 @@ def train_model(data_dir: str = "dataset/skeleton_sequences",
                 "val_acc": val_acc,
                 "epoch": epoch,
                 "window": SEQUENCE_WINDOW,
+                **project_meta,
                 **contract,   # feature_layout, sample_every, rack_normalized
                 **pose_rec,   # pose_source, hmr_backend
             }, output_path)
@@ -393,4 +406,15 @@ def _export_lstm_onnx(model_pt_path: str, onnx_path: str = None):
 
 
 if __name__ == "__main__":
-    train_model()
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project", type=Path, help="Project JSON with class IDs and checkpoint destination")
+    parser.add_argument("--data", default="dataset/skeleton_sequences", help="Labelled sequence directory")
+    parser.add_argument("--epochs", type=int)
+    args = parser.parse_args()
+    try:
+        project = load_project(args.project) if args.project else None
+        train_model(data_dir=args.data, epochs=args.epochs, project=project)
+    except (ValueError, FileNotFoundError) as exc:
+        parser.error(str(exc))

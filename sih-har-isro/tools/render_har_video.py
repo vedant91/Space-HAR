@@ -27,6 +27,7 @@ from pathlib import Path
 import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config.project import load_project
 from pipeline.har_pipeline import HARPipeline  # noqa: E402
 
 
@@ -34,6 +35,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--video", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--project", type=Path, help="Project JSON for the monitor overlay")
     ap.add_argument("--lstm", default=None, help="checkpoint to serve (default: the promoted model)")
     ap.add_argument("--show-3d-panel", action="store_true",
                     help="load HMR3DNet as the 3D fallback when MediaPipe loses the body")
@@ -42,6 +44,12 @@ def main() -> None:
                     help="3D view source: BlazePose world, skeleton-only lift, fused HMR depth, or refined BAS pose")
     ap.add_argument("--max-frames", type=int, default=0)
     args = ap.parse_args()
+    if args.project and args.lstm:
+        ap.error("Choose the classifier in the project file")
+    try:
+        project = load_project(args.project) if args.project else None
+    except ValueError as exc:
+        ap.error(str(exc))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
     cap = cv2.VideoCapture(args.video)
@@ -52,7 +60,7 @@ def main() -> None:
 
     p = HARPipeline(lstm_path=args.lstm, headless=True, enable_voice=False, enable_recording=False,
                     use_threaded=False, show_3d_panel=args.show_3d_panel, viz_3d=args.viz_3d,
-                    detector_weights=args.detector_weights)
+                    detector_weights=args.detector_weights, project=project)
     out = Path(args.out)
     tmp = out.with_suffix(".raw.mp4")
     writer = None

@@ -353,6 +353,7 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
     report: List[dict] = []
     run_detector_backend = None
     run_detector_weights_id = None
+    project_id = None
 
     for take_dir in takes:
         loaded = _load_take(take_dir, camera)
@@ -375,6 +376,12 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
         if not meta.get("frames_written", True):
             print(f"  skip {take_dir.name} (no frames rendered)")
             continue
+
+        take_project = meta.get("project_id")
+        if take_project is not None:
+            if project_id is not None and take_project != project_id:
+                raise ValueError(f"{take_dir.name}: project {take_project!r} differs from {project_id!r}")
+            project_id = take_project
 
         labels = np.load(cam_dir / "labels.npy")
         poses, dets, wh, stats = _frame_inputs(dataset_dir, take_dir, cam_dir, pose_source,
@@ -452,6 +459,8 @@ def build(dataset_dir: str, out_dir: str, pose_source: str = "mediapipe",
             "class_counts": {int(k): int(v)
                              for k, v in zip(*np.unique(y, return_counts=True))},
         }
+        if project_id is not None:
+            meta_out["project_id"] = project_id
         (target / "metadata.json").write_text(json.dumps(meta_out, indent=2),
                                               encoding="utf-8")
         written[split] = {"dir": str(target), **meta_out}
